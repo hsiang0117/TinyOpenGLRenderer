@@ -149,7 +149,12 @@
     <ClInclude Include="include\imgui\imgui_impl_opengl3_loader.h" />
     <ClInclude Include="include\imgui\imgui_internal.h" />
     <ClInclude Include="src\camera.hpp" />
+    <ClInclude Include="src\engine.hpp" />
+    <ClInclude Include="src\frameBuffer.hpp" />
+    <ClInclude Include="src\Input.hpp" />
     <ClInclude Include="src\mesh.hpp" />
+    <ClInclude Include="src\model.hpp" />
+    <ClInclude Include="src\shader.hpp" />
     <ClInclude Include="src\texture.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

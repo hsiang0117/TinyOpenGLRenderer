@@ -86,5 +86,20 @@
     <ClInclude Include="src\mesh.hpp">
       <Filter>源文件</Filter>
     </ClInclude>
+    <ClInclude Include="src\shader.hpp">
+      <Filter>源文件</Filter>
+    </ClInclude>
+    <ClInclude Include="src\model.hpp">
+      <Filter>源文件</Filter>
+    </ClInclude>
+    <ClInclude Include="src\engine.hpp">
+      <Filter>源文件</Filter>
+    </ClInclude>
+    <ClInclude Include="src\frameBuffer.hpp">
+      <Filter>源文件</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Input.hpp">
+      <Filter>源文件</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

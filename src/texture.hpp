@@ -1,5 +1,6 @@
 #ifndef TEXTURE_HPP
 #define TEXTURE_HPP
+#pragma once
 
 #include <glad/glad.h>
 #include <iostream>
@@ -127,6 +128,19 @@ CubeMap::CubeMap(const char& folderPath) {
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
 	glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
+}
+
+class RenderBuffer {
+public:
+	GLuint ID;
+	RenderBuffer(int width, int height, GLenum internalFormat);
+};
+
+RenderBuffer::RenderBuffer(int width, int height, GLenum internalFormat) {
+	glGenRenderbuffers(1, &ID);
+	glBindRenderbuffer(GL_RENDERBUFFER, ID);
+	glRenderbufferStorage(GL_RENDERBUFFER, internalFormat, width, height);
+	glBindRenderbuffer(GL_RENDERBUFFER, 0);
 }
 
 #endif // !TEXTURE_HPP
