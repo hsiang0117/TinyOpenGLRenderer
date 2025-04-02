@@ -2,10 +2,11 @@
 #define MESH_HPP
 #pragma once
 
+#include "material.hpp"
+#include "shader.hpp"
+#include <glad/glad.h>
 #include <glm/glm.hpp>
 #include <vector>
-#include "texture.hpp"
-#include "shader.hpp"
 
 struct Vertex
 {
@@ -19,19 +20,20 @@ class Mesh
 public:
     std::vector<Vertex> vertices;
     std::vector<unsigned int> indices;
-    std::vector<Texture> textures;
-    Mesh(std::vector<Vertex> vertices, std::vector<unsigned int> indices, std::vector<Texture> textures);
+	Material material;
+    Mesh(std::vector<Vertex> vertices, std::vector<unsigned int> indices, Material mat);
     void draw(Shader& shader);
 private:
     GLuint VAO, VBO, EBO;
+    Material mat;
     void setupMesh();
 };
 
-Mesh::Mesh(std::vector<Vertex> vertices, std::vector<unsigned int> indices, std::vector<Texture> textures)
+Mesh::Mesh(std::vector<Vertex> vertices, std::vector<unsigned int> indices, Material mat)
 {
     this->vertices = vertices;
     this->indices = indices;
-    this->textures = textures;
+    this->mat = mat;
     setupMesh();
 }
 
@@ -61,9 +63,6 @@ void Mesh::setupMesh()
 
 void Mesh::draw(Shader& shader)
 {
-    unsigned int diffuseNr = 1;
-    unsigned int specularNr = 1;
-    unsigned int reflectionNr = 1;
     for (unsigned int i = 0; i < textures.size(); i++) {
         std::string number;
         std::string name = textures[i].type;

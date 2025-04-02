@@ -1,0 +1,6 @@
+#ifndef RESOURCEMANAGER_HPP
+#define RESOURCEMANAGER_HPP
+#pragma once
+
+
+#endif // !RESOURCEMANAGER_HPP

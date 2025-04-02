@@ -2,7 +2,6 @@
 #define FRAMEBUFFER_HPP
 #pragma once
 
-#include <glad/glad.h>
 #include "texture.hpp"
 
 class FrameBuffer {

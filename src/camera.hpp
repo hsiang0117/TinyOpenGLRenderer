@@ -2,6 +2,7 @@
 #define CAMERA_HPP
 #pragma once
 
+#include "input.hpp"
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -31,9 +32,9 @@ public:
 	glm::mat4 getViewMat();
 	glm::mat4 getProjectionMat(const float scrWidth, const float scrHeight);
 	void processKeyboard(Direction d);
-	void processMouseMovement(const double xPos, const double yPos);
-	void processMouseScroll(const double yOffset);
-	void updateDeltaTime(const double time);
+	void processMouseMovement(const float xPos, const float yPos);
+	void processMouseScroll(const float yOffset);
+	void update();
 private:
 	glm::vec3 pos;
 	glm::vec3 front;
@@ -42,8 +43,6 @@ private:
 	float yaw;
 	float fov;
 	float sensitivity;
-	float lastFrameTime = 0;
-	float deltaTime = 0;
 	bool firstMouse = true;
 	float lastX;
 	float lastY;
@@ -86,7 +85,7 @@ glm::mat4 Camera::getProjectionMat(const float scrWidth, const float scrHeight) 
 }
 
 void Camera::processKeyboard(Direction d) {
-	float cameraSpeed = 2.5f * deltaTime;
+	float cameraSpeed = 2.5f;
 	switch (d) {
 	case FRONT:
 		pos += cameraSpeed * front;
@@ -109,7 +108,7 @@ void Camera::processKeyboard(Direction d) {
 	}
 }
 
-void Camera::processMouseMovement(double xPos, double yPos) {
+void Camera::processMouseMovement(float xPos, float yPos) {
 	if (firstMouse)
 	{
 		lastX = xPos;
@@ -140,7 +139,7 @@ void Camera::processMouseMovement(double xPos, double yPos) {
 	this->front = glm::normalize(front);
 }
 
-void Camera::processMouseScroll(double yOffset) {
+void Camera::processMouseScroll(float yOffset) {
 	if (fov >= 1.0f && fov <= 70.0f)
 		fov -= yOffset;
 	if (fov <= 1.0f)
@@ -149,10 +148,9 @@ void Camera::processMouseScroll(double yOffset) {
 		fov = 70.0f;
 }
 
-void Camera::updateDeltaTime(const double time) {
-	float currentFrameTime = time;
-	deltaTime = currentFrameTime - lastFrameTime;
-	lastFrameTime = currentFrameTime;
+void Camera::update()
+{
+
 }
 
 #endif // !CAMERA_HPP

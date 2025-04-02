@@ -102,7 +102,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;_CONSOLE;GLFW_INCLUDE_NONE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>.\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
@@ -149,9 +149,14 @@
     <ClInclude Include="include\imgui\imgui_impl_opengl3_loader.h" />
     <ClInclude Include="include\imgui\imgui_internal.h" />
     <ClInclude Include="src\camera.hpp" />
+    <ClInclude Include="src\core\GUISystem.hpp" />
+    <ClInclude Include="src\core\renderSystem.hpp" />
+    <ClInclude Include="src\core\resourceManager.hpp" />
+    <ClInclude Include="src\core\windowSystem.hpp" />
     <ClInclude Include="src\engine.hpp" />
     <ClInclude Include="src\frameBuffer.hpp" />
-    <ClInclude Include="src\Input.hpp" />
+    <ClInclude Include="src\input.hpp" />
+    <ClInclude Include="src\material.hpp" />
     <ClInclude Include="src\mesh.hpp" />
     <ClInclude Include="src\model.hpp" />
     <ClInclude Include="src\shader.hpp" />
