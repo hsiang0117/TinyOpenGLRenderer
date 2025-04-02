@@ -162,6 +162,9 @@
     <ClInclude Include="src\shader.hpp" />
     <ClInclude Include="src\texture.hpp" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="data\config.json" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
