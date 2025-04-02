@@ -155,6 +155,7 @@
     <ClInclude Include="src\core\windowSystem.hpp" />
     <ClInclude Include="src\engine.hpp" />
     <ClInclude Include="src\frameBuffer.hpp" />
+    <ClInclude Include="src\input.hpp" />
     <ClInclude Include="src\material.hpp" />
     <ClInclude Include="src\mesh.hpp" />
     <ClInclude Include="src\model.hpp" />
