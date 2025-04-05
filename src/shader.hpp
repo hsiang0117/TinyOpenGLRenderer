@@ -2,6 +2,7 @@
 #define SHADER_HPP
 #pragma once
 
+#include <glad/glad.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <fstream>
@@ -12,8 +13,10 @@ class Shader
 {
 public:
     GLuint ID;
+    Shader() {}
     Shader(const char* vertexShaderPath, const char* fragmentShaderPath);
     Shader(const char* vertexShaderPath, const char* geometryShaderPath, const char* fragmentShaderPath);
+    void init(const char* vertexShaderPath, const char* fragmentShaderPath);
     void use();
     void setVec3(const char* name, glm::vec3 vec);
     void setMat4(const char* name, glm::mat4 mat);

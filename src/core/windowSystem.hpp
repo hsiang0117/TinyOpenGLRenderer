@@ -12,6 +12,7 @@ public:
 	void init(int width, int height);
 	void swapBuffers();
 	void update();
+	bool getCursor();
 	void setCursor(bool enable);
 	void setVsync(bool enable);
 	bool getShouldClose();
@@ -37,7 +38,7 @@ void WindowSystem::init(int width, int height) {
 	glfwMakeContextCurrent(window);
 	glfwFocusWindow(window);
 	setCursor(false);
-	setVsync(true);
+	setVsync(false);
 	connectInputToWindow(window);
 }
 
@@ -51,6 +52,14 @@ void WindowSystem::update() {
 	if (Input::getInstance().isKeyPressed(GLFW_KEY_ESCAPE)) {
 		setShouldClose(true);
 	}
+	if (Input::getInstance().isKeyPressed(GLFW_KEY_LEFT_ALT)) {
+		setCursor(!getCursor());
+	}
+}
+
+bool WindowSystem::getCursor()
+{
+	return glfwGetInputMode(window, GLFW_CURSOR) == GLFW_CURSOR_NORMAL ? true : false;
 }
 
 void WindowSystem::setCursor(bool enable) {

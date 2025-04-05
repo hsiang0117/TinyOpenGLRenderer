@@ -20,8 +20,8 @@ public:
 	void reset();
 	void destroy();
 
-	void attachTexture(std::shared_ptr<Texture> texture, AttachmentType type);
-	void attachRenderBuffer(std::shared_ptr<RenderBuffer> renderBuffer, AttachmentType type);
+	void attachTexture(Texture& texture, AttachmentType type);
+	void attachRenderBuffer(RenderBuffer& renderBuffer, AttachmentType type);
 	void bind();
 	void unbind();
 	void drawBuffers(const AttachmentType attachments[]);
@@ -43,15 +43,15 @@ void FrameBuffer::destroy() {
 	ID = 0;
 }
 
-void FrameBuffer::attachTexture(std::shared_ptr<Texture> texture, AttachmentType type) {
+void FrameBuffer::attachTexture(Texture& texture, AttachmentType type) {
 	glBindFramebuffer(GL_FRAMEBUFFER, ID);
-	glFramebufferTexture2D(GL_FRAMEBUFFER, static_cast<GLenum>(type), GL_TEXTURE_2D, texture->ID, 0);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, static_cast<GLenum>(type), GL_TEXTURE_2D, texture.ID, 0);
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
-void FrameBuffer::attachRenderBuffer(std::shared_ptr<RenderBuffer> renderBuffer, AttachmentType type) {
+void FrameBuffer::attachRenderBuffer(RenderBuffer& renderBuffer, AttachmentType type) {
 	glBindFramebuffer(GL_FRAMEBUFFER, ID);
-	glFramebufferRenderbuffer(GL_FRAMEBUFFER, static_cast<GLenum>(type), GL_RENDERBUFFER, renderBuffer->ID);
+	glFramebufferRenderbuffer(GL_FRAMEBUFFER, static_cast<GLenum>(type), GL_RENDERBUFFER, renderBuffer.ID);
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 

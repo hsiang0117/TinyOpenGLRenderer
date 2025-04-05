@@ -20,12 +20,14 @@ class Mesh
 public:
     std::vector<Vertex> vertices;
     std::vector<unsigned int> indices;
-	Material material;
+    Mesh() = default;
     Mesh(std::vector<Vertex> vertices, std::vector<unsigned int> indices, Material mat);
+    bool initGLResources();
     void draw(Shader& shader);
 private:
     GLuint VAO, VBO, EBO;
-    Material mat;
+	Material material;
+    bool glInitialized = false;
     void setupMesh();
 };
 
@@ -33,8 +35,17 @@ Mesh::Mesh(std::vector<Vertex> vertices, std::vector<unsigned int> indices, Mate
 {
     this->vertices = vertices;
     this->indices = indices;
-    this->mat = mat;
+    this->material = mat;
+}
+
+bool Mesh::initGLResources()
+{
+    if (glInitialized || vertices.empty() || indices.empty())
+        return false;
     setupMesh();
+    material.initGLResources();
+    glInitialized = true;
+    return true;
 }
 
 void Mesh::setupMesh()
@@ -63,22 +74,6 @@ void Mesh::setupMesh()
 
 void Mesh::draw(Shader& shader)
 {
-    for (unsigned int i = 0; i < textures.size(); i++) {
-        std::string number;
-        std::string name = textures[i].type;
-        if (name == "textureDiffuse") {
-            number = std::to_string(diffuseNr++);
-        }
-        else if (name == "textureSpecular") {
-            number = std::to_string(specularNr++);
-        }
-        else if (name == "textureReflection") {
-            number = std::to_string(reflectionNr++);
-        }
-        shader.setInt((name + number).c_str(), i);
-        textures[i].use(GL_TEXTURE0 + i);
-    }
-    shader.setFloat("shininess", 32.0);
     glBindVertexArray(VAO);
     glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
     glBindVertexArray(0);

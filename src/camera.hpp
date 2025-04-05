@@ -5,7 +5,7 @@
 #include "input.hpp"
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
-
+#include <GLFW/glfw3.h>
 #define DEFAULT_CAMERA_POS glm::vec3(0.0f,0.0f,5.0f)
 #define DEFAULT_CAMERA_FRONT glm::vec3(0.0f,0.0f,-1.0f)
 #define DEFAULT_CAMERA_UP glm::vec3(0.0f,1.0f,0.0f)
@@ -31,10 +31,10 @@ public:
 	glm::vec3 getFront();
 	glm::mat4 getViewMat();
 	glm::mat4 getProjectionMat(const float scrWidth, const float scrHeight);
-	void processKeyboard(Direction d);
+	void processKeyboard(Direction d, double deltaTime);
 	void processMouseMovement(const float xPos, const float yPos);
 	void processMouseScroll(const float yOffset);
-	void update();
+	void update(double deltaTime);
 private:
 	glm::vec3 pos;
 	glm::vec3 front;
@@ -84,8 +84,8 @@ glm::mat4 Camera::getProjectionMat(const float scrWidth, const float scrHeight) 
 	return glm::perspective(glm::radians(fov), scrWidth / scrHeight, 0.1f, 100.0f);
 }
 
-void Camera::processKeyboard(Direction d) {
-	float cameraSpeed = 2.5f;
+void Camera::processKeyboard(Direction d, double deltaTime) {
+	float cameraSpeed = 2.5f * deltaTime;
 	switch (d) {
 	case FRONT:
 		pos += cameraSpeed * front;
@@ -148,9 +148,40 @@ void Camera::processMouseScroll(float yOffset) {
 		fov = 70.0f;
 }
 
-void Camera::update()
+void Camera::update(double deltaTime)
 {
+	// Movement
+	if (Input::getInstance().isKeyHeld(GLFW_KEY_W)) {
+		processKeyboard(FRONT, deltaTime);
+	}
+	if (Input::getInstance().isKeyHeld(GLFW_KEY_S)) {
+		processKeyboard(BACK, deltaTime);
+	}
+	if (Input::getInstance().isKeyHeld(GLFW_KEY_A)) {
+		processKeyboard(LEFT, deltaTime);
+	}
+	if (Input::getInstance().isKeyHeld(GLFW_KEY_D)) {
+		processKeyboard(RIGHT, deltaTime);
+	}
+	if (Input::getInstance().isKeyHeld(GLFW_KEY_SPACE)) {
+		processKeyboard(UP, deltaTime);
+	}
+	if (Input::getInstance().isKeyHeld(GLFW_KEY_LEFT_CONTROL)) {
+		processKeyboard(DOWN, deltaTime);
+	}
 
+	// Scroll
+	if (Input::getInstance().isMouseMoved()) {
+		double xPos = Input::getInstance().getMouseX();
+		double yPos = Input::getInstance().getMouseY();
+		processMouseMovement((float)xPos, (float)yPos);
+	}
+
+	// Fov change
+	if (Input::getInstance().isScrollMoved()) {
+		double yOffset = Input::getInstance().getScrollY();
+		processMouseScroll((float)yOffset);
+	}
 }
 
 #endif // !CAMERA_HPP

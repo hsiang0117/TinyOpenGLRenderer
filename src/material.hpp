@@ -10,19 +10,34 @@
 class Material
 {
 public:
-	Material() {};
-	void init(std::string name, std::string albedoPath, std::string ambientPath, std::string specularPath, std::string normalPath, std::string shininessPath);
+	Material(){};
+	Material(std::string name, std::string albedoPath, std::string ambientPath, std::string specularPath, std::string normalPath, std::string shininessPath);
+	void initGLResources();
 	void bind();
 private:
 	std::string name;
+	std::string albedoPath;
+	std::string ambientPath;
+	std::string specularPath;
+	std::string normalPath;
+	std::string shininessPath;
 	std::vector<Texture2D> textures;
 	void deleteTextures();
 };
 
-void Material::init(std::string name, std::string albedoPath, std::string ambientPath, std::string specularPath, std::string normalPath, std::string shininessPath)
+Material::Material(std::string name, std::string albedoPath, std::string ambientPath, std::string specularPath, std::string normalPath, std::string shininessPath)
+{
+	this->name = name;
+	this->albedoPath = albedoPath;
+	this->ambientPath = ambientPath;
+	this->specularPath = specularPath;
+	this->normalPath = normalPath;
+	this->shininessPath = shininessPath;
+}
+
+void Material::initGLResources()
 {
 	deleteTextures();
-	this->name = name;
 	textures.push_back(Texture2D(albedoPath.c_str(), "textureAlbedo", GL_REPEAT, GL_LINEAR));
 	textures.push_back(Texture2D(ambientPath.c_str(), "textureAmbient", GL_REPEAT, GL_LINEAR));
 	textures.push_back(Texture2D(specularPath.c_str(), "textureSpecular", GL_REPEAT, GL_LINEAR));

@@ -17,6 +17,7 @@ private:
 	Camera camera;
 	WindowSystem windowSystem;
 	RenderSystem renderSystem;
+	double getDeltaTime();
 };
 
 Engine& Engine::getInstance() {
@@ -26,19 +27,32 @@ Engine& Engine::getInstance() {
 
 void Engine::init() {
 	Input::getInstance();
-	windowSystem.init(1920, 1080);
+	windowSystem.init(1280, 720);
 	renderSystem.init();
 }
 
 void Engine::run() {
 	while (!windowSystem.getShouldClose()) {
+		double deltaTime = getDeltaTime();
 		Input::getInstance().update();
 		windowSystem.update();
+		camera.update(deltaTime);
 		renderSystem.update();
 		renderSystem.render(camera);
 		windowSystem.swapBuffers();
 	}
 	windowSystem.shutDown();
 }
+
+double Engine::getDeltaTime()
+{
+	static float lastFrame = 0.0f;
+	double currentFrame = glfwGetTime();
+	double deltaTime = currentFrame - lastFrame;
+	lastFrame = currentFrame;
+	return deltaTime;
+}
+
+
 
 #endif // !ENGINE_HPP
