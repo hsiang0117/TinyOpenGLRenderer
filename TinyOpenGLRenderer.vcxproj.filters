@@ -77,9 +77,6 @@
     <ClInclude Include="include\imgui\imgui_impl_opengl3_loader.h">
       <Filter>源文件\thirdParty\imgui</Filter>
     </ClInclude>
-    <ClInclude Include="src\core\guiSystem.hpp">
-      <Filter>头文件\core</Filter>
-    </ClInclude>
     <ClInclude Include="src\core\renderSystem.hpp">
       <Filter>头文件\core</Filter>
     </ClInclude>
