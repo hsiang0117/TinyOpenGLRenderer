@@ -5,6 +5,8 @@
 #include "camera.hpp"
 #include "core/windowSystem.hpp"
 #include "core/renderSystem.hpp"
+#include "core/guiSystem.hpp"
+#include "core/resourceManager.hpp"
 #include <GLFW/glfw3.h>
 
 class Engine {
@@ -17,6 +19,7 @@ private:
 	Camera camera;
 	WindowSystem windowSystem;
 	RenderSystem renderSystem;
+	GuiSystem guiSystem;
 	double getDeltaTime();
 };
 
@@ -26,9 +29,11 @@ Engine& Engine::getInstance() {
 }
 
 void Engine::init() {
-	Input::getInstance();
+	Input::getInstance().init();
 	windowSystem.init(1280, 720);
 	renderSystem.init();
+	guiSystem.init(windowSystem.getWindow());
+	ResourceManager::getInstance().init();
 }
 
 void Engine::run() {
@@ -38,9 +43,13 @@ void Engine::run() {
 		windowSystem.update();
 		camera.update(deltaTime);
 		renderSystem.update();
+		ResourceManager::getInstance().update();
+		guiSystem.beginFrame();
 		renderSystem.render(camera);
+		guiSystem.render();
 		windowSystem.swapBuffers();
 	}
+	guiSystem.shutDown();
 	windowSystem.shutDown();
 }
 

@@ -6,6 +6,7 @@
 #include <glad/glad.h>
 #include <iostream>
 #include <vector>
+#include <filesystem>
 
 class Material
 {
@@ -38,11 +39,26 @@ Material::Material(std::string name, std::string albedoPath, std::string ambient
 void Material::initGLResources()
 {
 	deleteTextures();
-	textures.push_back(Texture2D(albedoPath.c_str(), "textureAlbedo", GL_REPEAT, GL_LINEAR));
-	textures.push_back(Texture2D(ambientPath.c_str(), "textureAmbient", GL_REPEAT, GL_LINEAR));
-	textures.push_back(Texture2D(specularPath.c_str(), "textureSpecular", GL_REPEAT, GL_LINEAR));
-	textures.push_back(Texture2D(normalPath.c_str(), "textureNormal", GL_REPEAT, GL_LINEAR));
-	textures.push_back(Texture2D(shininessPath.c_str(), "textureShininess", GL_REPEAT, GL_LINEAR));
+	if (std::filesystem::is_regular_file(albedoPath))
+	{
+		textures.push_back(Texture2D(albedoPath.c_str(), "textureAlbedo", GL_REPEAT, GL_LINEAR));
+	}
+	if (std::filesystem::is_regular_file(ambientPath))
+	{
+		textures.push_back(Texture2D(ambientPath.c_str(), "textureAmbient", GL_REPEAT, GL_LINEAR));
+	}
+	if (std::filesystem::is_regular_file(specularPath))
+	{
+		textures.push_back(Texture2D(specularPath.c_str(), "textureSpecular", GL_REPEAT, GL_LINEAR));
+	}
+	if (std::filesystem::is_regular_file(normalPath))
+	{
+		textures.push_back(Texture2D(normalPath.c_str(), "textureNormal", GL_REPEAT, GL_LINEAR));
+	}
+	if (std::filesystem::is_regular_file(shininessPath))
+	{
+		textures.push_back(Texture2D(shininessPath.c_str(), "textureShininess", GL_REPEAT, GL_LINEAR));
+	}
 }
 
 void Material::bind()

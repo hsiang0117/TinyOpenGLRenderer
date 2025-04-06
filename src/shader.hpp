@@ -13,10 +13,8 @@ class Shader
 {
 public:
     GLuint ID;
-    Shader() {}
     Shader(const char* vertexShaderPath, const char* fragmentShaderPath);
     Shader(const char* vertexShaderPath, const char* geometryShaderPath, const char* fragmentShaderPath);
-    void init(const char* vertexShaderPath, const char* fragmentShaderPath);
     void use();
     void setVec3(const char* name, glm::vec3 vec);
     void setMat4(const char* name, glm::mat4 mat);
@@ -159,4 +157,6 @@ void Shader::setBool(const char* name, bool value) {
     int location = glGetUniformLocation(ID, name);
     glUniform1i(location, value);
 }
+
+using ShaderPtr = std::shared_ptr<Shader>;
 #endif

@@ -2,9 +2,7 @@
 #define RENDERSYSTEM_HPP
 #pragma once
 
-#include "../camera.hpp"
-#include "../shader.hpp"
-#include "../model.hpp"
+#include "resourceManager.hpp"
 #include <glad/glad.h>
 #include <glm/gtc/type_ptr.hpp>
 #include <GLFW/glfw3.h>
@@ -18,9 +16,6 @@ public:
 private:
 	int width, height; //viewport width and height
 	GLuint uboMatrices; //uniform buffer object for view and projection matrices
-	Shader shader;
-	std::vector<Model> renderList;
-	std::future<Model> modelFuture;
 };
 
 void RenderSystem::init() {
@@ -40,9 +35,6 @@ void RenderSystem::init() {
 	glBufferData(GL_UNIFORM_BUFFER, 2 * sizeof(glm::mat4), NULL, GL_STATIC_DRAW);
 	glBindBufferRange(GL_UNIFORM_BUFFER, 0, uboMatrices, 0, 2 * sizeof(glm::mat4));
 	glBindBuffer(GL_UNIFORM_BUFFER, 0);
-
-	shader = Shader("data/shader/test.vert", "data/shader/test.frag");
-	modelFuture = Model::LoadAsync("data/model/nanosuit_reflection/nanosuit.obj");
 }
 
 void RenderSystem::update() {
@@ -62,16 +54,9 @@ void RenderSystem::render(Camera& camera) {
 	glClearColor(0.1, 0.1f, 0.1f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	if (modelFuture.valid() && modelFuture.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
-		Model model = modelFuture.get();
-		if (model.initGLResources()) {
-			renderList.push_back(model);
-		}
-	}
-
-	shader.use();
-	for (int i = 0; i < renderList.size(); i++) {
-		renderList[i].draw(shader);
+	ResourceManager::getInstance().shaderCache["default"].get()->use();
+	for (auto it = ResourceManager::getInstance().modelCache.begin(); it != ResourceManager::getInstance().modelCache.end(); ++it) {
+		it->get()->draw(ResourceManager::getInstance().shaderCache["default"]);
 	}
 }
 #endif // !RENDERSYSTEM_HPP

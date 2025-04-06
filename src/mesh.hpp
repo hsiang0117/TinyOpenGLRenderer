@@ -2,7 +2,6 @@
 #define MESH_HPP
 #pragma once
 
-#include "material.hpp"
 #include "shader.hpp"
 #include <glad/glad.h>
 #include <glm/glm.hpp>
@@ -21,21 +20,19 @@ public:
     std::vector<Vertex> vertices;
     std::vector<unsigned int> indices;
     Mesh() = default;
-    Mesh(std::vector<Vertex> vertices, std::vector<unsigned int> indices, Material mat);
+    Mesh(std::vector<Vertex> vertices, std::vector<unsigned int> indices);
     bool initGLResources();
-    void draw(Shader& shader);
+    void draw();
 private:
     GLuint VAO, VBO, EBO;
-	Material material;
     bool glInitialized = false;
     void setupMesh();
 };
 
-Mesh::Mesh(std::vector<Vertex> vertices, std::vector<unsigned int> indices, Material mat)
+Mesh::Mesh(std::vector<Vertex> vertices, std::vector<unsigned int> indices)
 {
     this->vertices = vertices;
     this->indices = indices;
-    this->material = mat;
 }
 
 bool Mesh::initGLResources()
@@ -43,7 +40,6 @@ bool Mesh::initGLResources()
     if (glInitialized || vertices.empty() || indices.empty())
         return false;
     setupMesh();
-    material.initGLResources();
     glInitialized = true;
     return true;
 }
@@ -72,7 +68,7 @@ void Mesh::setupMesh()
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 }
 
-void Mesh::draw(Shader& shader)
+void Mesh::draw()
 {
     glBindVertexArray(VAO);
     glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);

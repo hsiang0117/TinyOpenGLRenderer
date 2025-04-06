@@ -16,9 +16,6 @@
     <Filter Include="资源文件\shader">
       <UniqueIdentifier>{77951021-f105-4e02-b794-72996f6de53c}</UniqueIdentifier>
     </Filter>
-    <Filter Include="资源文件\texture">
-      <UniqueIdentifier>{268495c3-f928-4cf2-85f8-4ff383474834}</UniqueIdentifier>
-    </Filter>
     <Filter Include="头文件\core">
       <UniqueIdentifier>{ceafbe3e-2e78-481e-bcd6-c52dea2c6e5d}</UniqueIdentifier>
     </Filter>
@@ -80,7 +77,7 @@
     <ClInclude Include="include\imgui\imgui_impl_opengl3_loader.h">
       <Filter>源文件\thirdParty\imgui</Filter>
     </ClInclude>
-    <ClInclude Include="src\core\GUISystem.hpp">
+    <ClInclude Include="src\core\guiSystem.hpp">
       <Filter>头文件\core</Filter>
     </ClInclude>
     <ClInclude Include="src\core\renderSystem.hpp">

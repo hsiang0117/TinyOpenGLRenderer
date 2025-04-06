@@ -12,6 +12,7 @@ public:
 	void init(int width, int height);
 	void swapBuffers();
 	void update();
+	GLFWwindow* getWindow();
 	bool getCursor();
 	void setCursor(bool enable);
 	void setVsync(bool enable);
@@ -55,6 +56,11 @@ void WindowSystem::update() {
 	if (Input::getInstance().isKeyPressed(GLFW_KEY_LEFT_ALT)) {
 		setCursor(!getCursor());
 	}
+}
+
+GLFWwindow* WindowSystem::getWindow()
+{
+	return window;
 }
 
 bool WindowSystem::getCursor()

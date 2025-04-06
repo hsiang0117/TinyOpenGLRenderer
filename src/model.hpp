@@ -2,7 +2,9 @@
 #define MODEL_HPP
 #pragma once
 
+#include "material.hpp"
 #include "mesh.hpp"
+#include <unordered_map>
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
@@ -16,7 +18,7 @@ public:
 	// 主线程调用，初始化opengl资源
 	bool initGLResources();
 
-	void draw(Shader& shader);
+	void draw(ShaderPtr shader);
 	bool isReady() const { return loaded && glInitialized; }
 private:
 	Model() = default;
@@ -30,9 +32,9 @@ private:
 	struct MeshData {
 		std::vector<Vertex> vertices;
 		std::vector<GLuint> indices;
-		Material material;
 	};
 
+	std::unordered_map<std::string, Material> materials;
 	std::vector<MeshData> meshdatas;
 	std::vector<Mesh> meshes;
 
@@ -44,11 +46,12 @@ private:
 };
 
 std::future<Model> Model::LoadAsync(const char* path) {
-	return std::async(std::launch::async, [path]() {
+	std::string modelPathStr(path);
+	return std::async(std::launch::async, [modelPathStr]() {
 		Model model;
-		model.loadModel(path);
+		model.loadModel(modelPathStr.c_str());
 		return model;
-	});
+		});
 }
 
 bool Model::initGLResources()
@@ -56,28 +59,30 @@ bool Model::initGLResources()
 	if (!loaded || glInitialized) return false;
 
 	for (auto& data : meshdatas) {
-		meshes.emplace_back(data.vertices, data.indices, data.material);
+		meshes.emplace_back(data.vertices, data.indices);
 		if (!meshes.back().initGLResources()) {
 			std::cerr << "Failed to initialize mesh GL resources\n";
 			return false;
 		}
 	}
-
 	meshdatas.clear(); // 释放临时数据
+	for (auto it = materials.begin(); it != materials.end(); ++it) {
+		it->second.initGLResources();
+	}
 	glInitialized = true;
 	return true;
 }
 
-void Model::draw(Shader& shader)
+void Model::draw(ShaderPtr shader)
 {
 	glm::mat4 model = glm::mat4(1.0f);
 	model = glm::translate(model, translate);
 	model = glm::rotate(model, radians, axis);
 	model = glm::scale(model, scale);
-	shader.setMat4("model", model);
+	shader.get()->setMat4("model", model);
 	for (unsigned int i = 0; i < meshes.size(); i++)
 	{
-		meshes[i].draw(shader);
+		meshes[i].draw();
 	}
 }
 
@@ -90,6 +95,7 @@ void Model::loadModel(std::string path)
 		std::cerr << "ERROR::ASSIMP::" << importer.GetErrorString() << std::endl;
 		return;
 	}
+	
 	directory = path.substr(0, path.find_last_of('/')) + "/";
 	processNode(scene->mRootNode, scene);
 	importer.FreeScene();
@@ -155,27 +161,32 @@ Model::MeshData Model::processMesh(aiMesh* mesh, const aiScene* scene)
 		}
 	}
 
-	Material mat;
 	if (mesh->mMaterialIndex >= 0)
 	{
+		Material mat;
 		aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];
 		aiString name;
 		material->Get(AI_MATKEY_NAME, name);
-		aiString albedoPath;
-		material->GetTexture(aiTextureType_DIFFUSE, 0, &albedoPath);
-		aiString ambientPath;
-		material->GetTexture(aiTextureType_AMBIENT, 0, &ambientPath);
-		aiString specularPath;
-		material->GetTexture(aiTextureType_SPECULAR, 0, &specularPath);
-		aiString normalPath;
-		material->GetTexture(aiTextureType_NORMALS, 0, &normalPath);
-		aiString shininessPath;
-		material->GetTexture(aiTextureType_SHININESS, 0, &shininessPath);
-		mat = Material(name.C_Str(), directory + albedoPath.C_Str(), directory + ambientPath.C_Str(),
-			directory + specularPath.C_Str(), directory + normalPath.C_Str(), directory + shininessPath.C_Str());
+		if (materials.find(name.C_Str()) == materials.end()) {
+			aiString albedoPath;
+			material->GetTexture(aiTextureType_DIFFUSE, 0, &albedoPath);
+			aiString ambientPath;
+			material->GetTexture(aiTextureType_AMBIENT, 0, &ambientPath);
+			aiString specularPath;
+			material->GetTexture(aiTextureType_SPECULAR, 0, &specularPath);
+			aiString normalPath;
+			material->GetTexture(aiTextureType_NORMALS, 0, &normalPath);
+			aiString shininessPath;
+			material->GetTexture(aiTextureType_SHININESS, 0, &shininessPath);
+			mat = Material(name.C_Str(), directory + albedoPath.C_Str(), directory + ambientPath.C_Str(),
+				directory + specularPath.C_Str(), directory + normalPath.C_Str(), directory + shininessPath.C_Str());
+			materials.insert({ name.C_Str(), mat });
+		}
 	}
-	data.material = mat;
+
 	return data;
 }
+
+using ModelPtr = std::shared_ptr<Model>;
 
 #endif // !MODEL_HPP

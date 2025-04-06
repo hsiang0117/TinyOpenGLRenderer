@@ -4,8 +4,9 @@
 
 class Input {
 public:
-	Input();
+	Input() {};
 	static Input& getInstance();
+	void init();
 	void update();
 	bool isKeyPressed(int key);
 	bool isKeyHeld(int key);
@@ -33,7 +34,13 @@ private:
 	int windowWidth, windowHeight;
 };
 
-Input::Input() {
+Input& Input::getInstance() {
+	static Input instance;
+	return instance;
+}
+
+void Input::init()
+{
 	for (int i = 0; i < 1024; i++) {
 		keys[i] = false;
 		prevKeys[i] = false;
@@ -41,12 +48,6 @@ Input::Input() {
 	mouseMoved = false;
 	scrollMoved = false;
 	windowResized = false;
-
-}
-
-Input& Input::getInstance() {
-	static Input instance;
-	return instance;
 }
 
 void Input::update() {
