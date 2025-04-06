@@ -113,6 +113,9 @@
     <ClInclude Include="src\shader.hpp">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="src\core\guiSystem.hpp">
+      <Filter>头文件\core</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="data\config.json">
