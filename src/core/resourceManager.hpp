@@ -14,7 +14,7 @@ public:
 	void init();
 	void update();
 	std::future<Model> modelFuture; //future for loading models
-	std::vector<ModelPtr> modelCache; //cache for models
+	std::unordered_map<std::string, ModelPtr> modelCache; //cache for models
 	std::unordered_map<std::string, ShaderPtr> shaderCache; //cache for shaders
 private:
 	std::queue<std::string> modelQueue; //queue for loading models
@@ -35,12 +35,16 @@ void ResourceManager::update() {
 	if (modelFuture.valid() && modelFuture.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
 		Model model = modelFuture.get();
 		if (model.initGLResources()) {
-			modelCache.push_back(std::make_shared<Model>(model));
+			modelCache.insert({ model.getPath(), std::make_shared<Model>(model)});
 		}
 	}
 
 	if ((!modelFuture.valid() || modelFuture.wait_for(std::chrono::seconds(0)) == std::future_status::ready)
 		&& !modelQueue.empty()) {
+		if (modelCache.find(modelQueue.front()) != modelCache.end()) {
+			modelQueue.pop();
+			return;
+		}
 		modelFuture = Model::LoadAsync(modelQueue.front().c_str());
 		modelQueue.pop();
 	}

@@ -56,7 +56,7 @@ void RenderSystem::render(Camera& camera) {
 
 	ResourceManager::getInstance().shaderCache["default"].get()->use();
 	for (auto it = ResourceManager::getInstance().modelCache.begin(); it != ResourceManager::getInstance().modelCache.end(); ++it) {
-		it->get()->draw(ResourceManager::getInstance().shaderCache["default"]);
+		it->second->draw(ResourceManager::getInstance().shaderCache["default"]);
 	}
 }
 #endif // !RENDERSYSTEM_HPP

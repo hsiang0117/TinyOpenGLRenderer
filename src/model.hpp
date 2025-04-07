@@ -17,7 +17,9 @@ public:
 	static std::future<Model> LoadAsync(const char* path);
 	// 主线程调用，初始化opengl资源
 	bool initGLResources();
-
+	
+	std::string getPath() { return path; }
+	std::string getName() { return name; }
 	void draw(ShaderPtr shader);
 	bool isReady() const { return loaded && glInitialized; }
 private:
@@ -38,7 +40,9 @@ private:
 	std::vector<MeshData> meshdatas;
 	std::vector<Mesh> meshes;
 
+	std::string path;
 	std::string directory;
+	std::string name;
 
 	void loadModel(std::string path);
 	void processNode(aiNode* node, const aiScene* scene);
@@ -51,7 +55,7 @@ std::future<Model> Model::LoadAsync(const char* path) {
 		Model model;
 		model.loadModel(modelPathStr.c_str());
 		return model;
-		});
+	});
 }
 
 bool Model::initGLResources()
@@ -96,7 +100,9 @@ void Model::loadModel(std::string path)
 		return;
 	}
 	
+	this->path = path;
 	directory = path.substr(0, path.find_last_of('/')) + "/";
+	name = path.substr(path.find_last_of('/') + 1, path.find_first_of('.') - path.find_last_of('/') - 1);
 	processNode(scene->mRootNode, scene);
 	importer.FreeScene();
 	loaded = true;
