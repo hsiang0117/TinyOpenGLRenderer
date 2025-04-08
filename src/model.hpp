@@ -17,19 +17,14 @@ public:
 	static std::future<Model> LoadAsync(const char* path);
 	// 主线程调用，初始化opengl资源
 	bool initGLResources();
-	
+
 	std::string getPath() { return path; }
 	std::string getName() { return name; }
-	void draw(ShaderPtr shader);
+	void draw();
 	bool isReady() const { return loaded && glInitialized; }
 private:
 	Model() = default;
 	bool loaded = false, glInitialized = false;
-
-	glm::vec3 scale = glm::vec3(1.0f),
-		translate = glm::vec3(1.0f),
-		axis = glm::vec3(1.0f);
-	float radians = 0;
 
 	struct MeshData {
 		std::vector<Vertex> vertices;
@@ -55,7 +50,7 @@ std::future<Model> Model::LoadAsync(const char* path) {
 		Model model;
 		model.loadModel(modelPathStr.c_str());
 		return model;
-	});
+		});
 }
 
 bool Model::initGLResources()
@@ -77,13 +72,8 @@ bool Model::initGLResources()
 	return true;
 }
 
-void Model::draw(ShaderPtr shader)
+void Model::draw()
 {
-	glm::mat4 model = glm::mat4(1.0f);
-	model = glm::translate(model, translate);
-	model = glm::rotate(model, radians, axis);
-	model = glm::scale(model, scale);
-	shader.get()->setMat4("model", model);
 	for (unsigned int i = 0; i < meshes.size(); i++)
 	{
 		meshes[i].draw();
@@ -99,10 +89,10 @@ void Model::loadModel(std::string path)
 		std::cerr << "ERROR::ASSIMP::" << importer.GetErrorString() << std::endl;
 		return;
 	}
-	
+
 	this->path = path;
-	directory = path.substr(0, path.find_last_of('/')) + "/";
-	name = path.substr(path.find_last_of('/') + 1, path.find_first_of('.') - path.find_last_of('/') - 1);
+	directory = path.substr(0, path.find_last_of('\\')) + "\\";
+	name = path.substr(path.find_last_of('\\') + 1, path.find_first_of('.') - path.find_last_of('\\') - 1);
 	processNode(scene->mRootNode, scene);
 	importer.FreeScene();
 	loaded = true;

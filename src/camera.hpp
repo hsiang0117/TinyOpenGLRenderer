@@ -150,6 +150,18 @@ void Camera::processMouseScroll(float yOffset) {
 
 void Camera::update(double deltaTime)
 {
+	static bool movable = false;
+	if (Input::getInstance().isKeyPressed(GLFW_KEY_LEFT_ALT)) {
+		movable = !movable;
+		if (!movable) {
+			firstMouse = true;
+		}
+	}
+
+	if (!movable) {
+		return;
+	}
+
 	// Movement
 	if (Input::getInstance().isKeyHeld(GLFW_KEY_W)) {
 		processKeyboard(FRONT, deltaTime);

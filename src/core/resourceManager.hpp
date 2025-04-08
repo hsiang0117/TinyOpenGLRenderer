@@ -2,7 +2,9 @@
 #define RESOURCEMANAGER_HPP
 #pragma once
 
+#include "../shader.hpp"
 #include "../model.hpp"
+#include "../gameObject.hpp"
 #include <iostream>
 #include <queue>
 #include <unordered_map>
@@ -14,10 +16,11 @@ public:
 	void init();
 	void update();
 	std::future<Model> modelFuture; //future for loading models
+	std::queue<std::string> modelQueue; //queue for loading models
 	std::unordered_map<std::string, ModelPtr> modelCache; //cache for models
 	std::unordered_map<std::string, ShaderPtr> shaderCache; //cache for shaders
+	std::vector<GameObjectPtr> gameObjects;
 private:
-	std::queue<std::string> modelQueue; //queue for loading models
 };
 
 ResourceManager& ResourceManager::getInstance() {
@@ -26,8 +29,6 @@ ResourceManager& ResourceManager::getInstance() {
 }
 
 void ResourceManager::init() {
-	modelQueue.push("data/model/backpack/backpack.obj");
-	modelQueue.push("data/model/nanosuit_reflection/nanosuit.obj");
 	shaderCache["default"] = std::make_shared<Shader>("data/shader/test.vert", "data/shader/test.frag");
 }
 

@@ -28,6 +28,9 @@
     <Filter Include="源文件\thirdParty\glad">
       <UniqueIdentifier>{8e0fb7d3-49db-468c-87d7-87465faa7052}</UniqueIdentifier>
     </Filter>
+    <Filter Include="头文件\component">
+      <UniqueIdentifier>{184f423f-5e97-4173-a3b6-a8c9523cdb2f}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\main.cpp">
@@ -56,6 +59,9 @@
     </ClCompile>
     <ClCompile Include="src\thirdParty\glad.c">
       <Filter>源文件\thirdParty\glad</Filter>
+    </ClCompile>
+    <ClCompile Include="include\imgui\ImGuiFileDialog.cpp">
+      <Filter>源文件\thirdParty\imgui</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -115,6 +121,27 @@
     </ClInclude>
     <ClInclude Include="src\core\guiSystem.hpp">
       <Filter>头文件\core</Filter>
+    </ClInclude>
+    <ClInclude Include="src\gameObject.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="src\sceneBase.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="include\imgui\ImGuiFileDialogConfig.h">
+      <Filter>源文件\thirdParty\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="include\imgui\ImGuiFileDialog.h">
+      <Filter>源文件\thirdParty\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="src\light.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="src\component\transform.hpp">
+      <Filter>头文件\component</Filter>
+    </ClInclude>
+    <ClInclude Include="src\component\component.hpp">
+      <Filter>头文件\component</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

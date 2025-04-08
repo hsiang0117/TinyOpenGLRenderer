@@ -133,6 +133,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="include\imgui\imgui.cpp" />
+    <ClCompile Include="include\imgui\ImGuiFileDialog.cpp" />
     <ClCompile Include="include\imgui\imgui_demo.cpp" />
     <ClCompile Include="include\imgui\imgui_draw.cpp" />
     <ClCompile Include="include\imgui\imgui_impl_glfw.cpp" />
@@ -145,11 +146,15 @@
   <ItemGroup>
     <ClInclude Include="include\imgui\imconfig.h" />
     <ClInclude Include="include\imgui\imgui.h" />
+    <ClInclude Include="include\imgui\ImGuiFileDialog.h" />
+    <ClInclude Include="include\imgui\ImGuiFileDialogConfig.h" />
     <ClInclude Include="include\imgui\imgui_impl_glfw.h" />
     <ClInclude Include="include\imgui\imgui_impl_opengl3.h" />
     <ClInclude Include="include\imgui\imgui_impl_opengl3_loader.h" />
     <ClInclude Include="include\imgui\imgui_internal.h" />
     <ClInclude Include="src\camera.hpp" />
+    <ClInclude Include="src\component\component.hpp" />
+    <ClInclude Include="src\component\transform.hpp" />
     <ClInclude Include="src\core\guiSystem.hpp" />
     <ClInclude Include="src\core\renderSystem.hpp" />
     <ClInclude Include="src\core\resourceManager.hpp" />
@@ -157,9 +162,12 @@
     <ClInclude Include="src\engine.hpp" />
     <ClInclude Include="src\frameBuffer.hpp" />
     <ClInclude Include="src\input.hpp" />
+    <ClInclude Include="src\gameObject.hpp" />
+    <ClInclude Include="src\light.hpp" />
     <ClInclude Include="src\material.hpp" />
     <ClInclude Include="src\mesh.hpp" />
     <ClInclude Include="src\model.hpp" />
+    <ClInclude Include="src\sceneBase.hpp" />
     <ClInclude Include="src\shader.hpp" />
     <ClInclude Include="src\texture.hpp" />
   </ItemGroup>

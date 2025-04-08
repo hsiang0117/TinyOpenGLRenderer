@@ -25,8 +25,9 @@ void RenderSystem::init() {
 	}
 	int viewport[4];
 	glGetIntegerv(GL_VIEWPORT, viewport);
-	width = viewport[2];
-	height = viewport[3];
+	width = viewport[2] - 250 - 300;
+	height = viewport[3] - 250;
+	glViewport(300, 250, width, height);
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LEQUAL);
 
@@ -39,9 +40,9 @@ void RenderSystem::init() {
 
 void RenderSystem::update() {
 	if (Input::getInstance().isWindowResized()) {
-		width = Input::getInstance().getWindowWidth();
-		height = Input::getInstance().getWindowHeight();
-		glViewport(0, 0, width, height);
+		width = Input::getInstance().getWindowWidth() - 250 - 300;
+		height = Input::getInstance().getWindowHeight() - 250;
+		glViewport(300, 250, width, height);
 	}
 }
 
@@ -55,8 +56,8 @@ void RenderSystem::render(Camera& camera) {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	ResourceManager::getInstance().shaderCache["default"].get()->use();
-	for (auto it = ResourceManager::getInstance().modelCache.begin(); it != ResourceManager::getInstance().modelCache.end(); ++it) {
-		it->second->draw(ResourceManager::getInstance().shaderCache["default"]);
+	for (int i = 0; i < ResourceManager::getInstance().gameObjects.size(); i++) {
+		ResourceManager::getInstance().gameObjects[i]->draw(ResourceManager::getInstance().shaderCache["default"]);
 	}
 }
 #endif // !RENDERSYSTEM_HPP

@@ -38,8 +38,8 @@ void WindowSystem::init(int width, int height) {
 	}
 	glfwMakeContextCurrent(window);
 	glfwFocusWindow(window);
-	setCursor(false);
-	setVsync(false);
+	setCursor(true);
+	setVsync(true);
 	connectInputToWindow(window);
 }
 
