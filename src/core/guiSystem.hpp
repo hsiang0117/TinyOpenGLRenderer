@@ -3,6 +3,7 @@
 #pragma once
 
 #include "../Input.hpp"
+#include "../component.hpp"
 #include "resourceManager.hpp"
 #include "imgui/imgui.h"
 #include "imgui/imgui_impl_glfw.h"
@@ -15,9 +16,9 @@
 #define BOTTOM_SIDEBAR_HEIGHT 250.0f
 
 class GuiSystem {
-	friend class WindowSystem;
 public:
-	GuiSystem() {};
+	GuiSystem() = default;
+	~GuiSystem() = default;
 	void init(GLFWwindow* window);
 	void beginFrame();
 	void render();
@@ -26,6 +27,7 @@ private:
 	void showLeftSideBar();
 	void showRightSideBar();
 	void showBottomSideBar();
+	void showTransformWidget(std::shared_ptr<Transform> transform);
 };
 
 void GuiSystem::init(GLFWwindow* window) {
@@ -100,9 +102,7 @@ void GuiSystem::showLeftSideBar()
 	ImGui::Text(u8"细节");
 	ImGui::BeginChild(u8"detailRegion", ImVec2(0, 0), true);
 	if (objectSelected) {
-		ImGui::DragFloat3(u8"平移", glm::value_ptr(objectSelected->translate));
-		ImGui::DragFloat3(u8"缩放", glm::value_ptr(objectSelected->scale));
-		ImGui::DragFloat3(u8"旋转", glm::value_ptr(objectSelected->rotate));
+		showTransformWidget(objectSelected->getComponent<Transform>());
 	}
 	else {
 		ImGui::Text(u8"未选择物体");
@@ -186,6 +186,12 @@ void GuiSystem::showBottomSideBar()
 		}
 		ImGuiFileDialog::Instance()->Close();
 	}
+}
+
+void GuiSystem::showTransformWidget(std::shared_ptr<Transform> transform){
+	ImGui::DragFloat3(u8"平移", glm::value_ptr(transform->translate));
+	ImGui::DragFloat3(u8"缩放", glm::value_ptr(transform->scale));
+	ImGui::DragFloat3(u8"旋转", glm::value_ptr(transform->rotate));
 }
 
 #endif

@@ -153,8 +153,7 @@
     <ClInclude Include="include\imgui\imgui_impl_opengl3_loader.h" />
     <ClInclude Include="include\imgui\imgui_internal.h" />
     <ClInclude Include="src\camera.hpp" />
-    <ClInclude Include="src\component\component.hpp" />
-    <ClInclude Include="src\component\transform.hpp" />
+    <ClInclude Include="src\component.hpp" />
     <ClInclude Include="src\core\guiSystem.hpp" />
     <ClInclude Include="src\core\renderSystem.hpp" />
     <ClInclude Include="src\core\resourceManager.hpp" />

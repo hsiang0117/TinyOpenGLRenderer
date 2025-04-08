@@ -9,9 +9,9 @@
 
 class Texture {
 public:
+	Texture() = default;
 	GLuint ID;
 	std::string type;
-	Texture() {};
 	void use(GLenum textureUnit);
 };
 

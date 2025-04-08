@@ -9,7 +9,8 @@
 
 class RenderSystem {
 public:
-	RenderSystem() {};
+	RenderSystem() = default;
+	~RenderSystem() = default;
 	void init();
 	void update();
 	void render(Camera& camera);

@@ -11,7 +11,8 @@
 
 class ResourceManager {
 public:
-	ResourceManager() {};
+	ResourceManager() = default;
+	~ResourceManager() = default;
 	static ResourceManager& getInstance();
 	void init();
 	void update();

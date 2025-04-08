@@ -11,11 +11,12 @@
 
 class Engine {
 public:
-	Engine() {};
 	static Engine& getInstance();
 	void init();
 	void run();
 private:
+	Engine() = default;
+	~Engine() = default;
 	Camera camera;
 	WindowSystem windowSystem;
 	RenderSystem renderSystem;
@@ -61,7 +62,5 @@ double Engine::getDeltaTime()
 	lastFrame = currentFrame;
 	return deltaTime;
 }
-
-
 
 #endif // !ENGINE_HPP

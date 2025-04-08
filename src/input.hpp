@@ -4,7 +4,8 @@
 
 class Input {
 public:
-	Input() {};
+	Input() = default;
+	~Input() = default;
 	static Input& getInstance();
 	void init();
 	void update();

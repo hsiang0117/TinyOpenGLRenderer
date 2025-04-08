@@ -8,7 +8,8 @@
 
 class WindowSystem {
 public:
-	WindowSystem() {};
+	WindowSystem() = default;
+	~WindowSystem() = default;
 	void init(int width, int height);
 	void swapBuffers();
 	void update();
