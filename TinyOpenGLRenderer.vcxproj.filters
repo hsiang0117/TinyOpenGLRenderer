@@ -28,9 +28,6 @@
     <Filter Include="源文件\thirdParty\glad">
       <UniqueIdentifier>{8e0fb7d3-49db-468c-87d7-87465faa7052}</UniqueIdentifier>
     </Filter>
-    <Filter Include="头文件\component">
-      <UniqueIdentifier>{184f423f-5e97-4173-a3b6-a8c9523cdb2f}</UniqueIdentifier>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\main.cpp">
@@ -125,23 +122,17 @@
     <ClInclude Include="src\gameObject.hpp">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="src\sceneBase.hpp">
-      <Filter>头文件</Filter>
-    </ClInclude>
     <ClInclude Include="include\imgui\ImGuiFileDialogConfig.h">
       <Filter>源文件\thirdParty\imgui</Filter>
     </ClInclude>
     <ClInclude Include="include\imgui\ImGuiFileDialog.h">
       <Filter>源文件\thirdParty\imgui</Filter>
     </ClInclude>
-    <ClInclude Include="src\light.hpp">
+    <ClInclude Include="src\component.hpp">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="src\component\transform.hpp">
-      <Filter>头文件\component</Filter>
-    </ClInclude>
-    <ClInclude Include="src\component\component.hpp">
-      <Filter>头文件\component</Filter>
+    <ClInclude Include="src\skybox.hpp">
+      <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -154,5 +145,6 @@
     <None Include="data\shader\test.frag">
       <Filter>资源文件\shader</Filter>
     </None>
+    <None Include="data\shader\settings.glsl" />
   </ItemGroup>
 </Project>

@@ -13,8 +13,9 @@
 class Model
 {
 public:
+	Model() = default;
 	// 异步加载资源
-	static std::future<Model> LoadAsync(const char* path);
+	static std::future<std::shared_ptr<Model>> LoadAsync(const char* path);
 	// 主线程调用，初始化opengl资源
 	bool initGLResources();
 
@@ -23,16 +24,9 @@ public:
 	void draw();
 	bool isReady() const { return loaded && glInitialized; }
 private:
-	Model() = default;
 	bool loaded = false, glInitialized = false;
 
-	struct MeshData {
-		std::vector<Vertex> vertices;
-		std::vector<GLuint> indices;
-	};
-
-	std::unordered_map<std::string, Material> materials;
-	std::vector<MeshData> meshdatas;
+	std::unordered_map<unsigned int, Material> materials;
 	std::vector<Mesh> meshes;
 
 	std::string path;
@@ -41,14 +35,14 @@ private:
 
 	void loadModel(std::string path);
 	void processNode(aiNode* node, const aiScene* scene);
-	MeshData processMesh(aiMesh* mesh, const aiScene* scene);
+	Mesh processMesh(aiMesh* mesh, const aiScene* scene);
 };
 
-std::future<Model> Model::LoadAsync(const char* path) {
+std::future<std::shared_ptr<Model>> Model::LoadAsync(const char* path) {
 	std::string modelPathStr(path);
 	return std::async(std::launch::async, [modelPathStr]() {
-		Model model;
-		model.loadModel(modelPathStr.c_str());
+		auto model = std::make_shared<Model>();
+		model->loadModel(modelPathStr.c_str());
 		return model;
 		});
 }
@@ -57,14 +51,12 @@ bool Model::initGLResources()
 {
 	if (!loaded || glInitialized) return false;
 
-	for (auto& data : meshdatas) {
-		meshes.emplace_back(data.vertices, data.indices);
-		if (!meshes.back().initGLResources()) {
+	for (auto& mesh : meshes) {
+		if (!mesh.initGLResources()) {
 			std::cerr << "Failed to initialize mesh GL resources\n";
 			return false;
 		}
 	}
-	meshdatas.clear(); // 释放临时数据
 	for (auto it = materials.begin(); it != materials.end(); ++it) {
 		it->second.initGLResources();
 	}
@@ -76,6 +68,10 @@ void Model::draw()
 {
 	for (unsigned int i = 0; i < meshes.size(); i++)
 	{
+		auto material = materials.find(meshes[i].getMaterialIndex());
+		if (material != materials.end()) {
+			material->second.bind();
+		}
 		meshes[i].draw();
 	}
 }
@@ -103,7 +99,7 @@ void Model::processNode(aiNode* node, const aiScene* scene)
 	for (unsigned int i = 0; i < node->mNumMeshes; i++)
 	{
 		aiMesh* mesh = scene->mMeshes[node->mMeshes[i]];
-		meshdatas.push_back(processMesh(mesh, scene));
+		meshes.push_back(processMesh(mesh, scene));
 	}
 	for (unsigned int i = 0; i < node->mNumChildren; i++)
 	{
@@ -111,9 +107,9 @@ void Model::processNode(aiNode* node, const aiScene* scene)
 	}
 }
 
-Model::MeshData Model::processMesh(aiMesh* mesh, const aiScene* scene)
+Mesh Model::processMesh(aiMesh* mesh, const aiScene* scene)
 {
-	MeshData data;
+	Mesh result;
 
 	for (unsigned int i = 0; i < mesh->mNumVertices; i++)
 	{
@@ -145,7 +141,7 @@ Model::MeshData Model::processMesh(aiMesh* mesh, const aiScene* scene)
 		{
 			vertex.texCoords = glm::vec2(0.0f);
 		}
-		data.vertices.push_back(vertex);
+		result.vertices.push_back(vertex);
 	}
 
 	for (unsigned int i = 0; i < mesh->mNumFaces; i++)
@@ -153,17 +149,16 @@ Model::MeshData Model::processMesh(aiMesh* mesh, const aiScene* scene)
 		aiFace face = mesh->mFaces[i];
 		for (unsigned int j = 0; j < face.mNumIndices; j++)
 		{
-			data.indices.push_back(face.mIndices[j]);
+			result.indices.push_back(face.mIndices[j]);
 		}
 	}
 
 	if (mesh->mMaterialIndex >= 0)
 	{
+		result.setMaterialIndex(mesh->mMaterialIndex);
 		Material mat;
 		aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];
-		aiString name;
-		material->Get(AI_MATKEY_NAME, name);
-		if (materials.find(name.C_Str()) == materials.end()) {
+		if (materials.find(mesh->mMaterialIndex) == materials.end()) {
 			aiString albedoPath;
 			material->GetTexture(aiTextureType_DIFFUSE, 0, &albedoPath);
 			aiString ambientPath;
@@ -174,13 +169,13 @@ Model::MeshData Model::processMesh(aiMesh* mesh, const aiScene* scene)
 			material->GetTexture(aiTextureType_NORMALS, 0, &normalPath);
 			aiString shininessPath;
 			material->GetTexture(aiTextureType_SHININESS, 0, &shininessPath);
-			mat = Material(name.C_Str(), directory + albedoPath.C_Str(), directory + ambientPath.C_Str(),
+			mat = Material(mesh->mMaterialIndex, directory + albedoPath.C_Str(), directory + ambientPath.C_Str(),
 				directory + specularPath.C_Str(), directory + normalPath.C_Str(), directory + shininessPath.C_Str());
-			materials.insert({ name.C_Str(), mat });
+			materials.insert({ mesh->mMaterialIndex, mat });
 		}
 	}
 
-	return data;
+	return result;
 }
 
 using ModelPtr = std::shared_ptr<Model>;

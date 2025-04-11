@@ -15,6 +15,9 @@
 #define RIGHT_SIDEBAR_WIDTH 250.0f
 #define BOTTOM_SIDEBAR_HEIGHT 250.0f
 
+// 组件对应渲染方法，接收一个组件指针，返回void
+using ComponentWidgetFunc = std::function<void(ComponentPtr)>;
+
 class GuiSystem {
 public:
 	GuiSystem() = default;
@@ -23,11 +26,24 @@ public:
 	void beginFrame();
 	void render();
 	void shutDown();
+
+	// 注册组件的渲染方法，传入组件名称和渲染函数
+	template<typename T>
+	void registerComponentWidget(const std::string& componentName, std::function<void(std::shared_ptr<T>)> func);
+
+	// 根据组件渲染对应的widget
+	void showComponentWidget(std::shared_ptr<Component> comp);
 private:
+	// 组件名和对应渲染函数的注册表
+	static std::unordered_map<std::string, ComponentWidgetFunc>& getWidgetRegistry() {
+		static std::unordered_map<std::string, ComponentWidgetFunc> registry;
+		return registry;
+	}
+
 	void showLeftSideBar();
 	void showRightSideBar();
 	void showBottomSideBar();
-	void showTransformWidget(std::shared_ptr<Transform> transform);
+	void registComponents();
 };
 
 void GuiSystem::init(GLFWwindow* window) {
@@ -42,6 +58,7 @@ void GuiSystem::init(GLFWwindow* window) {
 	ImGui_ImplGlfw_InitForOpenGL(window, true);
 	ImGui_ImplOpenGL3_Init("#version 430");
 	ImGui::StyleColorsDark();
+	registComponents();
 }
 
 void GuiSystem::beginFrame() {
@@ -67,45 +84,104 @@ void GuiSystem::shutDown() {
 
 void GuiSystem::showLeftSideBar()
 {
-	static GameObjectPtr objectSelected;
+	static std::weak_ptr<GameObject> objectSelected;
 
 	ImGuiViewport* viewport = ImGui::GetMainViewport();
 	ImGui::SetNextWindowPos(viewport->Pos);
 	ImGui::SetNextWindowSize(ImVec2(LEFT_SIDEBAR_WIDTH, viewport->Size.y - BOTTOM_SIDEBAR_HEIGHT));
 
-	ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
+	ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
 		ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar;
-
-	ImGui::Begin("LeftSidebar", nullptr, window_flags);
+	ImGui::Begin("LeftSidebar", nullptr, windowFlags);
 
 	ImVec2 availableSize = ImGui::GetContentRegionAvail();
 
-	ImGui::BeginChild(u8"scenePanel", ImVec2(0, availableSize.y / 2), false);
-	ImGui::Text(u8"场景"); 
-	ImGui::BeginChild(u8"sceneRegion", ImVec2(0, 0), true);
-	for (int i = 0; i < ResourceManager::getInstance().gameObjects.size(); i++)
-	{
-		static int selected = -1;
-		ImGui::PushID(i);
-		if (ImGui::Selectable(ResourceManager::getInstance().gameObjects[i]->getName().c_str(), selected == i)) {
-			selected = i;
-			objectSelected = ResourceManager::getInstance().gameObjects[i];
+	ImGui::BeginChild(u8"scenePanel", ImVec2(0, availableSize.y / 2), false, ImGuiWindowFlags_MenuBar);
+
+	if (ImGui::BeginMenuBar()) {
+		ImGui::Text(u8"场景");
+		if (ImGui::BeginMenu(u8"添加")) {
+			if (ImGui::BeginMenu(u8"光源")) {
+				if (ImGui::MenuItem(u8"点光源")) {
+					std::shared_ptr<PointLightObject> gameObject = std::make_shared<PointLightObject>("PointLight");
+					gameObject->addComponent<Transform>();
+					gameObject->addComponent<PointLightComponent>();
+					ResourceManager::getInstance().gameObjects.push_back(gameObject);
+					ResourceManager::getInstance().pointLightNum++;
+				}
+				if (ImGui::MenuItem(u8"平行光")) {
+					if (ResourceManager::getInstance().directionLightNum == 0) {
+						std::shared_ptr<DirectionLightObject> gameObject = std::make_shared<DirectionLightObject>("DirectionLight");
+						gameObject->addComponent<Transform>();
+						gameObject->addComponent<DirectionLightComponent>();
+						ResourceManager::getInstance().gameObjects.push_back(gameObject);
+						ResourceManager::getInstance().directionLightNum++;
+					}
+				}
+				if (ImGui::MenuItem(u8"聚光灯")) {
+					std::shared_ptr<SpotLightObject> gameObject = std::make_shared<SpotLightObject>("SpotLight");
+					gameObject->addComponent<Transform>();
+					gameObject->addComponent<SpotLightComponent>();
+					ResourceManager::getInstance().gameObjects.push_back(gameObject);
+					ResourceManager::getInstance().spotLightNum++;
+				}
+				ImGui::EndMenu();
+			}
+			ImGui::EndMenu();
 		}
-		ImGui::PopID();
+		ImGui::EndMenuBar();
 	}
+
+	ImGui::BeginChild(u8"sceneRegion", ImVec2(0, 0), true);
+	static int selected = -1;
+
+	auto renderObjectTreeNode = [&](const char* label, std::function<bool(GameObjectPtr)> predicate) {
+		if (ImGui::TreeNode(label)) {
+			for (int i = 0; i < ResourceManager::getInstance().gameObjects.size(); i++) {
+				GameObjectPtr object = ResourceManager::getInstance().gameObjects[i];
+				if (predicate(object)) {
+					ImGui::PushID(i);
+					if (ImGui::Selectable(object->getName().c_str(), selected == i)) {
+						selected = i;
+						objectSelected = object;
+					}
+					if (ImGui::BeginPopupContextItem("ObjectButtonContext")) {
+						if (ImGui::MenuItem(u8"remove")) {
+							ResourceManager::getInstance().removeQueue.push(i);
+							selected = -1;
+						}
+						ImGui::EndPopup();
+					}
+					ImGui::PopID();
+				}
+			}
+			ImGui::TreePop();
+		}
+		};
+
+	renderObjectTreeNode(u8"Light", [](GameObjectPtr object) {
+		return object->getType() == GameObject::Type::POINTLIGHTOBJECT ||
+			object->getType() == GameObject::Type::DIRECTIONLIGHTOBJECT ||
+			object->getType() == GameObject::Type::SPOTLIGHTOBJECT;
+		});
+
+
+	renderObjectTreeNode(u8"Object", [](GameObjectPtr object) {
+		return object->getType() == GameObject::Type::RENDEROBJECT;
+		});
 	ImGui::EndChild();
 	ImGui::EndChild();
 
-	availableSize = ImGui::GetContentRegionAvail();
-
-	ImGui::BeginChild(u8"detailPanel", ImVec2(0, availableSize.y), false);
-	ImGui::Text(u8"细节");
+	ImGui::BeginChild(u8"detailPanel", ImVec2(0, 0), false, ImGuiWindowFlags_MenuBar);
+	if (ImGui::BeginMenuBar()) {
+		ImGui::Text(u8"细节");
+		ImGui::EndMenuBar();
+	}
 	ImGui::BeginChild(u8"detailRegion", ImVec2(0, 0), true);
-	if (objectSelected) {
-		showTransformWidget(objectSelected->getComponent<Transform>());
-	}
-	else {
-		ImGui::Text(u8"未选择物体");
+	if (objectSelected.lock()) {
+		for (auto& component : objectSelected.lock()->getAllComponents()) {
+			showComponentWidget(component);
+		}
 	}
 	ImGui::EndChild();
 	ImGui::EndChild();
@@ -118,9 +194,9 @@ void GuiSystem::showRightSideBar()
 	ImGuiViewport* viewport = ImGui::GetMainViewport();
 	ImGui::SetNextWindowPos(ImVec2(viewport->Pos.x + viewport->Size.x - RIGHT_SIDEBAR_WIDTH, viewport->Pos.y));
 	ImGui::SetNextWindowSize(ImVec2(RIGHT_SIDEBAR_WIDTH, viewport->Size.y - BOTTOM_SIDEBAR_HEIGHT));
-	ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
+	ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
 		ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar;
-	ImGui::Begin("RightSidebar", nullptr, window_flags);
+	ImGui::Begin("RightSidebar", nullptr, windowFlags);
 	ImGui::Text(u8"渲染设置");
 
 	ImGui::End();
@@ -131,16 +207,13 @@ void GuiSystem::showBottomSideBar()
 	ImGuiViewport* viewport = ImGui::GetMainViewport();
 	ImGui::SetNextWindowPos(ImVec2(viewport->Pos.x, viewport->Pos.y + viewport->Size.y - BOTTOM_SIDEBAR_HEIGHT));
 	ImGui::SetNextWindowSize(ImVec2(viewport->Size.x, BOTTOM_SIDEBAR_HEIGHT));
-	ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
+	ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
 		ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_MenuBar;
-	ImGui::Begin("BottomSidebar", nullptr, window_flags);
+	ImGui::Begin("BottomSidebar", nullptr, windowFlags);
 
-	if (ImGui::BeginMenuBar())
-	{
-		if (ImGui::BeginMenu(u8"文件"))
-		{
-			if (ImGui::MenuItem(u8"打开"))
-			{
+	if (ImGui::BeginMenuBar()) {
+		if (ImGui::BeginMenu(u8"文件")) {
+			if (ImGui::MenuItem(u8"打开")) {
 				ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", u8"选择文件", ".obj\0*.obj\0\0");
 			}
 			ImGui::EndMenu();
@@ -162,7 +235,11 @@ void GuiSystem::showBottomSideBar()
 		{
 			if (ImGui::MenuItem(u8"添加到场景"))
 			{
-				ResourceManager::getInstance().gameObjects.push_back(std::make_shared<GameObject>(it->second->getName(), it->second));
+				std::shared_ptr<RenderObject>gameObject = std::make_shared<RenderObject>(it->second->getName());
+				gameObject->addComponent<Transform>();
+				gameObject->addComponent<RenderComponent>();
+				gameObject->getComponent<RenderComponent>()->setModel(it->second);
+				ResourceManager::getInstance().gameObjects.push_back(gameObject);
 			}
 			ImGui::EndPopup();
 		}
@@ -188,10 +265,69 @@ void GuiSystem::showBottomSideBar()
 	}
 }
 
-void GuiSystem::showTransformWidget(std::shared_ptr<Transform> transform){
-	ImGui::DragFloat3(u8"平移", glm::value_ptr(transform->translate));
-	ImGui::DragFloat3(u8"缩放", glm::value_ptr(transform->scale));
-	ImGui::DragFloat3(u8"旋转", glm::value_ptr(transform->rotate));
+void GuiSystem::registComponents()
+{
+	registerComponentWidget<Transform>("Transform", [](std::shared_ptr<Transform> transform) {
+		ImGui::Text(u8"Transform");
+		ImGui::Separator();
+		ImGui::DragFloat3(u8"Translate", glm::value_ptr(transform->translate));
+		ImGui::DragFloat3(u8"Scale", glm::value_ptr(transform->scale));
+		ImGui::DragFloat3(u8"Rotate", glm::value_ptr(transform->rotate));
+		ImGui::Separator();
+		});
+
+	registerComponentWidget<RenderComponent>("RenderComponent", [](std::shared_ptr<RenderComponent> renderComponent) {
+
+		});
+
+	registerComponentWidget<PointLightComponent>("PointLightComponent", [](std::shared_ptr<PointLightComponent> pointLightComponent) {
+		ImGui::Text(u8"PointLight");
+		ImGui::Separator();
+		ImGui::ColorPicker3(u8"Color", glm::value_ptr(pointLightComponent->color));
+		ImGui::DragFloat(u8"Constant", &pointLightComponent->constant);
+		ImGui::DragFloat(u8"Linear", &pointLightComponent->linear);
+		ImGui::DragFloat(u8"Quadratic", &pointLightComponent->quadratic);
+		ImGui::Separator();
+		});
+
+	registerComponentWidget<DirectionLightComponent>("DirectionLightComponent", [](std::shared_ptr<DirectionLightComponent> directionLightComponent) {
+		ImGui::Text(u8"DirectionLight");
+		ImGui::Separator();
+		ImGui::ColorPicker3(u8"Color", glm::value_ptr(directionLightComponent->color));
+		ImGui::Separator();
+		});
+
+	registerComponentWidget<SpotLightComponent>("SpotLightComponent", [](std::shared_ptr<SpotLightComponent> spotLightComponent) {
+		ImGui::Text(u8"SpotLight");
+		ImGui::Separator();
+		ImGui::ColorPicker3(u8"Color", glm::value_ptr(spotLightComponent->color));
+		ImGui::DragFloat(u8"CutOff", &spotLightComponent->cutOff);
+		ImGui::DragFloat(u8"OuterCutOff", &spotLightComponent->outerCutOff);
+		ImGui::Separator();
+		});
 }
 
+
+// 注册组件对应的UI渲染方法，传入组件名称和渲染函数
+template<typename T>
+void GuiSystem::registerComponentWidget(const std::string& componentName, std::function<void(std::shared_ptr<T>)> func) {
+	getWidgetRegistry()[componentName] = [func](ComponentPtr comp) {
+		std::shared_ptr<T> specificComp = std::dynamic_pointer_cast<T>(comp); // 将shared_ptr<T>转换为实际的组件指针
+		if (specificComp) {
+			func(specificComp);
+		}
+		};
+}
+
+// 根据组件渲染对应的widget
+void GuiSystem::showComponentWidget(std::shared_ptr<Component> comp) {
+	std::string key = comp->getName();
+	auto& registry = getWidgetRegistry();
+	if (registry.find(key) != registry.end()) {
+		registry[key](comp);
+	}
+	else {
+		ImGui::Text(u8"没有注册 %s 的编辑器", key.c_str());
+	}
+}
 #endif

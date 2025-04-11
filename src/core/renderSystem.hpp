@@ -17,6 +17,7 @@ public:
 private:
 	int width, height; //viewport width and height
 	GLuint uboMatrices; //uniform buffer object for view and projection matrices
+	GLuint ssboPointLights, ssboDirectionLight, ssboSpotLights;
 };
 
 void RenderSystem::init() {
@@ -35,8 +36,26 @@ void RenderSystem::init() {
 	glGenBuffers(1, &uboMatrices);
 	glBindBuffer(GL_UNIFORM_BUFFER, uboMatrices);
 	glBufferData(GL_UNIFORM_BUFFER, 2 * sizeof(glm::mat4), NULL, GL_STATIC_DRAW);
-	glBindBufferRange(GL_UNIFORM_BUFFER, 0, uboMatrices, 0, 2 * sizeof(glm::mat4));
+	glBindBufferBase(GL_UNIFORM_BUFFER, 0, uboMatrices);
 	glBindBuffer(GL_UNIFORM_BUFFER, 0);
+
+	glGenBuffers(1, &ssboPointLights);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssboPointLights);
+	glBufferData(GL_SHADER_STORAGE_BUFFER, 100 * PointLightObject::glslSize, NULL, GL_STATIC_DRAW);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, ssboPointLights);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+
+	glGenBuffers(1, &ssboDirectionLight);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssboDirectionLight);
+	glBufferData(GL_SHADER_STORAGE_BUFFER, DirectionLightObject::glslSize, NULL, GL_STATIC_DRAW);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, ssboDirectionLight);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+
+	glGenBuffers(1, &ssboSpotLights);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssboSpotLights);
+	glBufferData(GL_SHADER_STORAGE_BUFFER, 100* SpotLightObject::glslSize, NULL, GL_STATIC_DRAW);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, ssboSpotLights);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 }
 
 void RenderSystem::update() {
@@ -56,9 +75,33 @@ void RenderSystem::render(Camera& camera) {
 	glClearColor(0.1, 0.1f, 0.1f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	ResourceManager::getInstance().shaderCache["default"].get()->use();
+	ShaderPtr defaultShader = ResourceManager::getInstance().shaderCache["default"];
+	defaultShader->use();
+
+	int pointLightIndex = 0, spotLightIndex = 0;
 	for (int i = 0; i < ResourceManager::getInstance().gameObjects.size(); i++) {
-		ResourceManager::getInstance().gameObjects[i]->draw(ResourceManager::getInstance().shaderCache["default"]);
+		GameObjectPtr object = ResourceManager::getInstance().gameObjects[i];
+		if (object->getType() == GameObject::Type::POINTLIGHTOBJECT) {
+			object->sendToSSBO(pointLightIndex, ssboPointLights);
+			pointLightIndex++;
+		}
+		else if (object->getType() == GameObject::Type::SPOTLIGHTOBJECT) {
+			object->sendToSSBO(spotLightIndex, ssboSpotLights);
+			spotLightIndex++;
+		}
+		else if (object->getType() == GameObject::Type::DIRECTIONLIGHTOBJECT) {
+			object->sendToSSBO(0, ssboDirectionLight);
+		}
+	}
+	defaultShader->setInt("pointLightNum", ResourceManager::getInstance().pointLightNum);
+	defaultShader->setInt("directionLightNum", ResourceManager::getInstance().directionLightNum);
+	defaultShader->setInt("spotLightNum", ResourceManager::getInstance().spotLightNum);
+
+	for (int i = 0; i < ResourceManager::getInstance().gameObjects.size(); i++) {
+		GameObjectPtr object = ResourceManager::getInstance().gameObjects[i];
+		if (object->getType() == GameObject::Type::RENDEROBJECT) {
+			object->draw(defaultShader);
+		}
 	}
 }
 #endif // !RENDERSYSTEM_HPP

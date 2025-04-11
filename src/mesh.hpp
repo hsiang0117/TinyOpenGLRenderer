@@ -18,18 +18,21 @@ class Mesh
 {
 public:
     std::vector<Vertex> vertices;
-    std::vector<unsigned int> indices;
+    std::vector<GLuint> indices;
     Mesh() = default;
-    Mesh(std::vector<Vertex> vertices, std::vector<unsigned int> indices);
+    Mesh(std::vector<Vertex> vertices, std::vector<GLuint> indices);
     bool initGLResources();
     void draw();
+    void setMaterialIndex(unsigned int index) { materialIndex = index; }
+    unsigned int getMaterialIndex() { return materialIndex; }
 private:
     GLuint VAO, VBO, EBO;
+    unsigned int materialIndex;
     bool glInitialized = false;
     void setupMesh();
 };
 
-Mesh::Mesh(std::vector<Vertex> vertices, std::vector<unsigned int> indices)
+Mesh::Mesh(std::vector<Vertex> vertices, std::vector<GLuint> indices)
 {
     this->vertices = vertices;
     this->indices = indices;

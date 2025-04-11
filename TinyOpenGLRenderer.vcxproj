@@ -162,16 +162,16 @@
     <ClInclude Include="src\frameBuffer.hpp" />
     <ClInclude Include="src\input.hpp" />
     <ClInclude Include="src\gameObject.hpp" />
-    <ClInclude Include="src\light.hpp" />
     <ClInclude Include="src\material.hpp" />
     <ClInclude Include="src\mesh.hpp" />
     <ClInclude Include="src\model.hpp" />
-    <ClInclude Include="src\sceneBase.hpp" />
     <ClInclude Include="src\shader.hpp" />
+    <ClInclude Include="src\skybox.hpp" />
     <ClInclude Include="src\texture.hpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="data\config.json" />
+    <None Include="data\shader\settings.glsl" />
     <None Include="data\shader\test.frag" />
     <None Include="data\shader\test.vert" />
   </ItemGroup>

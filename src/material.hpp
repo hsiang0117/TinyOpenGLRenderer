@@ -12,11 +12,11 @@ class Material
 {
 public:
 	Material(){};
-	Material(std::string name, std::string albedoPath, std::string ambientPath, std::string specularPath, std::string normalPath, std::string shininessPath);
+	Material(unsigned int index, std::string albedoPath, std::string ambientPath, std::string specularPath, std::string normalPath, std::string shininessPath);
 	void initGLResources();
 	void bind();
 private:
-	std::string name;
+	unsigned int index;
 	std::string albedoPath;
 	std::string ambientPath;
 	std::string specularPath;
@@ -26,9 +26,9 @@ private:
 	void deleteTextures();
 };
 
-Material::Material(std::string name, std::string albedoPath, std::string ambientPath, std::string specularPath, std::string normalPath, std::string shininessPath)
+Material::Material(unsigned int index, std::string albedoPath, std::string ambientPath, std::string specularPath, std::string normalPath, std::string shininessPath)
 {
-	this->name = name;
+	this->index = index;
 	this->albedoPath = albedoPath;
 	this->ambientPath = ambientPath;
 	this->specularPath = specularPath;
@@ -41,37 +41,53 @@ void Material::initGLResources()
 	deleteTextures();
 	if (std::filesystem::is_regular_file(albedoPath))
 	{
-		textures.push_back(Texture2D(albedoPath.c_str(), "textureAlbedo", GL_REPEAT, GL_LINEAR));
+		textures.push_back(Texture2D(albedoPath.c_str(), Texture2D::Type::ALBEDO, GL_REPEAT, GL_LINEAR));
 	}
 	if (std::filesystem::is_regular_file(ambientPath))
 	{
-		textures.push_back(Texture2D(ambientPath.c_str(), "textureAmbient", GL_REPEAT, GL_LINEAR));
+		textures.push_back(Texture2D(ambientPath.c_str(), Texture2D::Type::AMBIENT, GL_REPEAT, GL_LINEAR));
 	}
 	if (std::filesystem::is_regular_file(specularPath))
 	{
-		textures.push_back(Texture2D(specularPath.c_str(), "textureSpecular", GL_REPEAT, GL_LINEAR));
+		textures.push_back(Texture2D(specularPath.c_str(), Texture2D::Type::SPECULAR, GL_REPEAT, GL_LINEAR));
 	}
 	if (std::filesystem::is_regular_file(normalPath))
 	{
-		textures.push_back(Texture2D(normalPath.c_str(), "textureNormal", GL_REPEAT, GL_LINEAR));
+		textures.push_back(Texture2D(normalPath.c_str(), Texture2D::Type::NORMAL, GL_REPEAT, GL_LINEAR));
 	}
 	if (std::filesystem::is_regular_file(shininessPath))
 	{
-		textures.push_back(Texture2D(shininessPath.c_str(), "textureShininess", GL_REPEAT, GL_LINEAR));
+		textures.push_back(Texture2D(shininessPath.c_str(), Texture2D::Type::SHININESS, GL_REPEAT, GL_LINEAR));
 	}
 }
 
 void Material::bind()
 {
-	for (unsigned int i = 0; i < textures.size(); i++)
+	for (int i = 0; i < textures.size(); i++)
 	{
-		textures[i].use(GL_TEXTURE0 + i);
+		switch (textures[i].getType()) {
+			case Texture2D::Type::ALBEDO:
+				textures[i].use(GL_TEXTURE0);
+				break;
+			case Texture2D::Type::AMBIENT:
+				textures[i].use(GL_TEXTURE1);
+				break;
+			case Texture2D::Type::SPECULAR:
+				textures[i].use(GL_TEXTURE2);
+				break;
+			case Texture2D::Type::NORMAL:
+				textures[i].use(GL_TEXTURE3);
+				break;			
+			case Texture2D::Type::SHININESS:
+				textures[i].use(GL_TEXTURE4);
+				break;
+		}
 	}
 }
 
 void Material::deleteTextures()
 {
-	for (unsigned int i = 0; i < textures.size(); i++)
+	for (int i = 0; i < textures.size(); i++)
 	{
 		glDeleteTextures(1, &textures[i].ID);
 		textures[i].ID = 0;
