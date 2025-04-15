@@ -12,15 +12,17 @@ public:
 		RENDEROBJECT,
 		POINTLIGHTOBJECT,
 		DIRECTIONLIGHTOBJECT,
-		SPOTLIGHTOBJECT
+		SPOTLIGHTOBJECT,
+		SKYBOXOBJECT
 	};
 
 	GameObject(std::string name);
 	virtual ~GameObject() = default;
 	std::string getName() { return name; }
 	Type getType() { return type; }
-	virtual void draw(ShaderPtr shader) {}; // RenderObject在渲染时调用的接口
+	virtual void draw(ShaderPtr shader) {}; // RenderObject和SkyBox在渲染时调用的接口
 	virtual void sendToSSBO(int index, GLuint ssbo) {}; // LightObject在渲染时调用的接口
+	virtual void useCubeMap(ShaderPtr shader) {};
 
 	template<typename T, typename... Args>
 	std::shared_ptr<T> addComponent(Args&&... args);
@@ -100,8 +102,8 @@ public:
 };
 
 void PointLightObject::sendToSSBO(int index, GLuint ssbo) {
-	std::shared_ptr<Transform> transform = getComponent<Transform>();
-	std::shared_ptr<PointLightComponent> pointLight = getComponent<PointLightComponent>();
+	auto transform = getComponent<Transform>();
+	auto pointLight = getComponent<PointLightComponent>();
 	glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo);
 	glBufferSubData(GL_SHADER_STORAGE_BUFFER, index * glslSize, 12, glm::value_ptr(transform->translate));
 	glBufferSubData(GL_SHADER_STORAGE_BUFFER, index * glslSize + 12, 4, 0);
@@ -124,8 +126,8 @@ public:
 };
 
 void DirectionLightObject::sendToSSBO(int index, GLuint ssbo) {
-	std::shared_ptr<Transform> transform = getComponent<Transform>();
-	std::shared_ptr<DirectionLightComponent> directionLight = getComponent<DirectionLightComponent>();
+	auto transform = getComponent<Transform>();
+	auto directionLight = getComponent<DirectionLightComponent>();
 	glm::mat4 rotation(1.0);
 	rotation = glm::rotate(rotation, glm::radians(transform->rotate.z), glm::vec3(0, 0, 1));
 	rotation = glm::rotate(rotation, glm::radians(transform->rotate.y), glm::vec3(0, 1, 0));
@@ -150,8 +152,8 @@ public:
 };
 
 void SpotLightObject::sendToSSBO(int index, GLuint ssbo) {
-	std::shared_ptr<Transform> transform = getComponent<Transform>();
-	std::shared_ptr<SpotLightComponent> spotLight = getComponent<SpotLightComponent>();
+	auto transform = getComponent<Transform>();
+	auto spotLight = getComponent<SpotLightComponent>();
 	glm::mat4 rotation(1.0);
 	rotation = glm::rotate(rotation, glm::radians(transform->rotate.z), glm::vec3(0, 0, 1));
 	rotation = glm::rotate(rotation, glm::radians(transform->rotate.y), glm::vec3(0, 1, 0));
@@ -172,4 +174,31 @@ void SpotLightObject::sendToSSBO(int index, GLuint ssbo) {
 	glBufferSubData(GL_SHADER_STORAGE_BUFFER, index * glslSize + 56, 8, 0);
 	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 }
-#endif // !GAMEOBJEC_HPP
+
+class SkyBoxObject : public GameObject {
+public:
+	SkyBoxObject(std::string name) : GameObject(name) {
+		type = GameObject::Type::SKYBOXOBJECT;
+	}
+	virtual void draw(ShaderPtr shader) override;
+	virtual void useCubeMap(ShaderPtr shader) override;
+};
+
+void SkyBoxObject::draw(ShaderPtr shader) {
+	shader->setInt("skybox", 5);
+	if (auto skyboxComponent = getComponent<SkyBoxComponent>()) {
+		if (skyboxComponent->skybox) {
+			skyboxComponent->skybox->draw();
+		}
+	}
+}
+
+void SkyBoxObject::useCubeMap(ShaderPtr shader) {
+	shader->setInt("skybox", 5);
+	if (auto skyboxComponent = getComponent<SkyBoxComponent>()) {
+		if (skyboxComponent->skybox) {
+			skyboxComponent->skybox->useCubeMap();
+		}
+	}
+}
+#endif // !GAMEOBJECT_HPP

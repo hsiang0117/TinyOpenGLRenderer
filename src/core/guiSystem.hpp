@@ -127,6 +127,14 @@ void GuiSystem::showLeftSideBar()
 				}
 				ImGui::EndMenu();
 			}
+			if (ImGui::BeginMenu(u8"其他")) {
+				if (ImGui::MenuItem(u8"天空盒")) {
+					auto gameObject = std::make_shared<SkyBoxObject>("SkyBox");
+					gameObject->addComponent<SkyBoxComponent>();
+					ResourceManager::getInstance().gameObjects.push_back(gameObject);
+				}
+				ImGui::EndMenu();
+			}
 			ImGui::EndMenu();
 		}
 		ImGui::EndMenuBar();
@@ -165,9 +173,12 @@ void GuiSystem::showLeftSideBar()
 			object->getType() == GameObject::Type::SPOTLIGHTOBJECT;
 		});
 
-
 	renderObjectTreeNode(u8"Object", [](GameObjectPtr object) {
 		return object->getType() == GameObject::Type::RENDEROBJECT;
+		});
+
+	renderObjectTreeNode(u8"SkyBox", [](GameObjectPtr object) {
+		return object->getType() == GameObject::Type::SKYBOXOBJECT;
 		});
 	ImGui::EndChild();
 	ImGui::EndChild();
@@ -304,6 +315,16 @@ void GuiSystem::registComponents()
 		ImGui::DragFloat(u8"CutOff", &spotLightComponent->cutOff);
 		ImGui::DragFloat(u8"OuterCutOff", &spotLightComponent->outerCutOff);
 		ImGui::Separator();
+		});
+
+	registerComponentWidget<SkyBoxComponent>("SkyBoxComponent", [](std::shared_ptr<SkyBoxComponent> skyboxComponent) {
+		ImGui::Text(u8"SkyBox");
+		ImGui::Separator();
+		static char buf[255];
+		ImGui::InputText(u8"路径", buf, sizeof(buf)); ImGui::SameLine();
+		if (ImGui::Button(u8"确认")) {
+			skyboxComponent->setSkyBox(std::string(buf));
+		}
 		});
 }
 

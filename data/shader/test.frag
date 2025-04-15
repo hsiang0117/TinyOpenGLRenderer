@@ -1,4 +1,5 @@
 #version 430 core
+#include "data/shader/settings.glsl"
 
 in VS_OUT{
 	vec3 normal;
@@ -13,6 +14,9 @@ uniform sampler2D ambientMap;
 uniform sampler2D specularMap;
 uniform sampler2D normalMap;
 uniform sampler2D shininessMap;
+#ifdef ENVIRONMENT_MAPPING
+	uniform samplerCube skybox;
+#endif
 uniform vec3 cameraPos;
 
 uniform int pointLightNum;
@@ -99,6 +103,16 @@ vec3 calculateSpotLight(vec3 albedoColor, vec3 specularColor){
 	return result;
 };
 
+#ifdef ENVIRONMENT_MAPPING
+vec3 calculateEnvironmentMapping(){
+	vec3 result;
+	vec3 cameraDir = normalize(cameraPos - fs_in.fragPos);
+	vec3 reflectionDir = reflect(cameraDir,fs_in.normal);
+	result = texture(skybox, reflectionDir).rgb*texture(ambientMap,fs_in.texCoords).rgb;
+	return result;
+}	
+#endif
+
 void main()
 {
 	vec3 albedoColor = texture(albedoMap, fs_in.texCoords).rgb;
@@ -107,5 +121,8 @@ void main()
 	result += calculateDirectionLight(albedoColor,specularColor);
 	result += calculatePointLight(albedoColor,specularColor);
 	result += calculateSpotLight(albedoColor,specularColor);
+#ifdef ENVIRONMENT_MAPPING
+	result += calculateEnvironmentMapping();
+#endif
 	fragColor = vec4(result,1.0);
 }

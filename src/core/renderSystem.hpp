@@ -76,8 +76,9 @@ void RenderSystem::render(Camera& camera) {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	ShaderPtr defaultShader = ResourceManager::getInstance().shaderCache["default"];
-	defaultShader->use();
+	ShaderPtr skyboxShader = ResourceManager::getInstance().shaderCache["skybox"];
 
+	defaultShader->use();
 	int pointLightIndex = 0, spotLightIndex = 0;
 	for (int i = 0; i < ResourceManager::getInstance().gameObjects.size(); i++) {
 		GameObjectPtr object = ResourceManager::getInstance().gameObjects[i];
@@ -101,6 +102,17 @@ void RenderSystem::render(Camera& camera) {
 		GameObjectPtr object = ResourceManager::getInstance().gameObjects[i];
 		if (object->getType() == GameObject::Type::RENDEROBJECT) {
 			object->draw(defaultShader);
+		}		
+		if (object->getType() == GameObject::Type::SKYBOXOBJECT) {
+			object->useCubeMap(defaultShader);
+		}
+	}
+
+	skyboxShader->use();
+	for (int i = 0; i < ResourceManager::getInstance().gameObjects.size(); i++) {
+		GameObjectPtr object = ResourceManager::getInstance().gameObjects[i];
+		if (object->getType() == GameObject::Type::SKYBOXOBJECT) {
+			object->draw(skyboxShader);
 		}
 	}
 }

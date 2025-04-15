@@ -12,7 +12,7 @@ public:
 	Texture() = default;
 	~Texture() = default;
 	GLuint ID;
-	void use(GLenum textureUnit);
+	virtual void use(GLenum textureUnit);
 };
    
 void Texture::use(GLenum textureUnit) {
@@ -28,7 +28,7 @@ public:
 		SPECULAR,
 		NORMAL,
 		SHININESS,
-		COLORBUFFER
+		BUFFER
 	};
 	Texture2D(int width, int height, GLenum wrap, GLenum filter, GLenum internalFormat, GLenum format); // Empty texture, for framebuffer usage etc.
 	Texture2D(const char* path, Type type, GLenum wrap, GLenum filter); // Load texture from file.
@@ -38,7 +38,7 @@ private:
 };
 
 Texture2D::Texture2D(int width, int height, GLenum wrap, GLenum filter, GLenum internalFormat, GLenum format) {
-	this->type = Type::COLORBUFFER;
+	this->type = Type::BUFFER;
 	glGenTextures(1, &ID);
 	glBindTexture(GL_TEXTURE_2D, ID);
 	glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, width, height, 0, format, GL_FLOAT, NULL);
@@ -89,16 +89,17 @@ class CubeMap : public Texture {
 public:
 	CubeMap() {};
 	CubeMap(const char* folderPath, GLenum wrap, GLenum filter);
+	virtual void use(GLenum textureUnit) override;
 };
 
 CubeMap::CubeMap(const char* folderPath, GLenum wrap, GLenum filter) {
 	std::vector<std::string> faces;
 	faces.push_back(folderPath + std::string("/right.jpg"));
 	faces.push_back(folderPath + std::string("/left.jpg"));
-	faces.push_back(folderPath + std::string("top.jpg"));
-	faces.push_back(folderPath + std::string("bottom.jpg"));
-	faces.push_back(folderPath + std::string("front.jpg"));
-	faces.push_back(folderPath + std::string("back.jpg"));
+	faces.push_back(folderPath + std::string("/top.jpg"));
+	faces.push_back(folderPath + std::string("/bottom.jpg"));
+	faces.push_back(folderPath + std::string("/front.jpg"));
+	faces.push_back(folderPath + std::string("/back.jpg"));
 	stbi_set_flip_vertically_on_load(false);
 	int width, height, nrChannels;
 	unsigned char* data;
@@ -139,6 +140,11 @@ CubeMap::CubeMap(const char* folderPath, GLenum wrap, GLenum filter) {
 		glDeleteTextures(1, &ID);
 		ID = 0;
 	}
+}
+
+void CubeMap::use(GLenum textureUnit) {
+	glActiveTexture(textureUnit);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, ID);
 }
 
 class RenderBuffer {

@@ -95,7 +95,7 @@
     <ClInclude Include="src\engine.hpp">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="src\frameBuffer.hpp">
+    <ClInclude Include="src\glBuffer.hpp">
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="src\input.hpp">
@@ -145,6 +145,14 @@
     <None Include="data\shader\test.frag">
       <Filter>资源文件\shader</Filter>
     </None>
-    <None Include="data\shader\settings.glsl" />
+    <None Include="data\shader\skybox.vert">
+      <Filter>资源文件\shader</Filter>
+    </None>
+    <None Include="data\shader\skybox.frag">
+      <Filter>资源文件\shader</Filter>
+    </None>
+    <None Include="data\shader\settings.glsl">
+      <Filter>资源文件\shader</Filter>
+    </None>
   </ItemGroup>
 </Project>

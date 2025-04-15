@@ -8,6 +8,7 @@
 #include <fstream>
 #include <sstream>
 #include <iostream>
+#include <regex>
 
 class Shader
 {
@@ -21,6 +22,8 @@ public:
     void setFloat(const char* name, float value);
     void setInt(const char* name, int value);
     void setBool(const char* name, bool value);
+private:
+    std::string preprocessShader(const std::string shaderContent);
 };
 
 std::string readShaderFile(const char* shaderFilePath) {
@@ -31,12 +34,26 @@ std::string readShaderFile(const char* shaderFilePath) {
     return fileStream.str();
 }
 
+std::string Shader::preprocessShader(const std::string shaderContent) {
+    std::string processedContent = shaderContent;
+    std::regex includeRegex(R"###(#include\s*"([^"]+)")###");
+    std::smatch match;
+
+    while (std::regex_search(processedContent, match, includeRegex)) {
+        std::string includeFile = match[1].str();
+        std::string includeContent = readShaderFile(includeFile.c_str());
+        processedContent.replace(match.position(0), match.length(0), includeContent);
+    }
+    return processedContent;
+}
+
 Shader::Shader(const char* vertexShaderPath, const char* fragmentShaderPath) {
     GLuint vShader = glCreateShader(GL_VERTEX_SHADER);
     GLuint fShader = glCreateShader(GL_FRAGMENT_SHADER);
 
     std::string vShaderContent = readShaderFile(vertexShaderPath);
     std::string fShaderContent = readShaderFile(fragmentShaderPath);
+    fShaderContent = preprocessShader(fShaderContent);
 
     const char* vshaderCode = vShaderContent.c_str();
     const char* fshaderCode = fShaderContent.c_str();

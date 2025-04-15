@@ -3,6 +3,7 @@
 #pragma once
 
 #include "model.hpp"
+#include "skybox.hpp"
 #include <iostream>
 #include <glm/glm.hpp>
 
@@ -87,9 +88,28 @@ public:
 	SkyBoxComponent() {
 		name = "SkyBoxComponent";
 	}
-
+	virtual std::string getName() const override { return name; }
+	
+	SkyBoxPtr skybox;
+	void setSkyBox(std::string folderPath);
 private:
 	std::string name;
 };
 
+void SkyBoxComponent::setSkyBox(std::string folderPath) {
+	skybox = std::make_shared<SkyBox>(folderPath);
+	skybox->initGLResources();
+}
+
+class ShadowCaster : public Component {
+public:
+	ShadowCaster() {
+		name = "ShadowCaster";
+	}
+	virtual std::string getName() const override { return name; }
+
+
+private:
+	std::string name;
+};
 #endif

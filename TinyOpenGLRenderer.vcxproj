@@ -159,7 +159,7 @@
     <ClInclude Include="src\core\resourceManager.hpp" />
     <ClInclude Include="src\core\windowSystem.hpp" />
     <ClInclude Include="src\engine.hpp" />
-    <ClInclude Include="src\frameBuffer.hpp" />
+    <ClInclude Include="src\glBuffer.hpp" />
     <ClInclude Include="src\input.hpp" />
     <ClInclude Include="src\gameObject.hpp" />
     <ClInclude Include="src\material.hpp" />
@@ -172,6 +172,8 @@
   <ItemGroup>
     <None Include="data\config.json" />
     <None Include="data\shader\settings.glsl" />
+    <None Include="data\shader\skybox.frag" />
+    <None Include="data\shader\skybox.vert" />
     <None Include="data\shader\test.frag" />
     <None Include="data\shader\test.vert" />
   </ItemGroup>
