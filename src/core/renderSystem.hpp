@@ -2,6 +2,7 @@
 #define RENDERSYSTEM_HPP
 #pragma once
 
+#include "../glBuffer.hpp"
 #include "resourceManager.hpp"
 #include <glad/glad.h>
 #include <glm/gtc/type_ptr.hpp>
@@ -16,8 +17,9 @@ public:
 	void render(Camera& camera);
 private:
 	int width, height; //viewport width and height
-	GLuint uboMatrices; //uniform buffer object for view and projection matrices
-	GLuint ssboPointLights, ssboDirectionLight, ssboSpotLights;
+	UniformBuffer uboMatrices;
+	ShaderStorageBuffer ssboPointLights, ssboDirectionLight, ssboSpotLights;
+	FrameBuffer shadowMapFrameBuffer;
 };
 
 void RenderSystem::init() {
@@ -33,29 +35,32 @@ void RenderSystem::init() {
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LEQUAL);
 
-	glGenBuffers(1, &uboMatrices);
-	glBindBuffer(GL_UNIFORM_BUFFER, uboMatrices);
-	glBufferData(GL_UNIFORM_BUFFER, 2 * sizeof(glm::mat4), NULL, GL_STATIC_DRAW);
-	glBindBufferBase(GL_UNIFORM_BUFFER, 0, uboMatrices);
-	glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
-	glGenBuffers(1, &ssboPointLights);
-	glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssboPointLights);
-	glBufferData(GL_SHADER_STORAGE_BUFFER, 100 * PointLightObject::glslSize, NULL, GL_STATIC_DRAW);
-	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, ssboPointLights);
-	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
-	glGenBuffers(1, &ssboDirectionLight);
-	glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssboDirectionLight);
-	glBufferData(GL_SHADER_STORAGE_BUFFER, DirectionLightObject::glslSize, NULL, GL_STATIC_DRAW);
-	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, ssboDirectionLight);
-	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+	uboMatrices.init();
+	ssboPointLights.init();
+	ssboDirectionLight.init();
+	ssboSpotLights.init();
 
-	glGenBuffers(1, &ssboSpotLights);
-	glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssboSpotLights);
-	glBufferData(GL_SHADER_STORAGE_BUFFER, 100* SpotLightObject::glslSize, NULL, GL_STATIC_DRAW);
-	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, ssboSpotLights);
-	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+	uboMatrices.bind();
+	uboMatrices.bufferBase(0);
+	uboMatrices.bufferData(2 * sizeof(glm::mat4), NULL);
+	uboMatrices.unbind();
+
+	ssboPointLights.bind();
+	ssboPointLights.bufferBase(1);
+	ssboPointLights.bufferData(100 * PointLightObject::glslSize, NULL);
+	ssboPointLights.unbind();
+
+	ssboDirectionLight.bind();
+	ssboDirectionLight.bufferBase(2);
+	ssboDirectionLight.bufferData(DirectionLightObject::glslSize, NULL);
+	ssboDirectionLight.unbind();
+	
+	ssboSpotLights.bind();
+	ssboSpotLights.bufferBase(3);
+	ssboSpotLights.bufferData(50 * SpotLightObject::glslSize, NULL);
+	ssboSpotLights.unbind();
 }
 
 void RenderSystem::update() {
@@ -67,10 +72,10 @@ void RenderSystem::update() {
 }
 
 void RenderSystem::render(Camera& camera) {
-	glBindBuffer(GL_UNIFORM_BUFFER, uboMatrices);
-	glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::mat4), glm::value_ptr(camera.getViewMat()));
-	glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(camera.getProjectionMat((float)width, (float)height)));
-	glBindBuffer(GL_UNIFORM_BUFFER, 0);
+	uboMatrices.bind();
+	uboMatrices.bufferSubdata(0, sizeof(glm::mat4), glm::value_ptr(camera.getViewMat()));
+	uboMatrices.bufferSubdata(sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(camera.getProjectionMat((float)width, (float)height)));
+	uboMatrices.unbind();
 
 	glClearColor(0.1, 0.1f, 0.1f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -78,6 +83,7 @@ void RenderSystem::render(Camera& camera) {
 	ShaderPtr defaultShader = ResourceManager::getInstance().shaderCache["default"];
 	ShaderPtr skyboxShader = ResourceManager::getInstance().shaderCache["skybox"];
 
+	// lightPass
 	defaultShader->use();
 	int pointLightIndex = 0, spotLightIndex = 0;
 	for (int i = 0; i < ResourceManager::getInstance().gameObjects.size(); i++) {
@@ -98,6 +104,7 @@ void RenderSystem::render(Camera& camera) {
 	defaultShader->setInt("directionLightNum", ResourceManager::getInstance().directionLightNum);
 	defaultShader->setInt("spotLightNum", ResourceManager::getInstance().spotLightNum);
 
+	//normalPass
 	for (int i = 0; i < ResourceManager::getInstance().gameObjects.size(); i++) {
 		GameObjectPtr object = ResourceManager::getInstance().gameObjects[i];
 		if (object->getType() == GameObject::Type::RENDEROBJECT) {

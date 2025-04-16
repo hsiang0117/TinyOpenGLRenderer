@@ -108,7 +108,7 @@ public:
 	}
 	virtual std::string getName() const override { return name; }
 
-
+	std::weak_ptr<FrameBuffer> frameBuffer;
 private:
 	std::string name;
 };

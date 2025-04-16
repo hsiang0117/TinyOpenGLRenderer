@@ -2,6 +2,7 @@
 #define RESOURCEMANAGER_HPP
 #pragma once
 
+#include "../glBuffer.hpp"
 #include "../shader.hpp"
 #include "../model.hpp"
 #include "../gameObject.hpp"
@@ -25,7 +26,7 @@ public:
 	int pointLightNum = 0, directionLightNum = 0, spotLightNum = 0;
 private:
 };
-
+ 
 ResourceManager& ResourceManager::getInstance() {
 	static ResourceManager instance;
 	return instance;

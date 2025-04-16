@@ -6,13 +6,18 @@
 
 class GLBuffer {
 public:
+	GLBuffer() : ID(0) {};
 	GLuint ID;
-	GLBuffer() = default;
+	void init();
 	void reset();
 	void destroy();
 	virtual void bind() = 0;
 	virtual void unbind() = 0;
 };
+
+void GLBuffer::init() {
+	glGenBuffers(1, &ID);
+}
 
 void GLBuffer::reset() {
 	destroy();
@@ -28,7 +33,7 @@ void GLBuffer::destroy() {
 
 class UniformBuffer : public GLBuffer{
 public:
-	UniformBuffer();
+	UniformBuffer() {};
 	virtual void bind() override;
 	virtual void unbind() override;
 
@@ -36,10 +41,6 @@ public:
 	void bufferBase(GLuint index);
 	void bufferSubdata(GLintptr offset, GLsizeiptr size, const GLvoid* data);
 };
-
-UniformBuffer::UniformBuffer() {
-	glGenBuffers(1, &ID);
-}
 
 void UniformBuffer::bind() {
 	glBindBuffer(GL_UNIFORM_BUFFER, ID);
@@ -50,7 +51,7 @@ void UniformBuffer::unbind() {
 }
 
 void UniformBuffer::bufferData(GLsizeiptr size, const GLvoid* data) {
-	glBufferData(GL_UNIFORM_BUFFER, size, &data, GL_STATIC_DRAW);
+	glBufferData(GL_UNIFORM_BUFFER, size, data, GL_STATIC_DRAW);
 }
 
 void UniformBuffer::bufferBase(GLuint index) {
@@ -58,16 +59,38 @@ void UniformBuffer::bufferBase(GLuint index) {
 }
 
 void UniformBuffer::bufferSubdata(GLintptr offset, GLsizeiptr size, const GLvoid* data) {
-	glBufferSubData(GL_UNIFORM_BUFFER, offset, size, &data);
+	glBufferSubData(GL_UNIFORM_BUFFER, offset, size, data);
 }
 
 class ShaderStorageBuffer :public GLBuffer {
 public:
-	ShaderStorageBuffer();
+	ShaderStorageBuffer() {};
+	virtual void bind() override;
+	virtual void unbind() override;
+
+	void bufferData(GLsizeiptr size, const GLvoid* data);
+	void bufferBase(GLuint index);
+	void bufferSubdata(GLintptr offset, GLsizeiptr size, const GLvoid* data);
 };
 
-ShaderStorageBuffer::ShaderStorageBuffer() {
-	glGenBuffers(1, &ID);
+void ShaderStorageBuffer::bind() {
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, ID);
+}
+
+void ShaderStorageBuffer::unbind() {
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+}
+
+void ShaderStorageBuffer::bufferData(GLsizeiptr size, const GLvoid* data) {
+	glBufferData(GL_SHADER_STORAGE_BUFFER, size, data, GL_STATIC_DRAW);
+}
+
+void ShaderStorageBuffer::bufferBase(GLuint index) {
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, index, ID);
+}
+
+void ShaderStorageBuffer::bufferSubdata(GLintptr offset, GLsizeiptr size, const GLvoid* data) {
+	glBufferSubData(GL_SHADER_STORAGE_BUFFER, offset, size, data);
 }
 
 class FrameBuffer : public GLBuffer{

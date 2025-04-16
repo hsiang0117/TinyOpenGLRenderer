@@ -2,6 +2,7 @@
 #define GAMEOBJECT_HPP
 #pragma once
 
+#include "glBuffer.hpp"
 #include "component.hpp"
 #include "model.hpp"
 #include "shader.hpp"
@@ -21,7 +22,7 @@ public:
 	std::string getName() { return name; }
 	Type getType() { return type; }
 	virtual void draw(ShaderPtr shader) {}; // RenderObject和SkyBox在渲染时调用的接口
-	virtual void sendToSSBO(int index, GLuint ssbo) {}; // LightObject在渲染时调用的接口
+	virtual void sendToSSBO(int index, ShaderStorageBuffer ssbo) {}; // LightObject在渲染时调用的接口
 	virtual void useCubeMap(ShaderPtr shader) {};
 
 	template<typename T, typename... Args>
@@ -97,23 +98,23 @@ public:
 	PointLightObject(std::string name) : GameObject(name) {
 		type = GameObject::Type::POINTLIGHTOBJECT;
 	}
-	virtual void sendToSSBO(int index, GLuint ssbo) override;
+	virtual void sendToSSBO(int index, ShaderStorageBuffer ssbo) override;
 	static const int glslSize = 48;
 };
 
-void PointLightObject::sendToSSBO(int index, GLuint ssbo) {
+void PointLightObject::sendToSSBO(int index, ShaderStorageBuffer ssbo) {
 	auto transform = getComponent<Transform>();
 	auto pointLight = getComponent<PointLightComponent>();
-	glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo);
-	glBufferSubData(GL_SHADER_STORAGE_BUFFER, index * glslSize, 12, glm::value_ptr(transform->translate));
-	glBufferSubData(GL_SHADER_STORAGE_BUFFER, index * glslSize + 12, 4, 0);
-	glBufferSubData(GL_SHADER_STORAGE_BUFFER, index * glslSize + 16, 12, glm::value_ptr(pointLight->color));
-	glBufferSubData(GL_SHADER_STORAGE_BUFFER, index * glslSize + 28, 4, 0);
-	glBufferSubData(GL_SHADER_STORAGE_BUFFER, index * glslSize + 32, 4, &pointLight->constant);
-	glBufferSubData(GL_SHADER_STORAGE_BUFFER, index * glslSize + 36, 4, &pointLight->linear);
-	glBufferSubData(GL_SHADER_STORAGE_BUFFER, index * glslSize + 40, 4, &pointLight->quadratic);
-	glBufferSubData(GL_SHADER_STORAGE_BUFFER, index * glslSize + 44, 4, 0);
-	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+	ssbo.bind();
+	ssbo.bufferSubdata(index * glslSize, 12, glm::value_ptr(transform->translate));
+	ssbo.bufferSubdata(index * glslSize + 12, 4, nullptr);
+	ssbo.bufferSubdata(index * glslSize + 16, 12, glm::value_ptr(pointLight->color));
+	ssbo.bufferSubdata(index * glslSize + 28, 4, nullptr);
+	ssbo.bufferSubdata(index * glslSize + 32, 4, &pointLight->constant);
+	ssbo.bufferSubdata(index * glslSize + 36, 4, &pointLight->linear);
+	ssbo.bufferSubdata(index * glslSize + 40, 4, &pointLight->quadratic);
+	ssbo.bufferSubdata(index * glslSize + 44, 4, nullptr);
+	ssbo.unbind();
 }
 
 class DirectionLightObject : public GameObject {
@@ -121,11 +122,11 @@ public:
 	DirectionLightObject(std::string name) : GameObject(name) {
 		type = GameObject::Type::DIRECTIONLIGHTOBJECT;
 	}
-	virtual void sendToSSBO(int index, GLuint ssbo) override;
+	virtual void sendToSSBO(int index, ShaderStorageBuffer ssbo) override;
 	static const int glslSize = 32;
 };
 
-void DirectionLightObject::sendToSSBO(int index, GLuint ssbo) {
+void DirectionLightObject::sendToSSBO(int index, ShaderStorageBuffer ssbo) {
 	auto transform = getComponent<Transform>();
 	auto directionLight = getComponent<DirectionLightComponent>();
 	glm::mat4 rotation(1.0);
@@ -134,12 +135,12 @@ void DirectionLightObject::sendToSSBO(int index, GLuint ssbo) {
 	rotation = glm::rotate(rotation, glm::radians(transform->rotate.x), glm::vec3(1, 0, 0));
 	glm::vec3 direction(1.0,0.0,0.0);
 	direction = glm::mat3(rotation) * direction;
-	glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo);
-	glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, 12, glm::value_ptr(direction));
-	glBufferSubData(GL_SHADER_STORAGE_BUFFER, 12, 4, 0);
-	glBufferSubData(GL_SHADER_STORAGE_BUFFER, 16, 12, glm::value_ptr(directionLight->color));
-	glBufferSubData(GL_SHADER_STORAGE_BUFFER, 28, 4, 0);
-	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+	ssbo.bind();
+	ssbo.bufferSubdata(0, 12, glm::value_ptr(direction));
+	ssbo.bufferSubdata(12, 4, nullptr);
+	ssbo.bufferSubdata(16, 12, glm::value_ptr(directionLight->color));
+	ssbo.bufferSubdata(28, 4, nullptr);
+	ssbo.unbind();
 }
 
 class SpotLightObject : public GameObject {
@@ -147,11 +148,11 @@ public:
 	SpotLightObject(std::string name) : GameObject(name) {
 		type = GameObject::Type::SPOTLIGHTOBJECT;
 	}
-	virtual void sendToSSBO(int index, GLuint ssbo) override;
+	virtual void sendToSSBO(int index, ShaderStorageBuffer ssbo) override;
 	static const int glslSize = 64;
 };
 
-void SpotLightObject::sendToSSBO(int index, GLuint ssbo) {
+void SpotLightObject::sendToSSBO(int index, ShaderStorageBuffer ssbo) {
 	auto transform = getComponent<Transform>();
 	auto spotLight = getComponent<SpotLightComponent>();
 	glm::mat4 rotation(1.0);
@@ -162,17 +163,17 @@ void SpotLightObject::sendToSSBO(int index, GLuint ssbo) {
 	direction = glm::mat3(rotation) * direction;
 	float cutOff = glm::cos(glm::radians(spotLight->cutOff));
 	float outerCutOff = glm::cos(glm::radians(spotLight->outerCutOff));
-	glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo);
-	glBufferSubData(GL_SHADER_STORAGE_BUFFER, index * glslSize, 12, glm::value_ptr(transform->translate));
-	glBufferSubData(GL_SHADER_STORAGE_BUFFER, index * glslSize + 12, 4, 0);
-	glBufferSubData(GL_SHADER_STORAGE_BUFFER, index * glslSize + 16, 12, glm::value_ptr(direction));
-	glBufferSubData(GL_SHADER_STORAGE_BUFFER, index * glslSize + 28, 4, 0);
-	glBufferSubData(GL_SHADER_STORAGE_BUFFER, index * glslSize + 32, 12, glm::value_ptr(spotLight->color));
-	glBufferSubData(GL_SHADER_STORAGE_BUFFER, index * glslSize + 44, 4, 0);
-	glBufferSubData(GL_SHADER_STORAGE_BUFFER, index * glslSize + 48, 4, &cutOff);
-	glBufferSubData(GL_SHADER_STORAGE_BUFFER, index * glslSize + 52, 4, &outerCutOff);
-	glBufferSubData(GL_SHADER_STORAGE_BUFFER, index * glslSize + 56, 8, 0);
-	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+	ssbo.bind();
+	ssbo.bufferSubdata(index * glslSize, 12, glm::value_ptr(transform->translate));
+	ssbo.bufferSubdata(index * glslSize + 12, 4, nullptr);
+	ssbo.bufferSubdata(index * glslSize + 16, 12, glm::value_ptr(direction));
+	ssbo.bufferSubdata(index * glslSize + 28, 4, nullptr);
+	ssbo.bufferSubdata(index * glslSize + 32, 12, glm::value_ptr(spotLight->color));
+	ssbo.bufferSubdata(index * glslSize + 44, 4, nullptr);
+	ssbo.bufferSubdata(index * glslSize + 48, 4, &cutOff);
+	ssbo.bufferSubdata(index * glslSize + 52, 4, &outerCutOff);
+	ssbo.bufferSubdata(index * glslSize + 56, 8, nullptr);
+	ssbo.unbind();
 }
 
 class SkyBoxObject : public GameObject {

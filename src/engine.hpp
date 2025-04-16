@@ -31,10 +31,10 @@ Engine& Engine::getInstance() {
 
 void Engine::init() {
 	Input::getInstance().init();
+	ResourceManager::getInstance().init();
 	windowSystem.init(1280, 720);
 	renderSystem.init();
 	guiSystem.init(windowSystem.getWindow());
-	ResourceManager::getInstance().init();
 }
 
 void Engine::run() {
@@ -42,9 +42,9 @@ void Engine::run() {
 		double deltaTime = getDeltaTime();
 		Input::getInstance().update();
 		windowSystem.update();
+		ResourceManager::getInstance().update();
 		camera.update(deltaTime);
 		renderSystem.update();
-		ResourceManager::getInstance().update();
 		guiSystem.beginFrame();
 		renderSystem.render(camera);
 		guiSystem.render();
