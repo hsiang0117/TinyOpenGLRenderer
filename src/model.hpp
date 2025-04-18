@@ -27,7 +27,7 @@ private:
 	bool loaded = false, glInitialized = false;
 
 	std::unordered_map<unsigned int, Material> materials;
-	std::vector<Mesh> meshes;
+	std::vector<MeshPtr> meshes;
 
 	std::string path;
 	std::string directory;
@@ -52,7 +52,7 @@ bool Model::initGLResources()
 	if (!loaded || glInitialized) return false;
 
 	for (auto& mesh : meshes) {
-		if (!mesh.initGLResources()) {
+		if (!mesh->initGLResources()) {
 			std::cerr << "Failed to initialize mesh GL resources\n";
 			return false;
 		}
@@ -68,11 +68,11 @@ void Model::draw()
 {
 	for (unsigned int i = 0; i < meshes.size(); i++)
 	{
-		auto material = materials.find(meshes[i].getMaterialIndex());
+		auto material = materials.find(meshes[i]->getMaterialIndex());
 		if (material != materials.end()) {
 			material->second.bind();
 		}
-		meshes[i].draw();
+		meshes[i]->draw();
 	}
 }
 
@@ -99,7 +99,8 @@ void Model::processNode(aiNode* node, const aiScene* scene)
 	for (unsigned int i = 0; i < node->mNumMeshes; i++)
 	{
 		aiMesh* mesh = scene->mMeshes[node->mMeshes[i]];
-		meshes.push_back(processMesh(mesh, scene));
+		MeshPtr meshPtr = std::make_shared<Mesh>(processMesh(mesh, scene));
+		meshes.push_back(meshPtr);
 	}
 	for (unsigned int i = 0; i < node->mNumChildren; i++)
 	{

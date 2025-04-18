@@ -21,9 +21,10 @@ public:
 	virtual ~GameObject() = default;
 	std::string getName() { return name; }
 	Type getType() { return type; }
-	virtual void draw(ShaderPtr shader) {}; // RenderObject和SkyBox在渲染时调用的接口
-	virtual void sendToSSBO(int index, ShaderStorageBuffer ssbo) {}; // LightObject在渲染时调用的接口
-	virtual void useCubeMap(ShaderPtr shader) {};
+	virtual void draw(ShaderPtr shader) {}
+	virtual void sendToSSBO(int index, ShaderStorageBuffer ssbo) {}
+	virtual glm::mat4 getLightMatrices() { return glm::mat4(1.0f); }
+	virtual void useCubeMap(ShaderPtr shader) {}
 
 	template<typename T, typename... Args>
 	std::shared_ptr<T> addComponent(Args&&... args);
@@ -123,7 +124,10 @@ public:
 		type = GameObject::Type::DIRECTIONLIGHTOBJECT;
 	}
 	virtual void sendToSSBO(int index, ShaderStorageBuffer ssbo) override;
+	virtual glm::mat4 getLightMatrices() override;
+
 	static const int glslSize = 32;
+private:
 };
 
 void DirectionLightObject::sendToSSBO(int index, ShaderStorageBuffer ssbo) {
@@ -143,12 +147,26 @@ void DirectionLightObject::sendToSSBO(int index, ShaderStorageBuffer ssbo) {
 	ssbo.unbind();
 }
 
+glm::mat4 DirectionLightObject::getLightMatrices() {
+	auto transform = getComponent<Transform>();
+	glm::mat4 rotation(1.0);
+	rotation = glm::rotate(rotation, glm::radians(transform->rotate.z), glm::vec3(0, 0, 1));
+	rotation = glm::rotate(rotation, glm::radians(transform->rotate.y), glm::vec3(0, 1, 0));
+	rotation = glm::rotate(rotation, glm::radians(transform->rotate.x), glm::vec3(1, 0, 0));
+	glm::vec3 direction(1.0, 0.0, 0.0);
+	direction = glm::mat3(rotation) * direction;
+	glm::mat4 lightProjection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, -10.0f, 10.0f);
+	glm::mat4 lightView = glm::lookAt(-direction, glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+	return lightProjection * lightView;
+}
+
 class SpotLightObject : public GameObject {
 public:
 	SpotLightObject(std::string name) : GameObject(name) {
 		type = GameObject::Type::SPOTLIGHTOBJECT;
 	}
 	virtual void sendToSSBO(int index, ShaderStorageBuffer ssbo) override;
+
 	static const int glslSize = 64;
 };
 

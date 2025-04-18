@@ -35,6 +35,8 @@ ResourceManager& ResourceManager::getInstance() {
 void ResourceManager::init() {
 	shaderCache["default"] = std::make_shared<Shader>("data/shader/test.vert", "data/shader/test.frag");
 	shaderCache["skybox"] = std::make_shared<Shader>("data/shader/skybox.vert", "data/shader/skybox.frag");
+	shaderCache["depth"] = std::make_shared<Shader>("data/shader/depth.vert", "data/shader/depth.frag");
+	shaderCache["screenQuad"] = std::make_shared<Shader>("data/shader/screenQuad.vert", "data/shader/screenQuad.frag");
 }
 
 void ResourceManager::update() {

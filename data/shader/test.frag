@@ -17,6 +17,9 @@ uniform sampler2D shininessMap;
 #ifdef ENVIRONMENT_MAPPING
 	uniform samplerCube skybox;
 #endif
+uniform sampler2DArray shadowMap2DArray;
+uniform samplerCubeArray shadowMapCubeArray;
+
 uniform vec3 cameraPos;
 
 uniform int pointLightNum;

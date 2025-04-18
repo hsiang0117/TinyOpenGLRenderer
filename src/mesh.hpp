@@ -22,6 +22,7 @@ public:
     Mesh() = default;
     Mesh(std::vector<Vertex> vertices, std::vector<GLuint> indices);
     bool initGLResources();
+	bool isReady() const { return glInitialized; }
     void draw();
     void setMaterialIndex(unsigned int index) { materialIndex = index; }
     unsigned int getMaterialIndex() { return materialIndex; }
@@ -78,4 +79,5 @@ void Mesh::draw()
     glBindVertexArray(0);
 }
 
+using MeshPtr = std::shared_ptr<Mesh>;
 #endif

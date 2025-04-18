@@ -164,6 +164,7 @@
     <ClInclude Include="src\gameObject.hpp" />
     <ClInclude Include="src\material.hpp" />
     <ClInclude Include="src\mesh.hpp" />
+    <ClInclude Include="src\meshGenerator.hpp" />
     <ClInclude Include="src\model.hpp" />
     <ClInclude Include="src\shader.hpp" />
     <ClInclude Include="src\skybox.hpp" />
@@ -171,6 +172,10 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="data\config.json" />
+    <None Include="data\shader\depth.frag" />
+    <None Include="data\shader\depth.vert" />
+    <None Include="data\shader\screenQuad.frag" />
+    <None Include="data\shader\screenQuad.vert" />
     <None Include="data\shader\settings.glsl" />
     <None Include="data\shader\skybox.frag" />
     <None Include="data\shader\skybox.vert" />

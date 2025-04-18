@@ -31,9 +31,9 @@ Engine& Engine::getInstance() {
 
 void Engine::init() {
 	Input::getInstance().init();
-	ResourceManager::getInstance().init();
 	windowSystem.init(1280, 720);
 	renderSystem.init();
+	ResourceManager::getInstance().init();
 	guiSystem.init(windowSystem.getWindow());
 }
 

@@ -12,13 +12,8 @@ public:
 	Texture() = default;
 	~Texture() = default;
 	GLuint ID;
-	virtual void use(GLenum textureUnit);
+	virtual void use(GLenum textureUnit) = 0;
 };
-   
-void Texture::use(GLenum textureUnit) {
-	glActiveTexture(textureUnit);
-	glBindTexture(GL_TEXTURE_2D, ID);
-}
 
 class Texture2D : public Texture {
 public:	
@@ -30,8 +25,10 @@ public:
 		SHININESS,
 		BUFFER
 	};
+	Texture2D() {};
 	Texture2D(int width, int height, GLenum wrap, GLenum filter, GLenum internalFormat, GLenum format); // Empty texture, for framebuffer usage etc.
 	Texture2D(const char* path, Type type, GLenum wrap, GLenum filter); // Load texture from file.
+	virtual void use(GLenum textureUnit) override;
 	Type getType() { return type; }
 private:
 	Type type;
@@ -83,6 +80,34 @@ Texture2D::Texture2D(const char* path, Type type, GLenum wrap, GLenum filter) {
 		glBindTexture(GL_TEXTURE_2D, 0);
 	}
 	stbi_image_free(data);
+}
+
+void Texture2D::use(GLenum textureUnit) {
+	glActiveTexture(textureUnit);
+	glBindTexture(GL_TEXTURE_2D, ID);
+}
+
+class Texture2DArray :public Texture {
+public:
+	Texture2DArray() {}
+	Texture2DArray(int width, int height, int length, GLenum wrap, GLenum filter, GLenum internalFormat, GLenum format);
+	virtual void use(GLenum textureUnit) override;
+};
+
+Texture2DArray::Texture2DArray(int width, int height, int length, GLenum wrap, GLenum filter, GLenum internalFormat, GLenum format) {
+	glGenTextures(1, &ID);
+	glBindTexture(GL_TEXTURE_2D_ARRAY, ID);
+	glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, internalFormat, width, height, length, 0, format, GL_FLOAT, nullptr);
+	glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, wrap);
+	glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, wrap);
+	glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, filter);
+	glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, filter);
+	glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
+}
+
+void Texture2DArray::use(GLenum textureUnit) {
+	glActiveTexture(textureUnit);
+	glBindTexture(GL_TEXTURE_2D_ARRAY, ID);
 }
 
 class CubeMap : public Texture {

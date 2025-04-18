@@ -8,9 +8,9 @@ class GLBuffer {
 public:
 	GLBuffer() : ID(0) {};
 	GLuint ID;
-	void init();
-	void reset();
-	void destroy();
+	virtual void init();
+	virtual void reset();
+	virtual void destroy();
 	virtual void bind() = 0;
 	virtual void unbind() = 0;
 };
@@ -95,27 +95,36 @@ void ShaderStorageBuffer::bufferSubdata(GLintptr offset, GLsizeiptr size, const 
 
 class FrameBuffer : public GLBuffer{
 public:
-	enum class AttachmentType : decltype(GL_COLOR_ATTACHMENT0) {
-		COLOR0 = GL_COLOR_ATTACHMENT0,
-		COLOR1 = GL_COLOR_ATTACHMENT1,
-		COLOR2 = GL_COLOR_ATTACHMENT2,
-		COLOR3 = GL_COLOR_ATTACHMENT3,
-		DEPTH = GL_DEPTH_ATTACHMENT,
-		STENCIL = GL_STENCIL_ATTACHMENT
-	};
 
 	GLuint ID;
-	FrameBuffer();
+	FrameBuffer() {};
+	virtual void init() override;
+	virtual void reset() override;
+	virtual void destroy() override;
 	virtual void bind() override;
 	virtual void unbind() override;
 
-	void attachTexture(Texture& texture, AttachmentType type);
-	void attachRenderBuffer(RenderBuffer& renderBuffer, AttachmentType type);
-	void drawBuffers(const AttachmentType attachments[]);
+	void attachTexture2D(Texture2D& texture, GLenum type);
+	void attachRenderBuffer(RenderBuffer& renderBuffer, GLenum type);
+	void attachTextureLayer(Texture2DArray& textureArray, GLenum type, int index);
+	void drawBuffers(const GLenum type[]);
+	void readBuffer(const GLenum type);
 };
 
-FrameBuffer::FrameBuffer() {
+void FrameBuffer::init() {
 	glGenFramebuffers(1, &ID);
+}
+
+void FrameBuffer::reset() {
+	destroy();
+	glGenFramebuffers(1, &ID);
+}
+
+void FrameBuffer::destroy() {
+	if (ID) {
+		glDeleteFramebuffers(1, &ID);
+	}
+	ID = 0;
 }
 
 void FrameBuffer::bind() {
@@ -126,22 +135,23 @@ void FrameBuffer::unbind() {
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
-void FrameBuffer::attachTexture(Texture& texture, AttachmentType type) {
-	glBindFramebuffer(GL_FRAMEBUFFER, ID);
-	glFramebufferTexture2D(GL_FRAMEBUFFER, static_cast<GLenum>(type), GL_TEXTURE_2D, texture.ID, 0);
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+void FrameBuffer::attachTexture2D(Texture2D& texture, GLenum type) {
+	glFramebufferTexture2D(GL_FRAMEBUFFER, type, GL_TEXTURE_2D, texture.ID, 0);
 }
 
-void FrameBuffer::attachRenderBuffer(RenderBuffer& renderBuffer, AttachmentType type) {
-	glBindFramebuffer(GL_FRAMEBUFFER, ID);
-	glFramebufferRenderbuffer(GL_FRAMEBUFFER, static_cast<GLenum>(type), GL_RENDERBUFFER, renderBuffer.ID);
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+void FrameBuffer::attachRenderBuffer(RenderBuffer& renderBuffer, GLenum type) {
+	glFramebufferRenderbuffer(GL_FRAMEBUFFER, type, GL_RENDERBUFFER, renderBuffer.ID);
 }
 
-void FrameBuffer::drawBuffers(const AttachmentType attachments[]) {
-	glBindFramebuffer(GL_FRAMEBUFFER, ID);
-	glDrawBuffers(sizeof(attachments) / sizeof(attachments[0]), reinterpret_cast<const GLenum*>(attachments));
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+void FrameBuffer::attachTextureLayer(Texture2DArray& textureArray, GLenum type, int index) {
+	glFramebufferTextureLayer(GL_FRAMEBUFFER, type, textureArray.ID, 0, index);
 }
 
+void FrameBuffer::drawBuffers(const GLenum type[]) {
+	glDrawBuffers(sizeof(type) / sizeof(type[0]), type);
+}
+
+void FrameBuffer::readBuffer(const GLenum type) {
+	glReadBuffer(type);
+}
 #endif // !GLBUFFER_HPP

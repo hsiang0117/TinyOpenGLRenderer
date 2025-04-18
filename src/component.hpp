@@ -2,6 +2,7 @@
 #define COMPONENT_HPP
 #pragma once
 
+#include "texture.hpp"
 #include "model.hpp"
 #include "skybox.hpp"
 #include <iostream>
@@ -101,14 +102,38 @@ void SkyBoxComponent::setSkyBox(std::string folderPath) {
 	skybox->initGLResources();
 }
 
-class ShadowCaster : public Component {
+class ShadowCaster2D : public Component {
 public:
-	ShadowCaster() {
+	ShadowCaster2D() {
 		name = "ShadowCaster";
 	}
 	virtual std::string getName() const override { return name; }
 
-	std::weak_ptr<FrameBuffer> frameBuffer;
+	bool enabled;
+private:
+	std::string name;
+};
+
+class ShadowCasterCube : public Component {
+public:
+	ShadowCasterCube() {
+		name = "ShadowCasterCube";
+	}
+	virtual std::string getName() const override { return name; }
+	bool enabled;
+private:
+	std::string name;
+};
+
+class MeshComponent : public Component {
+public:
+	MeshComponent() {
+		name = "MeshComponent";
+	}
+	virtual std::string getName() const override { return name; }
+
+	void setMesh(MeshPtr mesh) { this->mesh = mesh; }
+	MeshPtr mesh;
 private:
 	std::string name;
 };

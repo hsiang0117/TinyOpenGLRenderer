@@ -19,7 +19,10 @@ private:
 	int width, height; //viewport width and height
 	UniformBuffer uboMatrices;
 	ShaderStorageBuffer ssboPointLights, ssboDirectionLight, ssboSpotLights;
-	FrameBuffer shadowMapFrameBuffer;
+	FrameBuffer depthFBO;
+	Texture2DArray depthTextureArray;
+
+	void drawScreenQuad();
 };
 
 void RenderSystem::init() {
@@ -34,8 +37,6 @@ void RenderSystem::init() {
 	glViewport(300, 250, width, height);
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LEQUAL);
-
-
 
 	uboMatrices.init();
 	ssboPointLights.init();
@@ -61,6 +62,12 @@ void RenderSystem::init() {
 	ssboSpotLights.bufferBase(3);
 	ssboSpotLights.bufferData(50 * SpotLightObject::glslSize, NULL);
 	ssboSpotLights.unbind();
+
+	depthFBO.init();
+	GLenum attachments[1] = { GL_NONE };
+	depthFBO.drawBuffers(attachments);
+	depthFBO.readBuffer(GL_NONE);
+	depthTextureArray = Texture2DArray(1024, 1024, 10, GL_CLAMP_TO_BORDER, GL_NEAREST, GL_DEPTH_COMPONENT, GL_DEPTH_COMPONENT);
 }
 
 void RenderSystem::update() {
@@ -82,45 +89,96 @@ void RenderSystem::render(Camera& camera) {
 
 	ShaderPtr defaultShader = ResourceManager::getInstance().shaderCache["default"];
 	ShaderPtr skyboxShader = ResourceManager::getInstance().shaderCache["skybox"];
+	ShaderPtr depthShader = ResourceManager::getInstance().shaderCache["depth"];
+	ShaderPtr screenQuadShader = ResourceManager::getInstance().shaderCache["screenQuad"];
+
+	//shadowmapPass
+	depthShader->use();
+	for (int i = 0; i < ResourceManager::getInstance().gameObjects.size(); i++) {
+		GameObjectPtr object = ResourceManager::getInstance().gameObjects[i];
+		if (object->getType() == GameObject::Type::DIRECTIONLIGHTOBJECT) {
+			glm::mat4 lightMatrices = object->getLightMatrices();
+			depthShader->setMat4("lightMatrices", lightMatrices);
+			glViewport(0, 0, 1024, 1024);
+			depthFBO.bind();
+			depthFBO.attachTextureLayer(depthTextureArray, GL_DEPTH_ATTACHMENT, 0);
+			glClear(GL_DEPTH_BUFFER_BIT);
+			for (int j = 0; j < ResourceManager::getInstance().gameObjects.size(); j++) {
+				GameObjectPtr object = ResourceManager::getInstance().gameObjects[j];
+				if (object->getType() == GameObject::Type::RENDEROBJECT) {
+					object->draw(depthShader);
+				}
+			}
+			depthFBO.unbind();
+		}
+	}
 
 	// lightPass
-	defaultShader->use();
-	int pointLightIndex = 0, spotLightIndex = 0;
-	for (int i = 0; i < ResourceManager::getInstance().gameObjects.size(); i++) {
-		GameObjectPtr object = ResourceManager::getInstance().gameObjects[i];
-		if (object->getType() == GameObject::Type::POINTLIGHTOBJECT) {
-			object->sendToSSBO(pointLightIndex, ssboPointLights);
-			pointLightIndex++;
-		}
-		else if (object->getType() == GameObject::Type::SPOTLIGHTOBJECT) {
-			object->sendToSSBO(spotLightIndex, ssboSpotLights);
-			spotLightIndex++;
-		}
-		else if (object->getType() == GameObject::Type::DIRECTIONLIGHTOBJECT) {
-			object->sendToSSBO(0, ssboDirectionLight);
-		}
-	}
-	defaultShader->setInt("pointLightNum", ResourceManager::getInstance().pointLightNum);
-	defaultShader->setInt("directionLightNum", ResourceManager::getInstance().directionLightNum);
-	defaultShader->setInt("spotLightNum", ResourceManager::getInstance().spotLightNum);
+	//defaultShader->use();
+	//int pointLightIndex = 0, spotLightIndex = 0;
+	//for (int i = 0; i < ResourceManager::getInstance().gameObjects.size(); i++) {
+	//	GameObjectPtr object = ResourceManager::getInstance().gameObjects[i];
+	//	if (object->getType() == GameObject::Type::POINTLIGHTOBJECT) {
+	//		object->sendToSSBO(pointLightIndex, ssboPointLights);
+	//		pointLightIndex++;
+	//	}
+	//	else if (object->getType() == GameObject::Type::SPOTLIGHTOBJECT) {
+	//		object->sendToSSBO(spotLightIndex, ssboSpotLights);
+	//		spotLightIndex++;
+	//	}
+	//	else if (object->getType() == GameObject::Type::DIRECTIONLIGHTOBJECT) {
+	//		object->sendToSSBO(0, ssboDirectionLight);
+	//	}
+	//}
+	//defaultShader->setInt("pointLightNum", ResourceManager::getInstance().pointLightNum);
+	//defaultShader->setInt("directionLightNum", ResourceManager::getInstance().directionLightNum);
+	//defaultShader->setInt("spotLightNum", ResourceManager::getInstance().spotLightNum);
 
-	//normalPass
-	for (int i = 0; i < ResourceManager::getInstance().gameObjects.size(); i++) {
-		GameObjectPtr object = ResourceManager::getInstance().gameObjects[i];
-		if (object->getType() == GameObject::Type::RENDEROBJECT) {
-			object->draw(defaultShader);
-		}		
-		if (object->getType() == GameObject::Type::SKYBOXOBJECT) {
-			object->useCubeMap(defaultShader);
-		}
-	}
+	////normalPass
+	//for (int i = 0; i < ResourceManager::getInstance().gameObjects.size(); i++) {
+	//	GameObjectPtr object = ResourceManager::getInstance().gameObjects[i];
+	//	if (object->getType() == GameObject::Type::RENDEROBJECT) {
+	//		object->draw(defaultShader);
+	//	}		
+	//	if (object->getType() == GameObject::Type::SKYBOXOBJECT) {
+	//		object->useCubeMap(defaultShader);
+	//	}
+	//}
 
-	skyboxShader->use();
-	for (int i = 0; i < ResourceManager::getInstance().gameObjects.size(); i++) {
-		GameObjectPtr object = ResourceManager::getInstance().gameObjects[i];
-		if (object->getType() == GameObject::Type::SKYBOXOBJECT) {
-			object->draw(skyboxShader);
-		}
+	//skyboxShader->use();
+	//for (int i = 0; i < ResourceManager::getInstance().gameObjects.size(); i++) {
+	//	GameObjectPtr object = ResourceManager::getInstance().gameObjects[i];
+	//	if (object->getType() == GameObject::Type::SKYBOXOBJECT) {
+	//		object->draw(skyboxShader);
+	//	}
+	//}
+}
+void RenderSystem::drawScreenQuad()
+{
+	static GLuint quadVAO, quadVBO;
+
+	if (!quadVAO) {
+		float quadVertices[] = {
+			// positions   // texCoords
+			-1.0f,  1.0f, 0.0f, 1.0f,
+			-1.0f, -1.0f, 0.0f, 0.0f,
+			 1.0f,  1.0f, 1.0f, 1.0f,
+			 1.0f, -1.0f, 1.0f, 0.0f,
+		};
+		glGenVertexArrays(1, &quadVAO);
+		glGenBuffers(1, &quadVBO);
+		glBindVertexArray(quadVAO);
+		glBindBuffer(GL_ARRAY_BUFFER, quadVBO);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), &quadVertices, GL_STATIC_DRAW);
+		glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
+		glEnableVertexAttribArray(0);
+		glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
+		glEnableVertexAttribArray(1);
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
+		glBindVertexArray(0);
 	}
+	glBindVertexArray(quadVAO);
+	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+	glBindVertexArray(0);
 }
 #endif // !RENDERSYSTEM_HPP

@@ -134,6 +134,9 @@
     <ClInclude Include="src\skybox.hpp">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="src\meshGenerator.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="data\config.json">
@@ -152,6 +155,18 @@
       <Filter>资源文件\shader</Filter>
     </None>
     <None Include="data\shader\settings.glsl">
+      <Filter>资源文件\shader</Filter>
+    </None>
+    <None Include="data\shader\depth.vert">
+      <Filter>资源文件\shader</Filter>
+    </None>
+    <None Include="data\shader\depth.frag">
+      <Filter>资源文件\shader</Filter>
+    </None>
+    <None Include="data\shader\screenQuad.vert">
+      <Filter>资源文件\shader</Filter>
+    </None>
+    <None Include="data\shader\screenQuad.frag">
       <Filter>资源文件\shader</Filter>
     </None>
   </ItemGroup>
