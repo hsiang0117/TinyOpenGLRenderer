@@ -15,13 +15,14 @@ public:
 	Material(unsigned int index, std::string albedoPath, std::string ambientPath, std::string specularPath, std::string normalPath, std::string shininessPath);
 	void initGLResources();
 	void bind();
-private:
-	unsigned int index;
+
 	std::string albedoPath;
 	std::string ambientPath;
 	std::string specularPath;
 	std::string normalPath;
 	std::string shininessPath;
+private:
+	unsigned int index;
 	std::vector<Texture2D> textures;
 	void deleteTextures();
 };
@@ -63,6 +64,10 @@ void Material::initGLResources()
 
 void Material::bind()
 {
+	for (auto i = GL_TEXTURE0; i <= GL_TEXTURE4; i++) {
+		glActiveTexture(i);
+		glBindTexture(GL_TEXTURE_2D, 0);
+	}
 	for (int i = 0; i < textures.size(); i++)
 	{
 		switch (textures[i].getType()) {

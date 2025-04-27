@@ -125,10 +125,10 @@ private:
 	std::string name;
 };
 
-class MeshComponent : public Component {
+class StaticMeshComponent : public Component {
 public:
-	MeshComponent() {
-		name = "MeshComponent";
+	StaticMeshComponent() {
+		name = "StaticMeshComponent";
 	}
 	virtual std::string getName() const override { return name; }
 
@@ -137,4 +137,25 @@ public:
 private:
 	std::string name;
 };
+
+class DynamicMaterialComponent : public Component {
+public:
+	DynamicMaterialComponent() {
+		name = "DynamicMaterialComponent";
+	}
+	virtual std::string getName() const override { return name; }
+
+	char albedoPath[255] = {};
+	char specularPath[255] = {};
+	Material material;
+	void setMaterial();
+private:
+	std::string name;
+};
+
+void DynamicMaterialComponent::setMaterial() {
+	material.albedoPath = albedoPath;
+	material.specularPath = specularPath;
+	material.initGLResources();
+}
 #endif

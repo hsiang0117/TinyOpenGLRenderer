@@ -220,4 +220,34 @@ void SkyBoxObject::useCubeMap(ShaderPtr shader) {
 		}
 	}
 }
+
+class StaticMeshObject : public GameObject {
+public:
+	StaticMeshObject(std::string name) : GameObject(name) {
+		type = GameObject::Type::RENDEROBJECT;
+	}
+	virtual void draw(ShaderPtr shader) override;
+};
+
+void StaticMeshObject::draw(ShaderPtr shader) {
+	if (auto staticMeshComponent = getComponent<StaticMeshComponent>()) {
+		shader->setInt("albedoMap", 0);
+		shader->setInt("specularMap", 2);
+		if (auto dynamicMaterialComponent = getComponent<DynamicMaterialComponent>()) {
+			dynamicMaterialComponent->material.bind();
+		}
+		glm::mat4 model = glm::mat4(1.0f);
+		if (auto transform = getComponent<Transform>()) {
+			model = glm::translate(model, transform->translate);
+			model = glm::rotate(model, glm::radians(transform->rotate.z), glm::vec3(0, 0, 1));
+			model = glm::rotate(model, glm::radians(transform->rotate.y), glm::vec3(0, 1, 0));
+			model = glm::rotate(model, glm::radians(transform->rotate.x), glm::vec3(1, 0, 0));
+			model = glm::scale(model, transform->scale);
+			shader.get()->setMat4("model", model);
+			if (staticMeshComponent->mesh) {
+				staticMeshComponent->mesh->draw();
+			}
+		}
+	}
+}
 #endif // !GAMEOBJECT_HPP

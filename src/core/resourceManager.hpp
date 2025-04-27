@@ -43,7 +43,7 @@ void ResourceManager::update() {
 	if (modelFuture.valid() && modelFuture.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
 		ModelPtr model = modelFuture.get();
 		if (model->initGLResources()) {
-			modelCache.insert({ model->getPath(), model});
+			modelCache.insert({ model->getName(), model});
 		}
 	}
 

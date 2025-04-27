@@ -17,8 +17,6 @@ uniform sampler2D shininessMap;
 #ifdef ENVIRONMENT_MAPPING
 	uniform samplerCube skybox;
 #endif
-uniform sampler2DArray shadowMap2DArray;
-uniform samplerCubeArray shadowMapCubeArray;
 
 uniform vec3 cameraPos;
 
@@ -100,7 +98,7 @@ vec3 calculateSpotLight(vec3 albedoColor, vec3 specularColor){
 		float diff = max(dot(fs_in.normal,lightDir),0);
 		result += diff * albedoColor * spotLights[i].color.rgb * intensity;
 		vec3 halfway = normalize(cameraDir+lightDir);
-		float spec = pow(max(dot(fs_in.normal,halfway),0),32);
+		float spec = pow(max(dot(fs_in.normal,halfway),0.0),32);
 		result += spec * specularColor * spotLights[i].color.rgb * intensity;
 	}
 	return result;

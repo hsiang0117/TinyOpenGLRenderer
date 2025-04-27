@@ -4,6 +4,7 @@
 
 #include "../Input.hpp"
 #include "../component.hpp"
+#include "../meshGenerator.hpp"
 #include "resourceManager.hpp"
 #include "imgui/imgui.h"
 #include "imgui/imgui_impl_glfw.h"
@@ -103,7 +104,7 @@ void GuiSystem::showLeftSideBar()
 		if (ImGui::BeginMenu(u8"添加")) {
 			if (ImGui::BeginMenu(u8"光源")) {
 				if (ImGui::MenuItem(u8"点光源")) {
-					std::shared_ptr<PointLightObject> gameObject = std::make_shared<PointLightObject>("PointLight");
+					auto gameObject = std::make_shared<PointLightObject>("PointLight");
 					gameObject->addComponent<Transform>();
 					gameObject->addComponent<PointLightComponent>();
 					ResourceManager::getInstance().gameObjects.push_back(gameObject);
@@ -111,7 +112,7 @@ void GuiSystem::showLeftSideBar()
 				}
 				if (ImGui::MenuItem(u8"平行光")) {
 					if (ResourceManager::getInstance().directionLightNum == 0) {
-						std::shared_ptr<DirectionLightObject> gameObject = std::make_shared<DirectionLightObject>("DirectionLight");
+						auto gameObject = std::make_shared<DirectionLightObject>("DirectionLight");
 						gameObject->addComponent<Transform>();
 						gameObject->addComponent<DirectionLightComponent>();
 						ResourceManager::getInstance().gameObjects.push_back(gameObject);
@@ -119,11 +120,38 @@ void GuiSystem::showLeftSideBar()
 					}
 				}
 				if (ImGui::MenuItem(u8"聚光灯")) {
-					std::shared_ptr<SpotLightObject> gameObject = std::make_shared<SpotLightObject>("SpotLight");
+					auto gameObject = std::make_shared<SpotLightObject>("SpotLight");
 					gameObject->addComponent<Transform>();
 					gameObject->addComponent<SpotLightComponent>();
 					ResourceManager::getInstance().gameObjects.push_back(gameObject);
 					ResourceManager::getInstance().spotLightNum++;
+				}
+				ImGui::EndMenu();
+			}
+			if (ImGui::BeginMenu(u8"静态网格体")) {
+				if (ImGui::MenuItem(u8"立方体")) {
+					auto gameObject = std::make_shared<StaticMeshObject>("Cube");
+					gameObject->addComponent<Transform>();
+					gameObject->addComponent<StaticMeshComponent>();
+					gameObject->getComponent<StaticMeshComponent>()->setMesh(MeshGenerator::generateCube());
+					gameObject->addComponent<DynamicMaterialComponent>();
+					ResourceManager::getInstance().gameObjects.push_back(gameObject);
+				}
+				if (ImGui::MenuItem(u8"平面")) {
+					auto gameObject = std::make_shared<StaticMeshObject>("Plane");
+					gameObject->addComponent<Transform>();
+					gameObject->addComponent<StaticMeshComponent>();
+					gameObject->getComponent<StaticMeshComponent>()->setMesh(MeshGenerator::generatePlane());
+					gameObject->addComponent<DynamicMaterialComponent>();
+					ResourceManager::getInstance().gameObjects.push_back(gameObject);
+				}
+				if (ImGui::MenuItem(u8"球体")) {
+					auto gameObject = std::make_shared<StaticMeshObject>("Sphere");
+					gameObject->addComponent<Transform>();
+					gameObject->addComponent<StaticMeshComponent>();
+					gameObject->getComponent<StaticMeshComponent>()->setMesh(MeshGenerator::generateSphere());
+					gameObject->addComponent<DynamicMaterialComponent>();
+					ResourceManager::getInstance().gameObjects.push_back(gameObject);
 				}
 				ImGui::EndMenu();
 			}
@@ -288,7 +316,6 @@ void GuiSystem::registComponents()
 		});
 
 	registerComponentWidget<RenderComponent>("RenderComponent", [](std::shared_ptr<RenderComponent> renderComponent) {
-
 		});
 
 	registerComponentWidget<PointLightComponent>("PointLightComponent", [](std::shared_ptr<PointLightComponent> pointLightComponent) {
@@ -324,6 +351,19 @@ void GuiSystem::registComponents()
 		ImGui::InputText(u8"路径", buf, sizeof(buf)); ImGui::SameLine();
 		if (ImGui::Button(u8"确认")) {
 			skyboxComponent->setSkyBox(std::string(buf));
+		}
+		});
+
+	registerComponentWidget<StaticMeshComponent>("StaticMeshComponent", [](std::shared_ptr<StaticMeshComponent> staticMeshComponent) {
+		});
+
+	registerComponentWidget<DynamicMaterialComponent>("DynamicMaterialComponent", [](std::shared_ptr<DynamicMaterialComponent> dynamicMaterialComponent) {
+		ImGui::Text(u8"Material");
+		ImGui::Separator();
+		ImGui::InputText(u8"albedo", dynamicMaterialComponent->albedoPath, 255);
+		ImGui::InputText(u8"specular", dynamicMaterialComponent->specularPath, 255);
+		if (ImGui::Button(u8"确认")) {
+			dynamicMaterialComponent->setMaterial();
 		}
 		});
 }
