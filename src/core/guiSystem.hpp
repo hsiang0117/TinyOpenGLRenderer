@@ -115,6 +115,7 @@ void GuiSystem::showLeftSideBar()
 						auto gameObject = std::make_shared<DirectionLightObject>("DirectionLight");
 						gameObject->addComponent<Transform>();
 						gameObject->addComponent<DirectionLightComponent>();
+						gameObject->addComponent<ShadowCaster2D>();
 						ResourceManager::getInstance().gameObjects.push_back(gameObject);
 						ResourceManager::getInstance().directionLightNum++;
 					}
@@ -365,6 +366,12 @@ void GuiSystem::registComponents()
 		if (ImGui::Button(u8"х╥хо")) {
 			dynamicMaterialComponent->setMaterial();
 		}
+		});
+
+	registerComponentWidget<ShadowCaster2D>("ShadowCaster2D", [](std::shared_ptr<ShadowCaster2D> shadowCaster2D) {
+		ImGui::Text(u8"ShadowCaster");
+		ImGui::Separator();
+		ImGui::Checkbox(u8"Enabled", &shadowCaster2D->enabled);
 		});
 }
 

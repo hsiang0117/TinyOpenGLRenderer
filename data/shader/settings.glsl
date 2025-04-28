@@ -1,1 +1,2 @@
 //#define ENVIRONMENT_MAPPING
+#define PCF_SHADOW

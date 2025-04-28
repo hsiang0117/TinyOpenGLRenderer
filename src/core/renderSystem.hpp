@@ -19,9 +19,9 @@ private:
 	int width, height; //viewport width and height
 	UniformBuffer uboMatrices;
 	ShaderStorageBuffer ssboPointLights, ssboDirectionLight, ssboSpotLights;
-	FrameBuffer directionLightDepthFBO;
+	FrameBuffer directionLightDepthFBO, pointLightDepthFBO;
 	Texture2D directionLightDepthTexture;
-
+	CubeMapArray pointLightDepthTexture;
 	void drawScreenQuad();
 };
 
@@ -68,6 +68,7 @@ void RenderSystem::init() {
 	directionLightDepthFBO.drawBuffers(attachments);
 	directionLightDepthFBO.readBuffer(GL_NONE);
 	directionLightDepthTexture = Texture2D(1024, 1024, GL_CLAMP_TO_BORDER, GL_NEAREST, GL_DEPTH_COMPONENT, GL_DEPTH_COMPONENT);
+	directionLightDepthTexture.setBorderColor(1.0, 1.0, 1.0, 1.0);
 }
 
 void RenderSystem::update() {
@@ -92,34 +93,32 @@ void RenderSystem::render(Camera& camera) {
 	ShaderPtr depthShader = ResourceManager::getInstance().shaderCache["depth"];
 	ShaderPtr screenQuadShader = ResourceManager::getInstance().shaderCache["screenQuad"];
 
+	glViewport(0, 0, 1024, 1024);
 	//shadowmapPass
-	//depthShader->use();
-	//for (int i = 0; i < ResourceManager::getInstance().gameObjects.size(); i++) {
-	//	GameObjectPtr object = ResourceManager::getInstance().gameObjects[i];
-	//	if (object->getType() == GameObject::Type::DIRECTIONLIGHTOBJECT) {
-	//		glm::mat4 lightMatrices = object->getLightMatrices();
-	//		depthShader->setMat4("lightMatrices", lightMatrices);
-	//		glViewport(0, 0, 1024, 1024);
-	//		directionLightDepthFBO.bind();
-	//		directionLightDepthFBO.attachTexture2D(directionLightDepthTexture, GL_DEPTH_ATTACHMENT);
-	//		glClear(GL_DEPTH_BUFFER_BIT);
-	//		for (int j = 0; j < ResourceManager::getInstance().gameObjects.size(); j++) {
-	//			GameObjectPtr object = ResourceManager::getInstance().gameObjects[j];
-	//			if (object->getType() == GameObject::Type::RENDEROBJECT) {
-	//				object->draw(depthShader);
-	//			}
-	//		}
-	//		directionLightDepthFBO.unbind();
-	//	}
-	//}
+	depthShader->use();
+	for (int i = 0; i < ResourceManager::getInstance().gameObjects.size(); i++) {
+		GameObjectPtr object = ResourceManager::getInstance().gameObjects[i];
+		if (object->getType() == GameObject::Type::DIRECTIONLIGHTOBJECT) {
+			auto shadowCaster = object->getComponent<ShadowCaster2D>();
+			if (!shadowCaster->enabled) continue;
+			glm::mat4 lightMatrices = object->getLightMatrices();
+			depthShader->setMat4("lightMatrices", lightMatrices);
+			directionLightDepthFBO.bind();
+			directionLightDepthFBO.attachTexture2D(directionLightDepthTexture, GL_DEPTH_ATTACHMENT);
+			glClear(GL_DEPTH_BUFFER_BIT);
+			glCullFace(GL_FRONT);
+			for (int j = 0; j < ResourceManager::getInstance().gameObjects.size(); j++) {
+				GameObjectPtr object = ResourceManager::getInstance().gameObjects[j];
+				if (object->getType() == GameObject::Type::RENDEROBJECT) {
+					object->draw(depthShader);
+				}
+			}
+			glCullFace(GL_BACK);
+			directionLightDepthFBO.unbind();
+		}
+	}
 
-	//screenQuadShader->use();
-	//screenQuadShader->setInt("directionLightDepth", 0);
-	//directionLightDepthTexture.use(GL_TEXTURE0);
-	//glViewport(300, 250, width, height);
-	//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	//drawScreenQuad();
-
+	glViewport(300, 250, width, height);
 	// lightPass
 	defaultShader->use();
 	int pointLightIndex = 0, spotLightIndex = 0;
@@ -135,11 +134,17 @@ void RenderSystem::render(Camera& camera) {
 		}
 		else if (object->getType() == GameObject::Type::DIRECTIONLIGHTOBJECT) {
 			object->sendToSSBO(0, ssboDirectionLight);
+			auto shadowCaster = object->getComponent<ShadowCaster2D>();
+			if (shadowCaster->enabled) {
+				defaultShader->setMat4("lightSpaceMatrix", object->getLightMatrices());
+				directionLightDepthTexture.use(GL_TEXTURE6);
+			}
 		}
 	}
 	defaultShader->setInt("pointLightNum", ResourceManager::getInstance().pointLightNum);
 	defaultShader->setInt("directionLightNum", ResourceManager::getInstance().directionLightNum);
 	defaultShader->setInt("spotLightNum", ResourceManager::getInstance().spotLightNum);
+	defaultShader->setInt("shadowMap", 6);
 
 	//normalPass
 	defaultShader->setVec3("cameraPos", camera.getPos());

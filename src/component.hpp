@@ -105,7 +105,8 @@ void SkyBoxComponent::setSkyBox(std::string folderPath) {
 class ShadowCaster2D : public Component {
 public:
 	ShadowCaster2D() {
-		name = "ShadowCaster";
+		name = "ShadowCaster2D";
+		enabled = true;
 	}
 	virtual std::string getName() const override { return name; }
 
@@ -120,6 +121,7 @@ public:
 		name = "ShadowCasterCube";
 	}
 	virtual std::string getName() const override { return name; }
+
 	bool enabled;
 private:
 	std::string name;

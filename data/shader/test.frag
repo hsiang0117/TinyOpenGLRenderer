@@ -5,6 +5,7 @@ in VS_OUT{
 	vec3 normal;
 	vec2 texCoords;
 	vec3 fragPos;
+	vec4 fragPosLightSpace;
 }fs_in;
 
 out vec4 fragColor;
@@ -17,6 +18,7 @@ uniform sampler2D shininessMap;
 #ifdef ENVIRONMENT_MAPPING
 	uniform samplerCube skybox;
 #endif
+uniform sampler2D shadowMap;
 
 uniform vec3 cameraPos;
 
@@ -95,10 +97,10 @@ vec3 calculateSpotLight(vec3 albedoColor, vec3 specularColor){
 		float theta = dot(lightDir,normalize(-spotLights[i].direction.xyz));
 		float epsilon = spotLights[i].cutOff - spotLights[i].outerCutOff;
 		float intensity = clamp((theta-spotLights[i].outerCutOff)/epsilon,0.0,1.0);
-		float diff = max(dot(fs_in.normal,lightDir),0);
+		float diff = max(dot(lightDir,fs_in.normal),0);
 		result += diff * albedoColor * spotLights[i].color.rgb * intensity;
 		vec3 halfway = normalize(cameraDir+lightDir);
-		float spec = pow(max(dot(fs_in.normal,halfway),0.0),32);
+		float spec = pow(max(dot(halfway,fs_in.normal),0),32);
 		result += spec * specularColor * spotLights[i].color.rgb * intensity;
 	}
 	return result;
@@ -114,16 +116,47 @@ vec3 calculateEnvironmentMapping(){
 }	
 #endif
 
+float calculateDirectionLightShadow(){
+	float bias = 0.005;
+	vec3 projCoords = fs_in.fragPosLightSpace.xyz / fs_in.fragPosLightSpace.w;
+	projCoords = projCoords * 0.5 + 0.5;
+	if (projCoords.z > 1.0){
+		return 0.0;
+	}
+	float shadow = 0.0;
+	float currentDepth = projCoords.z;
+#ifdef PCF_SHADOW
+	vec2 texelSize = 1.0 / textureSize(shadowMap, 0);
+	for(int x = -2; x <= 2; ++x)
+	{
+		for(int y = -2; y <= 2; ++y)
+		{
+			float pcfDepth = texture(shadowMap, projCoords.xy + vec2(x, y) * texelSize).r; 
+			shadow += currentDepth - bias > pcfDepth ? 1.0 : 0.0;        
+		}    
+	}
+	shadow /= 25.0;
+#else
+	float closestDepth = texture(shadowMap, projCoords.xy).r;
+	shadow = currentDepth - bias > closestDepth ? 1.0 : 0.0;
+#endif
+	return shadow;
+}
+
 void main()
 {
 	vec3 albedoColor = texture(albedoMap, fs_in.texCoords).rgb;
 	vec3 specularColor = texture(specularMap, fs_in.texCoords).rgb;
-	vec3 result = 0.1 * albedoColor;
+	vec3 ambient = 0.1 * albedoColor;
+	vec3 result = vec3(0.0);
 	result += calculateDirectionLight(albedoColor,specularColor);
 	result += calculatePointLight(albedoColor,specularColor);
 	result += calculateSpotLight(albedoColor,specularColor);
 #ifdef ENVIRONMENT_MAPPING
 	result += calculateEnvironmentMapping();
 #endif
+	float shadow = calculateDirectionLightShadow();
+	result = (1.0 - shadow) * result;
+	result += ambient;
 	fragColor = vec4(result,1.0);
 }

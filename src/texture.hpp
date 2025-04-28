@@ -29,6 +29,7 @@ public:
 	Texture2D(int width, int height, GLenum wrap, GLenum filter, GLenum internalFormat, GLenum format); // Empty texture, for framebuffer usage etc.
 	Texture2D(const char* path, Type type, GLenum wrap, GLenum filter); // Load texture from file.
 	virtual void use(GLenum textureUnit) override;
+	void setBorderColor(float r, float g, float b, float a);
 	Type getType() { return type; }
 private:
 	Type type;
@@ -84,6 +85,12 @@ Texture2D::Texture2D(const char* path, Type type, GLenum wrap, GLenum filter) {
 void Texture2D::use(GLenum textureUnit) {
 	glActiveTexture(textureUnit);
 	glBindTexture(GL_TEXTURE_2D, ID);
+}
+
+void Texture2D::setBorderColor(float r, float g, float b, float a) {
+	glBindTexture(GL_TEXTURE_2D, ID);
+	glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, new float[4] { r, g, b, a });
+	glBindTexture(GL_TEXTURE_2D, 0);
 }
 
 class Texture2DArray :public Texture {
@@ -169,6 +176,30 @@ CubeMap::CubeMap(const char* folderPath, GLenum wrap, GLenum filter) {
 void CubeMap::use(GLenum textureUnit) {
 	glActiveTexture(textureUnit);
 	glBindTexture(GL_TEXTURE_CUBE_MAP, ID);
+}
+
+class CubeMapArray : public Texture {
+public:
+	CubeMapArray() {};
+	CubeMapArray(int width, int height, int length, GLenum wrap, GLenum filter, GLenum internalFormat, GLenum format);
+	virtual void use(GLenum textureUnit) override;
+};
+
+CubeMapArray::CubeMapArray(int width, int height, int length, GLenum wrap, GLenum filter, GLenum internalFormat, GLenum format) {
+	glGenTextures(1, &ID);
+	glBindTexture(GL_TEXTURE_CUBE_MAP_ARRAY, ID);
+	glTexImage3D(GL_TEXTURE_CUBE_MAP_ARRAY, 0, internalFormat, width, height, length * 6, 0, format, GL_FLOAT, nullptr);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP_ARRAY, GL_TEXTURE_WRAP_S, wrap);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP_ARRAY, GL_TEXTURE_WRAP_T, wrap);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP_ARRAY, GL_TEXTURE_WRAP_R, wrap);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP_ARRAY, GL_TEXTURE_MIN_FILTER, filter);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP_ARRAY, GL_TEXTURE_MAG_FILTER, filter);
+	glBindTexture(GL_TEXTURE_CUBE_MAP_ARRAY, 0);
+}
+
+void CubeMapArray::use(GLenum textureUnit) {
+	glActiveTexture(textureUnit);
+	glBindTexture(GL_TEXTURE_CUBE_MAP_ARRAY, ID);
 }
 
 class RenderBuffer {
