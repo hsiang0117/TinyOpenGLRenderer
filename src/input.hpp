@@ -20,11 +20,13 @@ public:
 	bool isWindowResized() { return windowResized; }
 	int getWindowWidth() { return windowWidth; }
 	int getWindowHeight() { return windowHeight; }
+	bool isUiResized() { return uiResized; }
 	void onKeyPressed(int key) { keys[key] = true; }
 	void onKeyReleased(int key) { keys[key] = false; }
 	void onMouseMoved(double x, double y) { mouseMoved = true; mouseX = x; mouseY = y; }
 	void onScrollMoved(double x, double y) { scrollMoved = true; scrollX = x; scrollY = y; }
 	void onWindowResized(int width, int height) { windowResized = true; windowWidth = width; windowHeight = height; }
+	void onUiResized() { uiResized = true; }
 private:
 	bool keys[1024], prevKeys[1024];
 	bool mouseMoved;
@@ -32,7 +34,8 @@ private:
 	bool scrollMoved;
 	double scrollX, scrollY;
 	bool windowResized;
-	int windowWidth, windowHeight;
+	int windowWidth = 1280, windowHeight = 720;
+	bool uiResized;
 };
 
 Input& Input::getInstance() {

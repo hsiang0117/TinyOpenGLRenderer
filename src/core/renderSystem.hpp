@@ -2,6 +2,7 @@
 #define RENDERSYSTEM_HPP
 #pragma once
 
+#include "guiSystem.hpp"
 #include "../glBuffer.hpp"
 #include "resourceManager.hpp"
 #include <glad/glad.h>
@@ -16,12 +17,11 @@ public:
 	void update();
 	void render(Camera& camera);
 private:
-	int width, height; //viewport width and height
+	float x, y, width, height; //viewport width and height
 	UniformBuffer uboMatrices;
 	ShaderStorageBuffer ssboPointLights, ssboDirectionLight, ssboSpotLights;
-	FrameBuffer directionLightDepthFBO, pointLightDepthFBO;
+	FrameBuffer directionLightDepthFBO;
 	Texture2D directionLightDepthTexture;
-	CubeMapArray pointLightDepthTexture;
 	void drawScreenQuad();
 };
 
@@ -30,11 +30,10 @@ void RenderSystem::init() {
 		std::cout << "Failed to initialize GLAD" << std::endl;
 		exit(EXIT_FAILURE);
 	}
-	int viewport[4];
-	glGetIntegerv(GL_VIEWPORT, viewport);
-	width = viewport[2] - 250 - 300;
-	height = viewport[3] - 250;
-	glViewport(300, 250, width, height);
+	x = GuiSystem::leftSideBarWidth;
+	y = GuiSystem::bottomSideBarHeight;
+	width = Input::getInstance().getWindowWidth() - GuiSystem::leftSideBarWidth - GuiSystem::rightSideBarWidth;
+	height = Input::getInstance().getWindowHeight() - GuiSystem::bottomSideBarHeight;
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LEQUAL);
 
@@ -73,9 +72,14 @@ void RenderSystem::init() {
 
 void RenderSystem::update() {
 	if (Input::getInstance().isWindowResized()) {
-		width = Input::getInstance().getWindowWidth() - 250 - 300;
-		height = Input::getInstance().getWindowHeight() - 250;
-		glViewport(300, 250, width, height);
+		width = Input::getInstance().getWindowWidth() - GuiSystem::leftSideBarWidth - GuiSystem::rightSideBarWidth;
+		height = Input::getInstance().getWindowHeight() - GuiSystem::bottomSideBarHeight;
+	}
+	if (Input::getInstance().isUiResized()) {
+		x = GuiSystem::leftSideBarWidth;
+		y = GuiSystem::bottomSideBarHeight;
+		width = Input::getInstance().getWindowWidth() - GuiSystem::leftSideBarWidth - GuiSystem::rightSideBarWidth;
+		height = Input::getInstance().getWindowHeight() - GuiSystem::bottomSideBarHeight;
 	}
 }
 
@@ -100,25 +104,32 @@ void RenderSystem::render(Camera& camera) {
 		GameObjectPtr object = ResourceManager::getInstance().gameObjects[i];
 		if (object->getType() == GameObject::Type::DIRECTIONLIGHTOBJECT) {
 			auto shadowCaster = object->getComponent<ShadowCaster2D>();
-			if (!shadowCaster->enabled) continue;
-			glm::mat4 lightMatrices = object->getLightMatrices();
-			depthShader->setMat4("lightMatrices", lightMatrices);
-			directionLightDepthFBO.bind();
-			directionLightDepthFBO.attachTexture2D(directionLightDepthTexture, GL_DEPTH_ATTACHMENT);
-			glClear(GL_DEPTH_BUFFER_BIT);
-			glCullFace(GL_FRONT);
-			for (int j = 0; j < ResourceManager::getInstance().gameObjects.size(); j++) {
-				GameObjectPtr object = ResourceManager::getInstance().gameObjects[j];
-				if (object->getType() == GameObject::Type::RENDEROBJECT) {
-					object->draw(depthShader);
+			if (shadowCaster->enabled) {
+				glm::mat4 lightMatrices = object->getLightMatrices();
+				depthShader->setMat4("lightMatrices", lightMatrices);
+				directionLightDepthFBO.bind();
+				directionLightDepthFBO.attachTexture2D(directionLightDepthTexture, GL_DEPTH_ATTACHMENT);
+				glClear(GL_DEPTH_BUFFER_BIT);
+				glCullFace(GL_FRONT);
+				for (int j = 0; j < ResourceManager::getInstance().gameObjects.size(); j++) {
+					GameObjectPtr object = ResourceManager::getInstance().gameObjects[j];
+					if (object->getType() == GameObject::Type::RENDEROBJECT) {
+						object->draw(depthShader);
+					}
 				}
+				glCullFace(GL_BACK);
+				directionLightDepthFBO.unbind();
 			}
-			glCullFace(GL_BACK);
-			directionLightDepthFBO.unbind();
+			else {
+				directionLightDepthFBO.bind();
+				directionLightDepthFBO.attachTexture2D(directionLightDepthTexture, GL_DEPTH_ATTACHMENT);
+				glClear(GL_DEPTH_BUFFER_BIT);
+				directionLightDepthFBO.unbind();
+			}
 		}
 	}
 
-	glViewport(300, 250, width, height);
+	glViewport(x, y, width, height);
 	// lightPass
 	defaultShader->use();
 	int pointLightIndex = 0, spotLightIndex = 0;
@@ -166,6 +177,7 @@ void RenderSystem::render(Camera& camera) {
 		}
 	}
 }
+
 void RenderSystem::drawScreenQuad()
 {
 	static GLuint quadVAO, quadVBO;

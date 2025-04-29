@@ -12,9 +12,7 @@
 #include "imgui/ImGuiFileDialog.h"
 #include <GLFW/glfw3.h>
 
-#define LEFT_SIDEBAR_WIDTH 300.0f
-#define RIGHT_SIDEBAR_WIDTH 250.0f
-#define BOTTOM_SIDEBAR_HEIGHT 250.0f
+#define SPLITTER_THICKNESS 4
 
 // 组件对应渲染方法，接收一个组件指针，返回void
 using ComponentWidgetFunc = std::function<void(ComponentPtr)>;
@@ -34,6 +32,10 @@ public:
 
 	// 根据组件渲染对应的widget
 	void showComponentWidget(std::shared_ptr<Component> comp);
+
+	static float leftSideBarWidth;
+	static float rightSideBarWidth;
+	static float bottomSideBarHeight;
 private:
 	// 组件名和对应渲染函数的注册表
 	static std::unordered_map<std::string, ComponentWidgetFunc>& getWidgetRegistry() {
@@ -45,7 +47,13 @@ private:
 	void showRightSideBar();
 	void showBottomSideBar();
 	void registComponents();
+
+	float clamp(float value, float min, float max) { return std::max(min, std::min(value, max)); }
 };
+
+float GuiSystem::leftSideBarWidth = 300.0f;
+float GuiSystem::rightSideBarWidth = 300.0f;
+float GuiSystem::bottomSideBarHeight = 200.0f;
 
 void GuiSystem::init(GLFWwindow* window) {
 	IMGUI_CHECKVERSION();
@@ -69,10 +77,16 @@ void GuiSystem::beginFrame() {
 }
 
 void GuiSystem::render() {
+	ImGuiViewport* viewport = ImGui::GetMainViewport();
+	ImGui::SetNextWindowPos(viewport->Pos);
+	ImGui::SetNextWindowSize(viewport->Size);
+	ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoBackground |
+		ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse;
+	ImGui::Begin("MainViewport", nullptr, windowFlags);
 	showLeftSideBar();
 	showRightSideBar();
 	showBottomSideBar();
-
+	ImGui::End();
 	ImGui::Render();
 	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }
@@ -88,16 +102,12 @@ void GuiSystem::showLeftSideBar()
 	static std::weak_ptr<GameObject> objectSelected;
 
 	ImGuiViewport* viewport = ImGui::GetMainViewport();
-	ImGui::SetNextWindowPos(viewport->Pos);
-	ImGui::SetNextWindowSize(ImVec2(LEFT_SIDEBAR_WIDTH, viewport->Size.y - BOTTOM_SIDEBAR_HEIGHT));
 
-	ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
-		ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar;
-	ImGui::Begin("LeftSidebar", nullptr, windowFlags);
+	ImGui::SetCursorPos({ 0, 0 });
+	ImGui::BeginChild("LeftSidebar", ImVec2(leftSideBarWidth, viewport->Size.y - bottomSideBarHeight - SPLITTER_THICKNESS), true, ImGuiWindowFlags_NoMove);
 
-	ImVec2 availableSize = ImGui::GetContentRegionAvail();
-
-	ImGui::BeginChild(u8"scenePanel", ImVec2(0, availableSize.y / 2), false, ImGuiWindowFlags_MenuBar);
+	ImVec2 avalableSize = ImGui::GetContentRegionAvail();
+	ImGui::BeginChild(u8"scenePanel", ImVec2(0, avalableSize.y/2), false, ImGuiWindowFlags_MenuBar);
 
 	if (ImGui::BeginMenuBar()) {
 		ImGui::Text(u8"场景");
@@ -226,30 +236,50 @@ void GuiSystem::showLeftSideBar()
 	ImGui::EndChild();
 	ImGui::EndChild();
 
-	ImGui::End();
+	ImGui::EndChild();
+
+	ImGui::SetCursorScreenPos({ leftSideBarWidth, 0 });
+	ImGui::InvisibleButton("##SplitterLeft", ImVec2(SPLITTER_THICKNESS, viewport->Size.y - bottomSideBarHeight - SPLITTER_THICKNESS));
+	if (ImGui::IsItemActive()) {
+		leftSideBarWidth = leftSideBarWidth + ImGui::GetIO().MouseDelta.x;
+		leftSideBarWidth = clamp(leftSideBarWidth, 100, viewport->Size.x / 3);
+		Input::getInstance().onUiResized();
+	}
+	ImDrawList* draw = ImGui::GetWindowDrawList();
+	float x0 = leftSideBarWidth;
+	float x1 = x0 + SPLITTER_THICKNESS;
+	draw->AddRectFilled(ImVec2(x0, 0), ImVec2(x1, viewport->Size.y - bottomSideBarHeight - SPLITTER_THICKNESS), IM_COL32(200, 200, 200, 180));
 }
 
 void GuiSystem::showRightSideBar()
 {
 	ImGuiViewport* viewport = ImGui::GetMainViewport();
-	ImGui::SetNextWindowPos(ImVec2(viewport->Pos.x + viewport->Size.x - RIGHT_SIDEBAR_WIDTH, viewport->Pos.y));
-	ImGui::SetNextWindowSize(ImVec2(RIGHT_SIDEBAR_WIDTH, viewport->Size.y - BOTTOM_SIDEBAR_HEIGHT));
-	ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
-		ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar;
-	ImGui::Begin("RightSidebar", nullptr, windowFlags);
+
+	ImGui::SetCursorScreenPos({ viewport->Size.x - rightSideBarWidth, 0 });
+	ImGui::BeginChild("RightSidebar", ImVec2(rightSideBarWidth, viewport->Size.y - bottomSideBarHeight - SPLITTER_THICKNESS), true, ImGuiWindowFlags_NoMove);
 	ImGui::Text(u8"渲染设置");
 
-	ImGui::End();
+	ImGui::EndChild();
+
+	ImGui::SetCursorScreenPos({ viewport->Size.x - rightSideBarWidth - SPLITTER_THICKNESS, 0 });
+	ImGui::InvisibleButton("##SplitterRight", ImVec2(4, viewport->Size.y - bottomSideBarHeight - SPLITTER_THICKNESS));
+	if (ImGui::IsItemActive()) {
+		rightSideBarWidth = rightSideBarWidth - ImGui::GetIO().MouseDelta.x;
+		rightSideBarWidth = clamp(rightSideBarWidth, 100, viewport->Size.x / 3);
+		Input::getInstance().onUiResized();
+	}
+	ImDrawList* draw = ImGui::GetWindowDrawList();
+	float x0 = viewport->Size.x - rightSideBarWidth - SPLITTER_THICKNESS;
+	float x1 = x0 + SPLITTER_THICKNESS;
+	draw->AddRectFilled(ImVec2(x0, 0), ImVec2(x1, viewport->Size.y - bottomSideBarHeight - SPLITTER_THICKNESS), IM_COL32(200, 200, 200, 180));
 }
 
 void GuiSystem::showBottomSideBar()
 {
 	ImGuiViewport* viewport = ImGui::GetMainViewport();
-	ImGui::SetNextWindowPos(ImVec2(viewport->Pos.x, viewport->Pos.y + viewport->Size.y - BOTTOM_SIDEBAR_HEIGHT));
-	ImGui::SetNextWindowSize(ImVec2(viewport->Size.x, BOTTOM_SIDEBAR_HEIGHT));
-	ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
-		ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_MenuBar;
-	ImGui::Begin("BottomSidebar", nullptr, windowFlags);
+
+	ImGui::SetCursorScreenPos({ 0, viewport->Size.y - bottomSideBarHeight});
+	ImGui::BeginChild("BottomSidebar", ImVec2(viewport->Size.x, bottomSideBarHeight), true, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_MenuBar);
 
 	if (ImGui::BeginMenuBar()) {
 		if (ImGui::BeginMenu(u8"文件")) {
@@ -292,7 +322,19 @@ void GuiSystem::showBottomSideBar()
 
 	}
 
-	ImGui::End();
+	ImGui::EndChild();
+
+	ImGui::SetCursorScreenPos({ 0, viewport->Size.y - bottomSideBarHeight - SPLITTER_THICKNESS });
+	ImGui::InvisibleButton("##SplitterBottom", ImVec2(viewport->Size.x, SPLITTER_THICKNESS));
+	if (ImGui::IsItemActive()) {
+		bottomSideBarHeight = bottomSideBarHeight - ImGui::GetIO().MouseDelta.y;
+		bottomSideBarHeight = clamp(bottomSideBarHeight, 100, viewport->Size.y / 2);
+		Input::getInstance().onUiResized();
+	}
+	ImDrawList* draw = ImGui::GetWindowDrawList();
+	float y0 = viewport->Size.y - bottomSideBarHeight - SPLITTER_THICKNESS;
+	float y1 = y0 + SPLITTER_THICKNESS;
+	draw->AddRectFilled(ImVec2(0, y0), ImVec2(viewport->Size.x, y1), IM_COL32(200, 200, 200, 180));
 
 	if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey"))
 	{
