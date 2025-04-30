@@ -169,5 +169,14 @@
     <None Include="data\shader\screenQuad.frag">
       <Filter>资源文件\shader</Filter>
     </None>
+    <None Include="data\shader\depthCube.vert">
+      <Filter>资源文件\shader</Filter>
+    </None>
+    <None Include="data\shader\depthCube.geom">
+      <Filter>资源文件\shader</Filter>
+    </None>
+    <None Include="data\shader\depthCube.frag">
+      <Filter>资源文件\shader</Filter>
+    </None>
   </ItemGroup>
 </Project>

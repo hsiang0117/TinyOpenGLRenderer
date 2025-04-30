@@ -20,8 +20,9 @@ private:
 	float x, y, width, height; //viewport width and height
 	UniformBuffer uboMatrices;
 	ShaderStorageBuffer ssboPointLights, ssboDirectionLight, ssboSpotLights;
-	FrameBuffer directionLightDepthFBO;
+	FrameBuffer directionLightDepthFBO, pointLightDepthFBO;
 	Texture2D directionLightDepthTexture;
+	CubeMapArray pointLightDepthTexture;
 	void drawScreenQuad();
 };
 
@@ -63,11 +64,17 @@ void RenderSystem::init() {
 	ssboSpotLights.unbind();
 
 	directionLightDepthFBO.init();
-	GLenum attachments[1] = { GL_NONE };
-	directionLightDepthFBO.drawBuffers(attachments);
+	GLenum attachments1[1] = { GL_NONE };
+	directionLightDepthFBO.drawBuffers(attachments1);
 	directionLightDepthFBO.readBuffer(GL_NONE);
 	directionLightDepthTexture = Texture2D(1024, 1024, GL_CLAMP_TO_BORDER, GL_NEAREST, GL_DEPTH_COMPONENT, GL_DEPTH_COMPONENT);
 	directionLightDepthTexture.setBorderColor(1.0, 1.0, 1.0, 1.0);
+
+	pointLightDepthFBO.init();
+	GLenum attachments2[1] = { GL_NONE };
+	pointLightDepthFBO.drawBuffers(attachments2);
+	pointLightDepthFBO.readBuffer(GL_NONE);
+	pointLightDepthTexture = CubeMapArray(1024, 1024, 10, GL_CLAMP_TO_BORDER, GL_NEAREST, GL_DEPTH_COMPONENT, GL_DEPTH_COMPONENT);
 }
 
 void RenderSystem::update() {
@@ -96,13 +103,15 @@ void RenderSystem::render(Camera& camera) {
 	ShaderPtr skyboxShader = ResourceManager::getInstance().shaderCache["skybox"];
 	ShaderPtr depthShader = ResourceManager::getInstance().shaderCache["depth"];
 	ShaderPtr screenQuadShader = ResourceManager::getInstance().shaderCache["screenQuad"];
+	ShaderPtr depthCubeShader = ResourceManager::getInstance().shaderCache["depthCube"];
 
 	glViewport(0, 0, 1024, 1024);
 	//shadowmapPass
-	depthShader->use();
+	int pointLightIndex = 0;
 	for (int i = 0; i < ResourceManager::getInstance().gameObjects.size(); i++) {
 		GameObjectPtr object = ResourceManager::getInstance().gameObjects[i];
 		if (object->getType() == GameObject::Type::DIRECTIONLIGHTOBJECT) {
+			depthShader->use();
 			auto shadowCaster = object->getComponent<ShadowCaster2D>();
 			if (shadowCaster->enabled) {
 				glm::mat4 lightMatrices = object->getLightMatrices();
@@ -127,55 +136,95 @@ void RenderSystem::render(Camera& camera) {
 				directionLightDepthFBO.unbind();
 			}
 		}
+		else if (object->getType() == GameObject::Type::POINTLIGHTOBJECT) {
+			depthCubeShader->use();
+			auto shadowCaster = object->getComponent<ShadowCasterCube>();
+			if (shadowCaster->enabled) {
+				auto transform = object->getComponent<Transform>();
+				depthCubeShader->setVec3("lightPos", transform->translate);
+				depthCubeShader->setFloat("farPlane", shadowCaster->farPlane);
+				depthCubeShader->setInt("lightIndex", pointLightIndex);
+				std::vector<glm::mat4> lightMatrices = object->getLightMatricesCube();
+				for (int j = 0; j < 6; j++) {
+					depthCubeShader->setMat4(("lightMatrices[" + std::to_string(j) + "]").c_str(), lightMatrices[j]);
+				}
+				pointLightDepthFBO.bind();
+				for (int j = 0; j < 6; j++) {
+					pointLightDepthFBO.attachTextureLayer(pointLightDepthTexture, GL_DEPTH_ATTACHMENT, pointLightIndex * 6 + j);
+					glClear(GL_DEPTH_BUFFER_BIT);
+				}
+				pointLightDepthFBO.attachTexture(pointLightDepthTexture, GL_DEPTH_ATTACHMENT);
+				for (int k = 0; k < ResourceManager::getInstance().gameObjects.size(); k++) {
+					GameObjectPtr object = ResourceManager::getInstance().gameObjects[k];
+					if (object->getType() == GameObject::Type::RENDEROBJECT) {
+						object->draw(depthCubeShader);
+					}
+				}
+				pointLightDepthFBO.unbind();
+			}
+			else {
+				pointLightDepthFBO.bind();				
+				for (int j = 0; j < 6; j++) {
+					pointLightDepthFBO.attachTextureLayer(pointLightDepthTexture, GL_DEPTH_ATTACHMENT, pointLightIndex * 6 + j);
+					glClear(GL_DEPTH_BUFFER_BIT);
+				}
+				pointLightDepthFBO.unbind();
+			}
+			pointLightIndex++;
+		}
 	}
 
 	glViewport(x, y, width, height);
+	screenQuadShader->use();
+	screenQuadShader->setInt("depthMap", 6);
+	drawScreenQuad();
+
 	// lightPass
-	defaultShader->use();
-	int pointLightIndex = 0, spotLightIndex = 0;
-	for (int i = 0; i < ResourceManager::getInstance().gameObjects.size(); i++) {
-		GameObjectPtr object = ResourceManager::getInstance().gameObjects[i];
-		if (object->getType() == GameObject::Type::POINTLIGHTOBJECT) {
-			object->sendToSSBO(pointLightIndex, ssboPointLights);
-			pointLightIndex++;
-		}
-		else if (object->getType() == GameObject::Type::SPOTLIGHTOBJECT) {
-			object->sendToSSBO(spotLightIndex, ssboSpotLights);
-			spotLightIndex++;
-		}
-		else if (object->getType() == GameObject::Type::DIRECTIONLIGHTOBJECT) {
-			object->sendToSSBO(0, ssboDirectionLight);
-			auto shadowCaster = object->getComponent<ShadowCaster2D>();
-			if (shadowCaster->enabled) {
-				defaultShader->setMat4("lightSpaceMatrix", object->getLightMatrices());
-				directionLightDepthTexture.use(GL_TEXTURE6);
-			}
-		}
-	}
-	defaultShader->setInt("pointLightNum", ResourceManager::getInstance().pointLightNum);
-	defaultShader->setInt("directionLightNum", ResourceManager::getInstance().directionLightNum);
-	defaultShader->setInt("spotLightNum", ResourceManager::getInstance().spotLightNum);
-	defaultShader->setInt("shadowMap", 6);
+	//defaultShader->use();
+	//int pointLightIndex = 0, spotLightIndex = 0;
+	//for (int i = 0; i < ResourceManager::getInstance().gameObjects.size(); i++) {
+	//	GameObjectPtr object = ResourceManager::getInstance().gameObjects[i];
+	//	if (object->getType() == GameObject::Type::POINTLIGHTOBJECT) {
+	//		object->sendToSSBO(pointLightIndex, ssboPointLights);
+	//		pointLightIndex++;
+	//	}
+	//	else if (object->getType() == GameObject::Type::SPOTLIGHTOBJECT) {
+	//		object->sendToSSBO(spotLightIndex, ssboSpotLights);
+	//		spotLightIndex++;
+	//	}
+	//	else if (object->getType() == GameObject::Type::DIRECTIONLIGHTOBJECT) {
+	//		object->sendToSSBO(0, ssboDirectionLight);
+	//		auto shadowCaster = object->getComponent<ShadowCaster2D>();
+	//		if (shadowCaster->enabled) {
+	//			defaultShader->setMat4("lightSpaceMatrix", object->getLightMatrices());
+	//			directionLightDepthTexture.use(GL_TEXTURE6);
+	//		}
+	//	}
+	//}
+	//defaultShader->setInt("pointLightNum", ResourceManager::getInstance().pointLightNum);
+	//defaultShader->setInt("directionLightNum", ResourceManager::getInstance().directionLightNum);
+	//defaultShader->setInt("spotLightNum", ResourceManager::getInstance().spotLightNum);
+	//defaultShader->setInt("shadowMap", 6);
 
-	//normalPass
-	defaultShader->setVec3("cameraPos", camera.getPos());
-	for (int i = 0; i < ResourceManager::getInstance().gameObjects.size(); i++) {
-		GameObjectPtr object = ResourceManager::getInstance().gameObjects[i];
-		if (object->getType() == GameObject::Type::RENDEROBJECT) {
-			object->draw(defaultShader);
-		}		
-		if (object->getType() == GameObject::Type::SKYBOXOBJECT) {
-			object->useCubeMap(defaultShader);
-		}
-	}
+	////normalPass
+	//defaultShader->setVec3("cameraPos", camera.getPos());
+	//for (int i = 0; i < ResourceManager::getInstance().gameObjects.size(); i++) {
+	//	GameObjectPtr object = ResourceManager::getInstance().gameObjects[i];
+	//	if (object->getType() == GameObject::Type::RENDEROBJECT) {
+	//		object->draw(defaultShader);
+	//	}		
+	//	if (object->getType() == GameObject::Type::SKYBOXOBJECT) {
+	//		object->useCubeMap(defaultShader);
+	//	}
+	//}
 
-	skyboxShader->use();
-	for (int i = 0; i < ResourceManager::getInstance().gameObjects.size(); i++) {
-		GameObjectPtr object = ResourceManager::getInstance().gameObjects[i];
-		if (object->getType() == GameObject::Type::SKYBOXOBJECT) {
-			object->draw(skyboxShader);
-		}
-	}
+	//skyboxShader->use();
+	//for (int i = 0; i < ResourceManager::getInstance().gameObjects.size(); i++) {
+	//	GameObjectPtr object = ResourceManager::getInstance().gameObjects[i];
+	//	if (object->getType() == GameObject::Type::SKYBOXOBJECT) {
+	//		object->draw(skyboxShader);
+	//	}
+	//}
 }
 
 void RenderSystem::drawScreenQuad()

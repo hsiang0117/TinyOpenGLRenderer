@@ -119,10 +119,13 @@ class ShadowCasterCube : public Component {
 public:
 	ShadowCasterCube() {
 		name = "ShadowCasterCube";
+		enabled = true;
+		farPlane = 25.0f;
 	}
 	virtual std::string getName() const override { return name; }
 
 	bool enabled;
+	float farPlane;
 private:
 	std::string name;
 };

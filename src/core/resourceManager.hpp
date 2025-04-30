@@ -19,10 +19,10 @@ public:
 	void update();
 	std::future<ModelPtr> modelFuture; //future for loading models
 	std::queue<std::string> modelQueue; //queue for loading models
-	std::unordered_map<std::string, ModelPtr> modelCache; //cache for models
-	std::unordered_map<std::string, ShaderPtr> shaderCache; //cache for shaders
 	std::vector<GameObjectPtr> gameObjects;
 	std::queue<int> removeQueue;
+	std::unordered_map<std::string, ModelPtr> modelCache; //cache for models
+	std::unordered_map<std::string, ShaderPtr> shaderCache; //cache for shaders
 	int pointLightNum = 0, directionLightNum = 0, spotLightNum = 0;
 private:
 };
@@ -36,6 +36,7 @@ void ResourceManager::init() {
 	shaderCache["default"] = std::make_shared<Shader>("data/shader/test.vert", "data/shader/test.frag");
 	shaderCache["skybox"] = std::make_shared<Shader>("data/shader/skybox.vert", "data/shader/skybox.frag");
 	shaderCache["depth"] = std::make_shared<Shader>("data/shader/depth.vert", "data/shader/depth.frag");
+	shaderCache["depthCube"] = std::make_shared<Shader>("data/shader/depthCube.vert", "data/shader/depthCube.geom", "data/shader/depthCube.frag");
 	shaderCache["screenQuad"] = std::make_shared<Shader>("data/shader/screenQuad.vert", "data/shader/screenQuad.frag");
 }
 

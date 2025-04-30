@@ -1,4 +1,4 @@
-#version 430 core
+#version 450 core
 #include "data/shader/settings.glsl"
 
 in VS_OUT{
@@ -19,6 +19,7 @@ uniform sampler2D shininessMap;
 	uniform samplerCube skybox;
 #endif
 uniform sampler2D shadowMap;
+uniform samplerCubeArray shadowMapArray;
 
 uniform vec3 cameraPos;
 

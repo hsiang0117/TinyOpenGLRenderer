@@ -31,7 +31,7 @@ void WindowSystem::init(int width, int height) {
 		exit(EXIT_FAILURE);
 	}
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
 	window = glfwCreateWindow(width, height, "TinyOpenglRenderer", NULL, NULL);
 	if (!window) {
 		glfwTerminate();

@@ -24,6 +24,7 @@ public:
 	virtual void draw(ShaderPtr shader) {}
 	virtual void sendToSSBO(int index, ShaderStorageBuffer ssbo) {}
 	virtual glm::mat4 getLightMatrices() { return glm::mat4(1.0f); }
+	virtual std::vector<glm::mat4> getLightMatricesCube() { return std::vector<glm::mat4>(); }
 	virtual void useCubeMap(ShaderPtr shader) {}
 
 	template<typename T, typename... Args>
@@ -100,6 +101,8 @@ public:
 		type = GameObject::Type::POINTLIGHTOBJECT;
 	}
 	virtual void sendToSSBO(int index, ShaderStorageBuffer ssbo) override;
+	virtual std::vector<glm::mat4> getLightMatricesCube() override;
+
 	static const int glslSize = 48;
 };
 
@@ -116,6 +119,21 @@ void PointLightObject::sendToSSBO(int index, ShaderStorageBuffer ssbo) {
 	ssbo.bufferSubdata(index * glslSize + 40, 4, &pointLight->quadratic);
 	ssbo.bufferSubdata(index * glslSize + 44, 4, nullptr);
 	ssbo.unbind();
+}
+
+std::vector<glm::mat4> PointLightObject::getLightMatricesCube() {
+	auto transform = getComponent<Transform>();
+	glm::vec3 position = transform->translate;
+	auto shadowCaster = getComponent<ShadowCasterCube>();
+	glm::mat4 lightProjection = glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, shadowCaster->farPlane);
+	std::vector<glm::mat4> lightViews;
+	lightViews.push_back(lightProjection * glm::lookAt(position, position + glm::vec3(1.0, 0.0, 0.0), glm::vec3(0.0, -1.0, 0.0)));
+	lightViews.push_back(lightProjection * glm::lookAt(position, position + glm::vec3(-1.0, 0.0, 0.0), glm::vec3(0.0, -1.0, 0.0)));
+	lightViews.push_back(lightProjection * glm::lookAt(position, position + glm::vec3(0.0, 1.0, 0.0), glm::vec3(0.0, 0.0, 1.0)));
+	lightViews.push_back(lightProjection * glm::lookAt(position, position + glm::vec3(0.0, -1.0, 0.0), glm::vec3(0.0, 0.0, -1.0)));
+	lightViews.push_back(lightProjection * glm::lookAt(position, position + glm::vec3(0.0, 0.0, -1.0), glm::vec3(0.0, -1.0, 0.0)));
+	lightViews.push_back(lightProjection * glm::lookAt(position, position + glm::vec3(0.0, 0.0, 1.0), glm::vec3(0.0, -1.0, 0.0)));
+	return lightViews;
 }
 
 class DirectionLightObject : public GameObject {

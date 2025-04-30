@@ -104,9 +104,11 @@ public:
 	virtual void bind() override;
 	virtual void unbind() override;
 
+	void attachTexture(Texture& texture, GLenum type);
 	void attachTexture2D(Texture2D& texture, GLenum type);
 	void attachRenderBuffer(RenderBuffer& renderBuffer, GLenum type);
-	void attachTextureLayer(Texture2DArray& textureArray, GLenum type, int index);
+	template<typename T>
+	void attachTextureLayer(T& textureArray, GLenum type, int index);
 	void drawBuffers(const GLenum type[]);
 	void readBuffer(const GLenum type);
 };
@@ -135,6 +137,10 @@ void FrameBuffer::unbind() {
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
+void FrameBuffer::attachTexture(Texture& texture, GLenum type) {
+	glFramebufferTexture(GL_FRAMEBUFFER, type, texture.ID, 0);
+}
+
 void FrameBuffer::attachTexture2D(Texture2D& texture, GLenum type) {
 	glFramebufferTexture2D(GL_FRAMEBUFFER, type, GL_TEXTURE_2D, texture.ID, 0);
 }
@@ -143,7 +149,8 @@ void FrameBuffer::attachRenderBuffer(RenderBuffer& renderBuffer, GLenum type) {
 	glFramebufferRenderbuffer(GL_FRAMEBUFFER, type, GL_RENDERBUFFER, renderBuffer.ID);
 }
 
-void FrameBuffer::attachTextureLayer(Texture2DArray& textureArray, GLenum type, int index) {
+template<typename T>
+void FrameBuffer::attachTextureLayer(T& textureArray, GLenum type, int index) {
 	glFramebufferTextureLayer(GL_FRAMEBUFFER, type, textureArray.ID, 0, index);
 }
 

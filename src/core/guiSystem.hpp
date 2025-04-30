@@ -117,6 +117,7 @@ void GuiSystem::showLeftSideBar()
 					auto gameObject = std::make_shared<PointLightObject>("PointLight");
 					gameObject->addComponent<Transform>();
 					gameObject->addComponent<PointLightComponent>();
+					gameObject->addComponent<ShadowCasterCube>();
 					ResourceManager::getInstance().gameObjects.push_back(gameObject);
 					ResourceManager::getInstance().pointLightNum++;
 				}
@@ -410,10 +411,17 @@ void GuiSystem::registComponents()
 		}
 		});
 
-	registerComponentWidget<ShadowCaster2D>("ShadowCaster2D", [](std::shared_ptr<ShadowCaster2D> shadowCaster2D) {
+	registerComponentWidget<ShadowCaster2D>("ShadowCaster", [](std::shared_ptr<ShadowCaster2D> shadowCaster2D) {
 		ImGui::Text(u8"ShadowCaster");
 		ImGui::Separator();
 		ImGui::Checkbox(u8"Enabled", &shadowCaster2D->enabled);
+		});
+
+	registerComponentWidget<ShadowCasterCube>("ShadowCasterCube", [](std::shared_ptr<ShadowCasterCube> shadowCasterCube) {
+		ImGui::Text(u8"ShadowCaster");
+		ImGui::Separator();
+		ImGui::Checkbox(u8"Enabled", &shadowCasterCube->enabled);
+		ImGui::DragFloat(u8"FarPlane", &shadowCasterCube->farPlane);
 		});
 }
 

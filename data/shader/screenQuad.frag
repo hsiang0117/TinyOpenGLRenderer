@@ -1,12 +1,12 @@
-#version 430 core
+#version 450 core
 
 in vec2 texCoords;
 
-uniform sampler2D directionLightDepth;
+uniform samplerCubeArray depthMap;
 
 out vec4 fragColor;
 
 void main(){
-	float color = texture(directionLightDepth, texCoords).r;
+	float color = 1.0;
 	fragColor = vec4(vec3(color),1.0);
 }
