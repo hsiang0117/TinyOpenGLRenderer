@@ -188,6 +188,7 @@
     <None Include="data\shader\skybox.vert" />
     <None Include="data\shader\test.frag" />
     <None Include="data\shader\test.vert" />
+    <None Include="readme.md" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -190,5 +190,8 @@
     <None Include="data\shader\gaussianBlur.frag">
       <Filter>资源文件\shader</Filter>
     </None>
+    <None Include="readme.md">
+      <Filter>资源文件</Filter>
+    </None>
   </ItemGroup>
 </Project>
