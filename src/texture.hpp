@@ -26,25 +26,30 @@ public:
 		BUFFER
 	};
 	Texture2D() {};
-	Texture2D(int width, int height, GLenum wrap, GLenum filter, GLenum internalFormat, GLenum format); // Empty texture, for framebuffer usage etc.
+	Texture2D(int width, int height, GLenum wrap, GLenum filter, GLenum internalFormat, GLenum format, GLenum dataType); // Empty texture, for framebuffer usage etc.
 	Texture2D(const char* path, Type type, GLenum wrap, GLenum filter); // Load texture from file.
 	virtual void use(GLenum textureUnit) override;
 	void setBorderColor(float r, float g, float b, float a);
+	void resetSize(int width, int height);
 	Type getType() { return type; }
 private:
 	Type type;
+	GLenum internalFormat, format, dataType;
 };
 
-Texture2D::Texture2D(int width, int height, GLenum wrap, GLenum filter, GLenum internalFormat, GLenum format) {
+Texture2D::Texture2D(int width, int height, GLenum wrap, GLenum filter, GLenum internalFormat, GLenum format, GLenum dataType) {
 	this->type = Type::BUFFER;
 	glGenTextures(1, &ID);
 	glBindTexture(GL_TEXTURE_2D, ID);
-	glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, width, height, 0, format, GL_FLOAT, nullptr);
+	glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, width, height, 0, format, dataType, nullptr);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filter);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filter);
 	glBindTexture(GL_TEXTURE_2D, 0);
+	this->internalFormat = internalFormat;
+	this->format = format;
+	this->dataType = dataType;
 }
 
 Texture2D::Texture2D(const char* path, Type type, GLenum wrap, GLenum filter) {
@@ -90,6 +95,12 @@ void Texture2D::use(GLenum textureUnit) {
 void Texture2D::setBorderColor(float r, float g, float b, float a) {
 	glBindTexture(GL_TEXTURE_2D, ID);
 	glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, new float[4] { r, g, b, a });
+	glBindTexture(GL_TEXTURE_2D, 0);
+}
+
+void Texture2D::resetSize(int width, int height) {
+	glBindTexture(GL_TEXTURE_2D, ID);
+	glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, width, height, 0, format, dataType, nullptr);
 	glBindTexture(GL_TEXTURE_2D, 0);
 }
 
@@ -205,11 +216,22 @@ void CubeMapArray::use(GLenum textureUnit) {
 class RenderBuffer {
 public:
 	GLuint ID;
+	RenderBuffer() {};
 	RenderBuffer(int width, int height, GLenum internalFormat);
+	void resetSize(int width, int height);
+private:
+	GLenum internalFormat;
 };
 
 RenderBuffer::RenderBuffer(int width, int height, GLenum internalFormat) {
 	glGenRenderbuffers(1, &ID);
+	glBindRenderbuffer(GL_RENDERBUFFER, ID);
+	glRenderbufferStorage(GL_RENDERBUFFER, internalFormat, width, height);
+	glBindRenderbuffer(GL_RENDERBUFFER, 0);
+	this->internalFormat = internalFormat;
+}
+
+void RenderBuffer::resetSize(int width, int height) {
 	glBindRenderbuffer(GL_RENDERBUFFER, ID);
 	glRenderbufferStorage(GL_RENDERBUFFER, internalFormat, width, height);
 	glBindRenderbuffer(GL_RENDERBUFFER, 0);

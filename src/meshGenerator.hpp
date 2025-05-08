@@ -9,6 +9,8 @@ public:
 	static MeshPtr generateCube();
 	static MeshPtr generateSphere(int sectorCount = 32, int stackCount = 32);
 	static MeshPtr generatePlane();
+private:
+	static void computeTangents(std::vector<Vertex>& vertices, std::vector<GLuint>& indices);
 };
 
 MeshPtr MeshGenerator::generateCube() {
@@ -78,6 +80,7 @@ MeshPtr MeshGenerator::generateCube() {
 			  30, 31, 32,
 			  33, 34, 35
 		};
+		computeTangents(cube.vertices, cube.indices);
 		cube.initGLResources();
 	}
 	return std::make_shared<Mesh>(cube);
@@ -126,6 +129,7 @@ MeshPtr MeshGenerator::generateSphere(int sectorCount, int stackCount)
 
 		sphere.vertices = vertices;
 		sphere.indices = indices;
+		computeTangents(sphere.vertices, sphere.indices);
 		sphere.initGLResources();
 	}
 	return std::make_shared<Mesh>(sphere);
@@ -147,9 +151,42 @@ MeshPtr MeshGenerator::generatePlane()
 			// Second triangle
 			0, 2, 3
 		};
+		computeTangents(plane.vertices, plane.indices);
 		plane.initGLResources();
 	}
 	return std::make_shared<Mesh>(plane);
+}
+
+void MeshGenerator::computeTangents(std::vector<Vertex>& vertices, std::vector<GLuint>& indices)
+{
+	for (auto& v : vertices) {
+		v.tangent = glm::vec3(0.0f);
+		v.bitangent = glm::vec3(0.0f);
+	}
+	// accumulate
+	for (size_t i = 0; i + 2 < indices.size(); i += 3) {
+		Vertex& v0 = vertices[indices[i + 0]];
+		Vertex& v1 = vertices[indices[i + 1]];
+		Vertex& v2 = vertices[indices[i + 2]];
+		glm::vec3 edge1 = v1.position - v0.position;
+		glm::vec3 edge2 = v2.position - v0.position;
+		glm::vec2 deltaUV1 = v1.texCoords - v0.texCoords;
+		glm::vec2 deltaUV2 = v2.texCoords - v0.texCoords;
+		float f = 1.0f / (deltaUV1.x * deltaUV2.y - deltaUV2.x * deltaUV1.y);
+		glm::vec3 tangent = f * (edge1 * deltaUV2.y - edge2 * deltaUV1.y);
+		glm::vec3 bitangent = f * (edge2 * deltaUV1.x - edge1 * deltaUV2.x);
+		v0.tangent += tangent;
+		v1.tangent += tangent;
+		v2.tangent += tangent;
+		v0.bitangent += bitangent;
+		v1.bitangent += bitangent;
+		v2.bitangent += bitangent;
+	}
+	// normalize
+	for (auto& v : vertices) {
+		v.tangent = glm::normalize(v.tangent);
+		v.bitangent = glm::normalize(v.bitangent);
+	}
 }
 
 #endif

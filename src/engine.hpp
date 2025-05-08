@@ -4,9 +4,9 @@
 
 #include "camera.hpp"
 #include "core/windowSystem.hpp"
-#include "core/renderSystem.hpp"
 #include "core/guiSystem.hpp"
 #include "core/resourceManager.hpp"
+#include "core/renderSystem.hpp"
 #include <GLFW/glfw3.h>
 
 class Engine {

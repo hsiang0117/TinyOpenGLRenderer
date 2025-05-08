@@ -21,7 +21,7 @@ public:
 
 	std::string getPath() { return path; }
 	std::string getName() { return name; }
-	void draw();
+	void draw(ShaderPtr shader);
 	bool isReady() const { return loaded && glInitialized; }
 private:
 	bool loaded = false, glInitialized = false;
@@ -64,13 +64,13 @@ bool Model::initGLResources()
 	return true;
 }
 
-void Model::draw()
+void Model::draw(ShaderPtr shader)
 {
 	for (unsigned int i = 0; i < meshes.size(); i++)
 	{
 		auto material = materials.find(meshes[i]->getMaterialIndex());
 		if (material != materials.end()) {
-			material->second.bind();
+			material->second.bind(shader);
 		}
 		meshes[i]->draw();
 	}
@@ -79,7 +79,7 @@ void Model::draw()
 void Model::loadModel(std::string path)
 {
 	Assimp::Importer importer;
-	const aiScene* scene = importer.ReadFile(path, aiProcess_Triangulate | aiProcess_FlipUVs);
+	const aiScene* scene = importer.ReadFile(path, aiProcess_Triangulate | aiProcess_CalcTangentSpace);
 	if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
 	{
 		std::cerr << "ERROR::ASSIMP::" << importer.GetErrorString() << std::endl;
@@ -142,6 +142,28 @@ Mesh Model::processMesh(aiMesh* mesh, const aiScene* scene)
 		{
 			vertex.texCoords = glm::vec2(0.0f);
 		}
+		if (mesh->mTangents)
+		{
+			vector.x = mesh->mTangents[i].x;
+			vector.y = mesh->mTangents[i].y;
+			vector.z = mesh->mTangents[i].z;
+			vertex.tangent = vector;
+		}
+		else
+		{
+			vertex.tangent = glm::vec3(0.0f);
+		}
+		if (mesh->mBitangents)
+		{
+			vector.x = mesh->mBitangents[i].x;
+			vector.y = mesh->mBitangents[i].y;
+			vector.z = mesh->mBitangents[i].z;
+			vertex.bitangent = vector;
+		}
+		else
+		{
+			vertex.bitangent = glm::vec3(0.0f);
+		}
 		result.vertices.push_back(vertex);
 	}
 
@@ -167,7 +189,7 @@ Mesh Model::processMesh(aiMesh* mesh, const aiScene* scene)
 			aiString specularPath;
 			material->GetTexture(aiTextureType_SPECULAR, 0, &specularPath);
 			aiString normalPath;
-			material->GetTexture(aiTextureType_NORMALS, 0, &normalPath);
+			material->GetTexture(aiTextureType_HEIGHT, 0, &normalPath);
 			aiString shininessPath;
 			material->GetTexture(aiTextureType_SHININESS, 0, &shininessPath);
 			mat = Material(mesh->mMaterialIndex, directory + albedoPath.C_Str(), directory + ambientPath.C_Str(),

@@ -178,5 +178,17 @@
     <None Include="data\shader\depthCube.frag">
       <Filter>资源文件\shader</Filter>
     </None>
+    <None Include="data\shader\lightCube.vert">
+      <Filter>资源文件\shader</Filter>
+    </None>
+    <None Include="data\shader\lightCube.frag">
+      <Filter>资源文件\shader</Filter>
+    </None>
+    <None Include="data\shader\gaussianBlur.vert">
+      <Filter>资源文件\shader</Filter>
+    </None>
+    <None Include="data\shader\gaussianBlur.frag">
+      <Filter>资源文件\shader</Filter>
+    </None>
   </ItemGroup>
 </Project>

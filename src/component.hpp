@@ -45,12 +45,13 @@ private:
 
 class PointLightComponent : public Component {
 public:
-	PointLightComponent() : color(1.0f), constant(1.0f), linear(0.09f), quadratic(0.032f) {
+	PointLightComponent() : color(1.0f), constant(1.0f), linear(0.09f), quadratic(0.032f), brightness(1.0f) {
 		name = "PointLightComponent";
 	}
 	virtual std::string getName() const override { return name; }
 
 	glm::vec3 color;
+	float brightness;
 	float constant;
 	float linear;
 	float quadratic;
@@ -60,24 +61,26 @@ private:
 
 class DirectionLightComponent : public Component {
 public:
-	DirectionLightComponent() : color(1.0f) {
+	DirectionLightComponent() : color(1.0f), brightness(1.0f) {
 		name = "DirectionLightComponent";
 	}
 	virtual std::string getName() const override { return name; }
 
 	glm::vec3 color;
+	float brightness;
 private:
 	std::string name;
 };
 
 class SpotLightComponent : public Component {
 public:
-	SpotLightComponent() : color(1.0f), cutOff(12.5f), outerCutOff(17.5f){
+	SpotLightComponent() : color(1.0f), cutOff(12.5f), outerCutOff(17.5f), brightness(1.0f){
 		name = "SpotLightComponent";
 	}
 	virtual std::string getName() const override { return name; }
 
 	glm::vec3 color;
+	float brightness;
 	float cutOff;
 	float outerCutOff;
 private:
@@ -152,6 +155,7 @@ public:
 
 	char albedoPath[255] = {};
 	char specularPath[255] = {};
+	char normalPath[255] = {};
 	Material material;
 	void setMaterial();
 private:
@@ -161,6 +165,7 @@ private:
 void DynamicMaterialComponent::setMaterial() {
 	material.albedoPath = albedoPath;
 	material.specularPath = specularPath;
+	material.normalPath = normalPath;
 	material.initGLResources();
 }
 #endif

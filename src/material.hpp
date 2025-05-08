@@ -3,6 +3,7 @@
 #pragma once
 
 #include "texture.hpp"
+#include "shader.hpp"
 #include <glad/glad.h>
 #include <iostream>
 #include <vector>
@@ -14,7 +15,7 @@ public:
 	Material(){};
 	Material(unsigned int index, std::string albedoPath, std::string ambientPath, std::string specularPath, std::string normalPath, std::string shininessPath);
 	void initGLResources();
-	void bind();
+	void bind(ShaderPtr shader);
 
 	std::string albedoPath;
 	std::string ambientPath;
@@ -62,12 +63,13 @@ void Material::initGLResources()
 	}
 }
 
-void Material::bind()
+void Material::bind(ShaderPtr shader)
 {
 	for (auto i = GL_TEXTURE0; i <= GL_TEXTURE4; i++) {
 		glActiveTexture(i);
 		glBindTexture(GL_TEXTURE_2D, 0);
 	}
+	shader->setInt("hasNormalMap", 0);
 	for (int i = 0; i < textures.size(); i++)
 	{
 		switch (textures[i].getType()) {
@@ -81,6 +83,7 @@ void Material::bind()
 				textures[i].use(GL_TEXTURE2);
 				break;
 			case Texture2D::Type::NORMAL:
+				shader->setInt("hasNormalMap", 1);
 				textures[i].use(GL_TEXTURE3);
 				break;			
 			case Texture2D::Type::SHININESS:

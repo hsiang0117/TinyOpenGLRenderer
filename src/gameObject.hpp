@@ -73,12 +73,10 @@ public:
 	RenderObject(std::string name) : GameObject(name) {
 		type = GameObject::Type::RENDEROBJECT;
 	}
-	virtual void draw(ShaderPtr shader) override;
+	void draw(ShaderPtr shader) override;
 };
 
 void RenderObject::draw(ShaderPtr shader) {
-	shader->setInt("albedoMap", 0);
-	shader->setInt("specularMap", 2);
 	if (auto renderComponent = getComponent<RenderComponent>()) {
 		glm::mat4 model = glm::mat4(1.0f);
 		if (auto transform = getComponent<Transform>()) {
@@ -89,7 +87,7 @@ void RenderObject::draw(ShaderPtr shader) {
 			model = glm::scale(model, transform->scale);
 			shader.get()->setMat4("model", model);
 			if (renderComponent->model) {
-				renderComponent->model->draw();
+				renderComponent->model->draw(shader);
 			}
 		}
 	}
@@ -100,8 +98,9 @@ public:
 	PointLightObject(std::string name) : GameObject(name) {
 		type = GameObject::Type::POINTLIGHTOBJECT;
 	}
-	virtual void sendToSSBO(int index, ShaderStorageBuffer ssbo) override;
-	virtual std::vector<glm::mat4> getLightMatricesCube() override;
+	void sendToSSBO(int index, ShaderStorageBuffer ssbo) override;
+	std::vector<glm::mat4> getLightMatricesCube() override;
+	void draw(ShaderPtr shader) override;
 
 	static const int glslSize = 48;
 };
@@ -109,15 +108,16 @@ public:
 void PointLightObject::sendToSSBO(int index, ShaderStorageBuffer ssbo) {
 	auto transform = getComponent<Transform>();
 	auto pointLight = getComponent<PointLightComponent>();
+	auto shadowCaster = getComponent<ShadowCasterCube>();
 	ssbo.bind();
 	ssbo.bufferSubdata(index * glslSize, 12, glm::value_ptr(transform->translate));
 	ssbo.bufferSubdata(index * glslSize + 12, 4, nullptr);
 	ssbo.bufferSubdata(index * glslSize + 16, 12, glm::value_ptr(pointLight->color));
-	ssbo.bufferSubdata(index * glslSize + 28, 4, nullptr);
+	ssbo.bufferSubdata(index * glslSize + 28, 4, &pointLight->brightness);
 	ssbo.bufferSubdata(index * glslSize + 32, 4, &pointLight->constant);
 	ssbo.bufferSubdata(index * glslSize + 36, 4, &pointLight->linear);
 	ssbo.bufferSubdata(index * glslSize + 40, 4, &pointLight->quadratic);
-	ssbo.bufferSubdata(index * glslSize + 44, 4, nullptr);
+	ssbo.bufferSubdata(index * glslSize + 44, 4, &shadowCaster->farPlane);
 	ssbo.unbind();
 }
 
@@ -131,9 +131,34 @@ std::vector<glm::mat4> PointLightObject::getLightMatricesCube() {
 	lightViews.push_back(lightProjection * glm::lookAt(position, position + glm::vec3(-1.0, 0.0, 0.0), glm::vec3(0.0, -1.0, 0.0)));
 	lightViews.push_back(lightProjection * glm::lookAt(position, position + glm::vec3(0.0, 1.0, 0.0), glm::vec3(0.0, 0.0, 1.0)));
 	lightViews.push_back(lightProjection * glm::lookAt(position, position + glm::vec3(0.0, -1.0, 0.0), glm::vec3(0.0, 0.0, -1.0)));
-	lightViews.push_back(lightProjection * glm::lookAt(position, position + glm::vec3(0.0, 0.0, -1.0), glm::vec3(0.0, -1.0, 0.0)));
 	lightViews.push_back(lightProjection * glm::lookAt(position, position + glm::vec3(0.0, 0.0, 1.0), glm::vec3(0.0, -1.0, 0.0)));
+	lightViews.push_back(lightProjection * glm::lookAt(position, position + glm::vec3(0.0, 0.0, -1.0), glm::vec3(0.0, -1.0, 0.0)));
 	return lightViews;
+}
+
+void PointLightObject::draw(ShaderPtr shader) {
+	if (auto staticMeshComponent = getComponent<StaticMeshComponent>()) {
+		glm::mat4 model = glm::mat4(1.0f);
+		if (auto transform = getComponent<Transform>()) {
+			model = glm::translate(model, transform->translate);
+			model = glm::rotate(model, glm::radians(transform->rotate.z), glm::vec3(0, 0, 1));
+			model = glm::rotate(model, glm::radians(transform->rotate.y), glm::vec3(0, 1, 0));
+			model = glm::rotate(model, glm::radians(transform->rotate.x), glm::vec3(1, 0, 0));
+			model = glm::scale(model, transform->scale);
+		}
+		shader->setMat4("model", model);
+		glm::vec3 color = glm::vec3(1.0f, 1.0f, 1.0f);
+		float brightness = 1.0f;
+		if (auto pointLight = getComponent<PointLightComponent>()) {
+			color = pointLight->color;
+			brightness = pointLight->brightness;
+		}
+		shader->setVec3("color", color);
+		shader->setFloat("brightness", brightness);
+		if (staticMeshComponent->mesh) {
+			staticMeshComponent->mesh->draw();
+		}
+	}
 }
 
 class DirectionLightObject : public GameObject {
@@ -141,8 +166,8 @@ public:
 	DirectionLightObject(std::string name) : GameObject(name) {
 		type = GameObject::Type::DIRECTIONLIGHTOBJECT;
 	}
-	virtual void sendToSSBO(int index, ShaderStorageBuffer ssbo) override;
-	virtual glm::mat4 getLightMatrices() override;
+	void sendToSSBO(int index, ShaderStorageBuffer ssbo) override;
+	glm::mat4 getLightMatrices() override;
 
 	static const int glslSize = 32;
 private:
@@ -161,7 +186,7 @@ void DirectionLightObject::sendToSSBO(int index, ShaderStorageBuffer ssbo) {
 	ssbo.bufferSubdata(0, 12, glm::value_ptr(direction));
 	ssbo.bufferSubdata(12, 4, nullptr);
 	ssbo.bufferSubdata(16, 12, glm::value_ptr(directionLight->color));
-	ssbo.bufferSubdata(28, 4, nullptr);
+	ssbo.bufferSubdata(28, 4, &directionLight->brightness);
 	ssbo.unbind();
 }
 
@@ -183,7 +208,7 @@ public:
 	SpotLightObject(std::string name) : GameObject(name) {
 		type = GameObject::Type::SPOTLIGHTOBJECT;
 	}
-	virtual void sendToSSBO(int index, ShaderStorageBuffer ssbo) override;
+	void sendToSSBO(int index, ShaderStorageBuffer ssbo) override;
 
 	static const int glslSize = 64;
 };
@@ -205,7 +230,7 @@ void SpotLightObject::sendToSSBO(int index, ShaderStorageBuffer ssbo) {
 	ssbo.bufferSubdata(index * glslSize + 16, 12, glm::value_ptr(direction));
 	ssbo.bufferSubdata(index * glslSize + 28, 4, nullptr);
 	ssbo.bufferSubdata(index * glslSize + 32, 12, glm::value_ptr(spotLight->color));
-	ssbo.bufferSubdata(index * glslSize + 44, 4, nullptr);
+	ssbo.bufferSubdata(index * glslSize + 44, 4, &spotLight->brightness);
 	ssbo.bufferSubdata(index * glslSize + 48, 4, &cutOff);
 	ssbo.bufferSubdata(index * glslSize + 52, 4, &outerCutOff);
 	ssbo.bufferSubdata(index * glslSize + 56, 8, nullptr);
@@ -217,8 +242,8 @@ public:
 	SkyBoxObject(std::string name) : GameObject(name) {
 		type = GameObject::Type::SKYBOXOBJECT;
 	}
-	virtual void draw(ShaderPtr shader) override;
-	virtual void useCubeMap(ShaderPtr shader) override;
+	void draw(ShaderPtr shader) override;
+	void useCubeMap(ShaderPtr shader) override;
 };
 
 void SkyBoxObject::draw(ShaderPtr shader) {
@@ -244,15 +269,13 @@ public:
 	StaticMeshObject(std::string name) : GameObject(name) {
 		type = GameObject::Type::RENDEROBJECT;
 	}
-	virtual void draw(ShaderPtr shader) override;
+	void draw(ShaderPtr shader) override;
 };
 
 void StaticMeshObject::draw(ShaderPtr shader) {
 	if (auto staticMeshComponent = getComponent<StaticMeshComponent>()) {
-		shader->setInt("albedoMap", 0);
-		shader->setInt("specularMap", 2);
 		if (auto dynamicMaterialComponent = getComponent<DynamicMaterialComponent>()) {
-			dynamicMaterialComponent->material.bind();
+			dynamicMaterialComponent->material.bind(shader);
 		}
 		glm::mat4 model = glm::mat4(1.0f);
 		if (auto transform = getComponent<Transform>()) {

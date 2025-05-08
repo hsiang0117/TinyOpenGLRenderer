@@ -177,6 +177,10 @@
     <None Include="data\shader\depthCube.frag" />
     <None Include="data\shader\depthCube.geom" />
     <None Include="data\shader\depthCube.vert" />
+    <None Include="data\shader\gaussianBlur.frag" />
+    <None Include="data\shader\gaussianBlur.vert" />
+    <None Include="data\shader\lightCube.frag" />
+    <None Include="data\shader\lightCube.vert" />
     <None Include="data\shader\screenQuad.frag" />
     <None Include="data\shader\screenQuad.vert" />
     <None Include="data\shader\settings.glsl" />

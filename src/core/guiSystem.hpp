@@ -116,8 +116,11 @@ void GuiSystem::showLeftSideBar()
 				if (ImGui::MenuItem(u8"点光源")) {
 					auto gameObject = std::make_shared<PointLightObject>("PointLight");
 					gameObject->addComponent<Transform>();
+					gameObject->getComponent<Transform>()->scale = glm::vec3(0.2f);
 					gameObject->addComponent<PointLightComponent>();
 					gameObject->addComponent<ShadowCasterCube>();
+					gameObject->addComponent<StaticMeshComponent>();
+					gameObject->getComponent<StaticMeshComponent>()->setMesh(MeshGenerator::generateCube());
 					ResourceManager::getInstance().gameObjects.push_back(gameObject);
 					ResourceManager::getInstance().pointLightNum++;
 				}
@@ -258,8 +261,50 @@ void GuiSystem::showRightSideBar()
 
 	ImGui::SetCursorScreenPos({ viewport->Size.x - rightSideBarWidth, 0 });
 	ImGui::BeginChild("RightSidebar", ImVec2(rightSideBarWidth, viewport->Size.y - bottomSideBarHeight - SPLITTER_THICKNESS), true, ImGuiWindowFlags_NoMove);
-	ImGui::Text(u8"渲染设置");
+	ImGui::BeginChild(u8"renderSettingsPanel", ImVec2(0, 0), false, ImGuiWindowFlags_MenuBar);
+	if (ImGui::BeginMenuBar()) {
+		ImGui::Text(u8"渲染设置");
+		ImGui::EndMenuBar();
+	}
+	static bool softShadowChecked = true;
+	if (ImGui::Checkbox(u8"软阴影", &softShadowChecked)) {
+		if (softShadowChecked) {
+			Shader::changeSettings("PCF_SHADOW", true);
+		}
+		else {
+			Shader::changeSettings("PCF_SHADOW", false);
+		}
+		ResourceManager::getInstance().shaderCache["default"]->reCompile();
+	}
+	ImGui::Separator();
 
+	static bool hdrChecked = false;
+	static float exposure = 1.0;
+	static bool bloomChecked = false;
+	if (ImGui::Checkbox(u8"HDR", &hdrChecked)) {
+		if (hdrChecked) {
+			Shader::changeSettings("USE_HDR", true);
+		}
+		else {
+			Shader::changeSettings("USE_HDR", false);
+		}
+		ResourceManager::getInstance().shaderCache["screenQuad"]->reCompile();
+	}
+	if (ImGui::SliderFloat(u8"曝光度", &exposure, 0.1f, 10.0f)) {
+		ResourceManager::getInstance().shaderCache["screenQuad"]->setFloat("exposure", exposure);
+	}
+	if (ImGui::Checkbox(u8"Bloom", &bloomChecked)) {
+		if (bloomChecked) {
+			Shader::changeSettings("USE_BLOOM", true);
+		}
+		else {
+			Shader::changeSettings("USE_BLOOM", false);
+		}
+		ResourceManager::getInstance().shaderCache["screenQuad"]->reCompile();
+	}
+	ImGui::Separator();
+
+	ImGui::EndChild();
 	ImGui::EndChild();
 
 	ImGui::SetCursorScreenPos({ viewport->Size.x - rightSideBarWidth - SPLITTER_THICKNESS, 0 });
@@ -366,6 +411,7 @@ void GuiSystem::registComponents()
 		ImGui::Text(u8"PointLight");
 		ImGui::Separator();
 		ImGui::ColorPicker3(u8"Color", glm::value_ptr(pointLightComponent->color));
+		ImGui::DragFloat(u8"Brightness", &pointLightComponent->brightness);
 		ImGui::DragFloat(u8"Constant", &pointLightComponent->constant);
 		ImGui::DragFloat(u8"Linear", &pointLightComponent->linear);
 		ImGui::DragFloat(u8"Quadratic", &pointLightComponent->quadratic);
@@ -376,6 +422,7 @@ void GuiSystem::registComponents()
 		ImGui::Text(u8"DirectionLight");
 		ImGui::Separator();
 		ImGui::ColorPicker3(u8"Color", glm::value_ptr(directionLightComponent->color));
+		ImGui::DragFloat(u8"Brightness", &directionLightComponent->brightness);
 		ImGui::Separator();
 		});
 
@@ -383,6 +430,7 @@ void GuiSystem::registComponents()
 		ImGui::Text(u8"SpotLight");
 		ImGui::Separator();
 		ImGui::ColorPicker3(u8"Color", glm::value_ptr(spotLightComponent->color));
+		ImGui::DragFloat(u8"Brightness", &spotLightComponent->brightness);
 		ImGui::DragFloat(u8"CutOff", &spotLightComponent->cutOff);
 		ImGui::DragFloat(u8"OuterCutOff", &spotLightComponent->outerCutOff);
 		ImGui::Separator();
@@ -406,12 +454,13 @@ void GuiSystem::registComponents()
 		ImGui::Separator();
 		ImGui::InputText(u8"albedo", dynamicMaterialComponent->albedoPath, 255);
 		ImGui::InputText(u8"specular", dynamicMaterialComponent->specularPath, 255);
+		ImGui::InputText(u8"normal", dynamicMaterialComponent->normalPath, 255);
 		if (ImGui::Button(u8"确认")) {
 			dynamicMaterialComponent->setMaterial();
 		}
 		});
 
-	registerComponentWidget<ShadowCaster2D>("ShadowCaster", [](std::shared_ptr<ShadowCaster2D> shadowCaster2D) {
+	registerComponentWidget<ShadowCaster2D>("ShadowCaster2D", [](std::shared_ptr<ShadowCaster2D> shadowCaster2D) {
 		ImGui::Text(u8"ShadowCaster");
 		ImGui::Separator();
 		ImGui::Checkbox(u8"Enabled", &shadowCaster2D->enabled);
