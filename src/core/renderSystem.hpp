@@ -130,6 +130,8 @@ void RenderSystem::render(Camera& camera) {
 	uboMatrices.bufferSubdata(sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(camera.getProjectionMat((float)width, (float)height)));
 	uboMatrices.unbind();
 
+	Frustum frustum = camera.getFrustum((float)width, (float)height);
+
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -256,7 +258,7 @@ void RenderSystem::render(Camera& camera) {
 	defaultShader->setVec3("cameraPos", camera.getPos());
 	for (int i = 0; i < ResourceManager::getInstance().gameObjects.size(); i++) {
 		GameObjectPtr object = ResourceManager::getInstance().gameObjects[i];
-		if (object->getType() == GameObject::Type::RENDEROBJECT) {
+		if (object->getType() == GameObject::Type::RENDEROBJECT && object->isOnFrustum(frustum)) {
 			object->draw(defaultShader);
 		}
 		else if (object->getType() == GameObject::Type::SKYBOXOBJECT) {
@@ -267,7 +269,7 @@ void RenderSystem::render(Camera& camera) {
 	lightCubeShader->use();
 	for (int i = 0; i < ResourceManager::getInstance().gameObjects.size(); i++) {
 		GameObjectPtr object = ResourceManager::getInstance().gameObjects[i];
-		if (object->getType() == GameObject::Type::POINTLIGHTOBJECT) {
+		if (object->getType() == GameObject::Type::POINTLIGHTOBJECT && object->isOnFrustum(frustum)) {
 			object->draw(lightCubeShader);
 		}
 	}

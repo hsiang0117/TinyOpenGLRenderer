@@ -23,6 +23,7 @@ public:
 	std::string getName() { return name; }
 	void draw(ShaderPtr shader);
 	bool isReady() const { return loaded && glInitialized; }
+	void buildAABB(glm::vec3& min, glm::vec3& max);
 private:
 	bool loaded = false, glInitialized = false;
 
@@ -73,6 +74,26 @@ void Model::draw(ShaderPtr shader)
 			material->second.bind(shader);
 		}
 		meshes[i]->draw();
+	}
+}
+
+void Model::buildAABB(glm::vec3& min, glm::vec3& max)
+{
+	// 初始化min和max为极值
+	min = glm::vec3(std::numeric_limits<float>::max());
+	max = glm::vec3(std::numeric_limits<float>::lowest());
+
+	for (const auto& meshPtr : meshes) {
+		if (!meshPtr) continue;
+		for (const auto& vertex : meshPtr->vertices) {
+			min.x = std::min(min.x, vertex.position.x);
+			min.y = std::min(min.y, vertex.position.y);
+			min.z = std::min(min.z, vertex.position.z);
+
+			max.x = std::max(max.x, vertex.position.x);
+			max.y = std::max(max.y, vertex.position.y);
+			max.z = std::max(max.z, vertex.position.z);
+		}
 	}
 }
 

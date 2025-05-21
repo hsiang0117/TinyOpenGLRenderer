@@ -10,94 +10,97 @@
 
 class Component {
 public:
+	Component(std::string name): name(name) {}
 	virtual ~Component() {}
-	virtual std::string getName() const = 0;
+	std::string getName() const;
+private:
+	std::string name;
 };
+
+std::string Component::getName() const {
+	return name;
+}
 
 using ComponentPtr = std::shared_ptr<Component>;
 
 class Transform : public Component {
 public:
-	Transform() : translate(0.0f), scale(1.0f), rotate(0.0f) {
-		name = "Transform";
+	Transform() : Component("Transform") {
+		translate = glm::vec3(0.0f);
+		scale = glm::vec3(1.0f);
+		rotate = glm::vec3(0.0f);
 	}
-	virtual std::string getName() const override { return name; }
 
 	glm::vec3 translate;
 	glm::vec3 scale;
 	glm::vec3 rotate;
-private:
-	std::string name;
 };
 
 class RenderComponent : public Component {
 public:
-	RenderComponent() {
-		name = "RenderComponent";
-	}
-	virtual std::string getName() const override { return name; }
 
-	void setModel(ModelPtr model) { this->model = model; }
+	RenderComponent() : Component("RenderComponent") {}
+
+	void setModel(ModelPtr model) { 
+		this->model = model; 
+		this->model->buildAABB(aabb.min, aabb.max);
+	}
 	ModelPtr model;
-private:
-	std::string name;
+
+	struct AABB {
+		glm::vec3 min;
+		glm::vec3 max;
+	}aabb;
 };
 
 class PointLightComponent : public Component {
 public:
-	PointLightComponent() : color(1.0f), constant(1.0f), linear(0.09f), quadratic(0.032f), brightness(1.0f) {
-		name = "PointLightComponent";
+	PointLightComponent() : Component("PointLightComponent") {
+		color = glm::vec3(1.0f);
+		constant = 1.0f;
+		linear = 0.009f;
+		quadratic = 0.032f;
 	}
-	virtual std::string getName() const override { return name; }
 
 	glm::vec3 color;
 	float brightness;
 	float constant;
 	float linear;
 	float quadratic;
-private:
-	std::string name;
 };
 
 class DirectionLightComponent : public Component {
 public:
-	DirectionLightComponent() : color(1.0f), brightness(1.0f) {
-		name = "DirectionLightComponent";
+	DirectionLightComponent() : Component("DirectionLightComponent") {
+		color = glm::vec3(1.0f);
+		brightness = 1.0f;
 	}
-	virtual std::string getName() const override { return name; }
 
 	glm::vec3 color;
 	float brightness;
-private:
-	std::string name;
 };
 
 class SpotLightComponent : public Component {
 public:
-	SpotLightComponent() : color(1.0f), cutOff(12.5f), outerCutOff(17.5f), brightness(1.0f){
-		name = "SpotLightComponent";
+	SpotLightComponent() : Component("SpotLightComponent") {
+		color = glm::vec3(1.0f);
+		cutOff = 12.5f;
+		outerCutOff = 17.5f;
+		brightness = 1.0f;
 	}
-	virtual std::string getName() const override { return name; }
 
 	glm::vec3 color;
 	float brightness;
 	float cutOff;
 	float outerCutOff;
-private:
-	std::string name;
 };
 
 class SkyBoxComponent : public Component {
 public:
-	SkyBoxComponent() {
-		name = "SkyBoxComponent";
-	}
-	virtual std::string getName() const override { return name; }
+	SkyBoxComponent() : Component("SkyBoxComponent") {}
 	
 	SkyBoxPtr skybox;
 	void setSkyBox(std::string folderPath);
-private:
-	std::string name;
 };
 
 void SkyBoxComponent::setSkyBox(std::string folderPath) {
@@ -107,59 +110,49 @@ void SkyBoxComponent::setSkyBox(std::string folderPath) {
 
 class ShadowCaster2D : public Component {
 public:
-	ShadowCaster2D() {
-		name = "ShadowCaster2D";
+	ShadowCaster2D() : Component("ShadowCaster2D") {
 		enabled = true;
 	}
-	virtual std::string getName() const override { return name; }
 
 	bool enabled;
-private:
-	std::string name;
 };
 
 class ShadowCasterCube : public Component {
 public:
-	ShadowCasterCube() {
-		name = "ShadowCasterCube";
+	ShadowCasterCube() : Component("ShadowCasterCube") {
 		enabled = true;
 		farPlane = 25.0f;
 	}
-	virtual std::string getName() const override { return name; }
 
 	bool enabled;
 	float farPlane;
-private:
-	std::string name;
 };
 
 class StaticMeshComponent : public Component {
 public:
-	StaticMeshComponent() {
-		name = "StaticMeshComponent";
-	}
-	virtual std::string getName() const override { return name; }
+	StaticMeshComponent() : Component("StaticMeshComponent") {}
 
-	void setMesh(MeshPtr mesh) { this->mesh = mesh; }
+	void setMesh(MeshPtr mesh) {
+		this->mesh = mesh;
+		this->mesh->buildAABB(aabb.min, aabb.max);
+	}
+
 	MeshPtr mesh;
-private:
-	std::string name;
+	struct AABB {
+		glm::vec3 min;
+		glm::vec3 max;
+	}aabb;
 };
 
 class DynamicMaterialComponent : public Component {
 public:
-	DynamicMaterialComponent() {
-		name = "DynamicMaterialComponent";
-	}
-	virtual std::string getName() const override { return name; }
+	DynamicMaterialComponent() : Component("DynamicMaterialComponent") {}
 
 	char albedoPath[255] = {};
 	char specularPath[255] = {};
 	char normalPath[255] = {};
 	Material material;
 	void setMaterial();
-private:
-	std::string name;
 };
 
 void DynamicMaterialComponent::setMaterial() {

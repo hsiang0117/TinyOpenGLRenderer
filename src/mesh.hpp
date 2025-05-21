@@ -28,6 +28,7 @@ public:
     void draw();
     void setMaterialIndex(unsigned int index) { materialIndex = index; }
     unsigned int getMaterialIndex() { return materialIndex; }
+    void buildAABB(glm::vec3& min, glm::vec3& max);
 private:
     GLuint VAO, VBO, EBO;
     unsigned int materialIndex;
@@ -83,6 +84,20 @@ void Mesh::draw()
     glBindVertexArray(VAO);
     glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
     glBindVertexArray(0);
+}
+
+void Mesh::buildAABB(glm::vec3& min, glm::vec3& max) {
+    min = glm::vec3(std::numeric_limits<float>::max());
+    max = glm::vec3(std::numeric_limits<float>::lowest());
+
+    for (const auto& vertex : vertices) {
+        min.x = std::min(min.x, vertex.position.x);
+        min.y = std::min(min.y, vertex.position.y);
+        min.z = std::min(min.z, vertex.position.z);
+        max.x = std::max(max.x, vertex.position.x);
+        max.y = std::max(max.y, vertex.position.y);
+        max.z = std::max(max.z, vertex.position.z);
+    }
 }
 
 using MeshPtr = std::shared_ptr<Mesh>;

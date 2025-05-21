@@ -23,6 +23,15 @@ enum Direction {
 	DOWN
 };
 
+struct Frustum {
+	glm::vec4 leftPlane;
+	glm::vec4 rightPlane;
+	glm::vec4 bottomPlane;
+	glm::vec4 topPlane;
+	glm::vec4 nearPlane;
+	glm::vec4 farPlane;
+};
+
 class Camera {
 public:
 	Camera();
@@ -31,6 +40,7 @@ public:
 	glm::vec3 getFront();
 	glm::mat4 getViewMat();
 	glm::mat4 getProjectionMat(const float scrWidth, const float scrHeight);
+	Frustum getFrustum(const float scrWidth, const float scrHeight);
 	void processKeyboard(Direction d, double deltaTime);
 	void processMouseMovement(const float xPos, const float yPos);
 	void processMouseScroll(const float yOffset);
@@ -82,6 +92,60 @@ glm::mat4 Camera::getViewMat() {
 
 glm::mat4 Camera::getProjectionMat(const float scrWidth, const float scrHeight) {
 	return glm::perspective(glm::radians(fov), scrWidth / scrHeight, 0.1f, 100.0f);
+}
+
+Frustum Camera::getFrustum(const float scrWidth, const float scrHeight) {
+	glm::mat4 proj = getProjectionMat(scrWidth, scrHeight);
+	glm::mat4 view = getViewMat();
+	glm::mat4 vp = proj * view;
+
+	Frustum frustum;
+
+	// 提取平面
+	// 左
+	frustum.leftPlane.x = vp[0][3] + vp[0][0];
+	frustum.leftPlane.y = vp[1][3] + vp[1][0];
+	frustum.leftPlane.z = vp[2][3] + vp[2][0];
+	frustum.leftPlane.w = vp[3][3] + vp[3][0];
+	// 右
+	frustum.rightPlane.x = vp[0][3] - vp[0][0];
+	frustum.rightPlane.y = vp[1][3] - vp[1][0];
+	frustum.rightPlane.z = vp[2][3] - vp[2][0];
+	frustum.rightPlane.w = vp[3][3] - vp[3][0];
+	// 下
+	frustum.bottomPlane.x = vp[0][3] + vp[0][1];
+	frustum.bottomPlane.y = vp[1][3] + vp[1][1];
+	frustum.bottomPlane.z = vp[2][3] + vp[2][1];
+	frustum.bottomPlane.w = vp[3][3] + vp[3][1];
+	// 上
+	frustum.topPlane.x = vp[0][3] - vp[0][1];
+	frustum.topPlane.y = vp[1][3] - vp[1][1];
+	frustum.topPlane.z = vp[2][3] - vp[2][1];
+	frustum.topPlane.w = vp[3][3] - vp[3][1];
+	// 近
+	frustum.nearPlane.x = vp[0][3] + vp[0][2];
+	frustum.nearPlane.y = vp[1][3] + vp[1][2];
+	frustum.nearPlane.z = vp[2][3] + vp[2][2];
+	frustum.nearPlane.w = vp[3][3] + vp[3][2];
+	// 远
+	frustum.farPlane.x = vp[0][3] - vp[0][2];
+	frustum.farPlane.y = vp[1][3] - vp[1][2];
+	frustum.farPlane.z = vp[2][3] - vp[2][2];
+	frustum.farPlane.w = vp[3][3] - vp[3][2];
+
+	// 归一化每个平面
+	auto normalizePlane = [](glm::vec4& plane) {
+		float len = glm::length(glm::vec3(plane));
+		plane /= len;
+		};
+	normalizePlane(frustum.leftPlane);
+	normalizePlane(frustum.rightPlane);
+	normalizePlane(frustum.bottomPlane);
+	normalizePlane(frustum.topPlane);
+	normalizePlane(frustum.nearPlane);
+	normalizePlane(frustum.farPlane);
+
+	return frustum;
 }
 
 void Camera::processKeyboard(Direction d, double deltaTime) {

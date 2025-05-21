@@ -26,6 +26,7 @@ public:
 	virtual glm::mat4 getLightMatrices() { return glm::mat4(1.0f); }
 	virtual std::vector<glm::mat4> getLightMatricesCube() { return std::vector<glm::mat4>(); }
 	virtual void useCubeMap(ShaderPtr shader) {}
+	virtual bool isOnFrustum(Frustum& frustum) { return false; }
 
 	template<typename T, typename... Args>
 	std::shared_ptr<T> addComponent(Args&&... args);
@@ -74,6 +75,7 @@ public:
 		type = GameObject::Type::RENDEROBJECT;
 	}
 	void draw(ShaderPtr shader) override;
+	bool isOnFrustum(Frustum& frustum) override;
 };
 
 void RenderObject::draw(ShaderPtr shader) {
@@ -93,6 +95,61 @@ void RenderObject::draw(ShaderPtr shader) {
 	}
 }
 
+bool RenderObject::isOnFrustum(Frustum& frustum) {
+	if (auto renderComponent = getComponent<RenderComponent>()) {
+		glm::mat4 model = glm::mat4(1.0f);
+		if (auto transform = getComponent<Transform>()) {
+			model = glm::translate(model, transform->translate);
+			model = glm::rotate(model, glm::radians(transform->rotate.z), glm::vec3(0, 0, 1));
+			model = glm::rotate(model, glm::radians(transform->rotate.y), glm::vec3(0, 1, 0));
+			model = glm::rotate(model, glm::radians(transform->rotate.x), glm::vec3(1, 0, 0));
+			model = glm::scale(model, transform->scale);
+
+			glm::vec3 minAABB = renderComponent->aabb.min;
+			glm::vec3 maxAABB = renderComponent->aabb.max;
+
+			// 8个顶点
+			glm::vec3 vertices[8] = {
+				glm::vec3(minAABB.x, minAABB.y, minAABB.z),
+				glm::vec3(maxAABB.x, minAABB.y, minAABB.z),
+				glm::vec3(minAABB.x, maxAABB.y, minAABB.z),
+				glm::vec3(maxAABB.x, maxAABB.y, minAABB.z),
+				glm::vec3(minAABB.x, minAABB.y, maxAABB.z),
+				glm::vec3(maxAABB.x, minAABB.y, maxAABB.z),
+				glm::vec3(minAABB.x, maxAABB.y, maxAABB.z),
+				glm::vec3(maxAABB.x, maxAABB.y, maxAABB.z)
+			};
+
+			// 变换到世界空间
+			for (int i = 0; i < 8; ++i) {
+				glm::vec4 v = model * glm::vec4(vertices[i], 1.0f);
+				vertices[i] = glm::vec3(v);
+			}
+
+			// 检查AABB是否在视锥体内
+			glm::vec4 planes[6] = {
+				frustum.leftPlane, frustum.rightPlane,
+				frustum.bottomPlane, frustum.topPlane,
+				frustum.nearPlane, frustum.farPlane
+			};
+
+			for (int p = 0; p < 6; ++p) {
+				int out = 0;
+				for (int i = 0; i < 8; ++i) {
+					const glm::vec4& plane = planes[p];
+					if (plane.x * vertices[i].x + plane.y * vertices[i].y + plane.z * vertices[i].z + plane.w < 0)
+						out++;
+				}
+				// 如果所有点都在某个平面外，则不在视锥体内
+				if (out == 8)
+					return false;
+			}
+			return true;
+		}
+	}
+	return false;
+}
+
 class PointLightObject : public GameObject {
 public:
 	PointLightObject(std::string name) : GameObject(name) {
@@ -101,6 +158,7 @@ public:
 	void sendToSSBO(int index, ShaderStorageBuffer ssbo) override;
 	std::vector<glm::mat4> getLightMatricesCube() override;
 	void draw(ShaderPtr shader) override;
+	bool isOnFrustum(Frustum& frustum) override;
 
 	static const int glslSize = 48;
 };
@@ -159,6 +217,61 @@ void PointLightObject::draw(ShaderPtr shader) {
 			staticMeshComponent->mesh->draw();
 		}
 	}
+}
+
+bool PointLightObject::isOnFrustum(Frustum& frustum) {
+	if (auto staticMeshComponent = getComponent<StaticMeshComponent>()) {
+		glm::mat4 model = glm::mat4(1.0f);
+		if (auto transform = getComponent<Transform>()) {
+			model = glm::translate(model, transform->translate);
+			model = glm::rotate(model, glm::radians(transform->rotate.z), glm::vec3(0, 0, 1));
+			model = glm::rotate(model, glm::radians(transform->rotate.y), glm::vec3(0, 1, 0));
+			model = glm::rotate(model, glm::radians(transform->rotate.x), glm::vec3(1, 0, 0));
+			model = glm::scale(model, transform->scale);
+
+			glm::vec3 minAABB = staticMeshComponent->aabb.min;
+			glm::vec3 maxAABB = staticMeshComponent->aabb.max;
+
+			// 8个顶点
+			glm::vec3 vertices[8] = {
+				glm::vec3(minAABB.x, minAABB.y, minAABB.z),
+				glm::vec3(maxAABB.x, minAABB.y, minAABB.z),
+				glm::vec3(minAABB.x, maxAABB.y, minAABB.z),
+				glm::vec3(maxAABB.x, maxAABB.y, minAABB.z),
+				glm::vec3(minAABB.x, minAABB.y, maxAABB.z),
+				glm::vec3(maxAABB.x, minAABB.y, maxAABB.z),
+				glm::vec3(minAABB.x, maxAABB.y, maxAABB.z),
+				glm::vec3(maxAABB.x, maxAABB.y, maxAABB.z)
+			};
+
+			// 变换到世界空间
+			for (int i = 0; i < 8; ++i) {
+				glm::vec4 v = model * glm::vec4(vertices[i], 1.0f);
+				vertices[i] = glm::vec3(v);
+			}
+
+			// 检查AABB是否在视锥体内
+			glm::vec4 planes[6] = {
+				frustum.leftPlane, frustum.rightPlane,
+				frustum.bottomPlane, frustum.topPlane,
+				frustum.nearPlane, frustum.farPlane
+			};
+
+			for (int p = 0; p < 6; ++p) {
+				int out = 0;
+				for (int i = 0; i < 8; ++i) {
+					const glm::vec4& plane = planes[p];
+					if (plane.x * vertices[i].x + plane.y * vertices[i].y + plane.z * vertices[i].z + plane.w < 0)
+						out++;
+				}
+				// 如果所有点都在某个平面外，则不在视锥体内
+				if (out == 8)
+					return false;
+			}
+			return true;
+		}
+	}
+	return false;
 }
 
 class DirectionLightObject : public GameObject {
@@ -270,6 +383,7 @@ public:
 		type = GameObject::Type::RENDEROBJECT;
 	}
 	void draw(ShaderPtr shader) override;
+	bool isOnFrustum(Frustum& frustum) override;
 };
 
 void StaticMeshObject::draw(ShaderPtr shader) {
@@ -290,5 +404,60 @@ void StaticMeshObject::draw(ShaderPtr shader) {
 			}
 		}
 	}
+}
+
+bool StaticMeshObject::isOnFrustum(Frustum& frustum) {
+	if (auto staticMeshComponent = getComponent<StaticMeshComponent>()) {
+		glm::mat4 model = glm::mat4(1.0f);
+		if (auto transform = getComponent<Transform>()) {
+			model = glm::translate(model, transform->translate);
+			model = glm::rotate(model, glm::radians(transform->rotate.z), glm::vec3(0, 0, 1));
+			model = glm::rotate(model, glm::radians(transform->rotate.y), glm::vec3(0, 1, 0));
+			model = glm::rotate(model, glm::radians(transform->rotate.x), glm::vec3(1, 0, 0));
+			model = glm::scale(model, transform->scale);
+
+			glm::vec3 minAABB = staticMeshComponent->aabb.min;
+			glm::vec3 maxAABB = staticMeshComponent->aabb.max;
+
+			// 8个顶点
+			glm::vec3 vertices[8] = {
+				glm::vec3(minAABB.x, minAABB.y, minAABB.z),
+				glm::vec3(maxAABB.x, minAABB.y, minAABB.z),
+				glm::vec3(minAABB.x, maxAABB.y, minAABB.z),
+				glm::vec3(maxAABB.x, maxAABB.y, minAABB.z),
+				glm::vec3(minAABB.x, minAABB.y, maxAABB.z),
+				glm::vec3(maxAABB.x, minAABB.y, maxAABB.z),
+				glm::vec3(minAABB.x, maxAABB.y, maxAABB.z),
+				glm::vec3(maxAABB.x, maxAABB.y, maxAABB.z)
+			};
+
+			// 变换到世界空间
+			for (int i = 0; i < 8; ++i) {
+				glm::vec4 v = model * glm::vec4(vertices[i], 1.0f);
+				vertices[i] = glm::vec3(v);
+			}
+
+			// 检查AABB是否在视锥体内
+			glm::vec4 planes[6] = {
+				frustum.leftPlane, frustum.rightPlane,
+				frustum.bottomPlane, frustum.topPlane,
+				frustum.nearPlane, frustum.farPlane
+			};
+
+			for (int p = 0; p < 6; ++p) {
+				int out = 0;
+				for (int i = 0; i < 8; ++i) {
+					const glm::vec4& plane = planes[p];
+					if (plane.x * vertices[i].x + plane.y * vertices[i].y + plane.z * vertices[i].z + plane.w < 0)
+						out++;
+				}
+				// 如果所有点都在某个平面外，则不在视锥体内
+				if (out == 8)
+					return false;
+			}
+			return true;
+		}
+	}
+	return false;
 }
 #endif // !GAMEOBJECT_HPP
