@@ -16,10 +16,10 @@ public:
 	GLFWwindow* getWindow();
 	bool getCursor();
 	void setCursor(bool enable);
-	void setVsync(bool enable);
 	bool getShouldClose();
 	void setShouldClose(bool value);
 	void shutDown();
+	static void setVsync(bool enable);
 private:
 	void connectInputToWindow(GLFWwindow* window);
 	GLFWwindow* window;

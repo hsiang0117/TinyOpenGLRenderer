@@ -23,7 +23,7 @@ public:
 	~GuiSystem() = default;
 	void init(GLFWwindow* window);
 	void beginFrame();
-	void render();
+	void render(double deltaTime);
 	void shutDown();
 
 	// 注册组件的渲染方法，传入组件名称和渲染函数
@@ -44,7 +44,7 @@ private:
 	}
 
 	void showLeftSideBar();
-	void showRightSideBar();
+	void showRightSideBar(double deltaTime);
 	void showBottomSideBar();
 	void registComponents();
 
@@ -65,7 +65,7 @@ void GuiSystem::init(GLFWwindow* window) {
 	}
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 	ImGui_ImplGlfw_InitForOpenGL(window, true);
-	ImGui_ImplOpenGL3_Init("#version 430");
+	ImGui_ImplOpenGL3_Init("#version 450");
 	ImGui::StyleColorsDark();
 	registComponents();
 }
@@ -76,7 +76,7 @@ void GuiSystem::beginFrame() {
 	ImGui::NewFrame();
 }
 
-void GuiSystem::render() {
+void GuiSystem::render(double deltaTime) {
 	ImGuiViewport* viewport = ImGui::GetMainViewport();
 	ImGui::SetNextWindowPos(viewport->Pos);
 	ImGui::SetNextWindowSize(viewport->Size);
@@ -84,7 +84,7 @@ void GuiSystem::render() {
 		ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse;
 	ImGui::Begin("MainViewport", nullptr, windowFlags);
 	showLeftSideBar();
-	showRightSideBar();
+	showRightSideBar(deltaTime);
 	showBottomSideBar();
 	ImGui::End();
 	ImGui::Render();
@@ -255,7 +255,7 @@ void GuiSystem::showLeftSideBar()
 	draw->AddRectFilled(ImVec2(x0, 0), ImVec2(x1, viewport->Size.y - bottomSideBarHeight - SPLITTER_THICKNESS), IM_COL32(200, 200, 200, 180));
 }
 
-void GuiSystem::showRightSideBar()
+void GuiSystem::showRightSideBar(double deltaTime)
 {
 	ImGuiViewport* viewport = ImGui::GetMainViewport();
 
@@ -266,6 +266,29 @@ void GuiSystem::showRightSideBar()
 		ImGui::Text(u8"渲染设置");
 		ImGui::EndMenuBar();
 	}
+
+	static double fpsTimer = 0.0;
+	static int frameCount = 0;
+	static double fps = 0.0;
+
+	fpsTimer += deltaTime;
+	frameCount++;
+
+	if (fpsTimer >= 1.0) {
+		fps = frameCount / fpsTimer;
+		fpsTimer = 0.0;
+		frameCount = 0;
+	}
+
+	std::string str = u8"FPS: " + std::to_string((int)fps);
+	static bool vsyncChecked = true;
+	if (ImGui::Checkbox(u8"垂直同步", &vsyncChecked)) {
+		WindowSystem::setVsync(vsyncChecked);
+	}
+	ImGui::SameLine();
+	ImGui::Text(str.c_str());
+	ImGui::Separator();
+
 	static bool softShadowChecked = true;
 	if (ImGui::Checkbox(u8"软阴影", &softShadowChecked)) {
 		if (softShadowChecked) {
@@ -301,6 +324,18 @@ void GuiSystem::showRightSideBar()
 			Shader::changeSettings("USE_BLOOM", false);
 		}
 		ResourceManager::getInstance().shaderCache["screenQuad"]->reCompile();
+	}
+	ImGui::Separator();
+
+	static bool environmentMappingChecked = false;
+	if (ImGui::Checkbox(u8"环境映射", &environmentMappingChecked)) {
+		if (environmentMappingChecked) {
+			Shader::changeSettings("USE_ENVIRONMENT_MAPPING", true);
+		}
+		else {
+			Shader::changeSettings("USE_ENVIRONMENT_MAPPING", false);
+		}
+		ResourceManager::getInstance().shaderCache["default"]->reCompile();
 	}
 	ImGui::Separator();
 
