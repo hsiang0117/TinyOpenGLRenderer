@@ -363,4 +363,3 @@ MigrationBackup/
 FodyWeavers.xsd
 
 data/model
-/data/shader/settings.glsl
