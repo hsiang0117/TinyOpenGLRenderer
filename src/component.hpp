@@ -39,7 +39,9 @@ public:
 class RenderComponent : public Component {
 public:
 
-	RenderComponent() : Component("RenderComponent") {}
+	RenderComponent() : Component("RenderComponent") {
+		skeletonVisible = false;
+	}
 
 	void setModel(ModelPtr model) { 
 		this->model = model; 
@@ -51,12 +53,15 @@ public:
 		glm::vec3 min;
 		glm::vec3 max;
 	}aabb;
+
+	bool skeletonVisible;
 };
 
 class PointLightComponent : public Component {
 public:
 	PointLightComponent() : Component("PointLightComponent") {
 		color = glm::vec3(1.0f);
+		brightness = 1.0f;
 		constant = 1.0f;
 		linear = 0.009f;
 		quadratic = 0.032f;

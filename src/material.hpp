@@ -69,6 +69,11 @@ void Material::bind(ShaderPtr shader)
 		glActiveTexture(i);
 		glBindTexture(GL_TEXTURE_2D, 0);
 	}
+	shader->setInt("useDefaultMaterial", 0);
+	if (textures.size() == 0) {
+		shader->setInt("useDefaultMaterial", 1);
+		return;
+	}
 	shader->setInt("hasNormalMap", 0);
 	for (int i = 0; i < textures.size(); i++)
 	{

@@ -137,6 +137,12 @@
     <ClInclude Include="src\meshGenerator.hpp">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="src\utils.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="src\bone.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="data\config.json">
@@ -192,6 +198,12 @@
     </None>
     <None Include="readme.md">
       <Filter>资源文件</Filter>
+    </None>
+    <None Include="data\shader\bone.vert">
+      <Filter>资源文件\shader</Filter>
+    </None>
+    <None Include="data\shader\bone.frag">
+      <Filter>资源文件\shader</Filter>
     </None>
   </ItemGroup>
 </Project>

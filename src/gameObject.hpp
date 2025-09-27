@@ -22,6 +22,7 @@ public:
 	std::string getName() { return name; }
 	Type getType() { return type; }
 	virtual void draw(ShaderPtr shader) {}
+	virtual void drawSkeleton(ShaderPtr shader) {}
 	virtual void sendToSSBO(int index, ShaderStorageBuffer ssbo) {}
 	virtual glm::mat4 getLightMatrices() { return glm::mat4(1.0f); }
 	virtual std::vector<glm::mat4> getLightMatricesCube() { return std::vector<glm::mat4>(); }
@@ -75,6 +76,7 @@ public:
 		type = GameObject::Type::RENDEROBJECT;
 	}
 	void draw(ShaderPtr shader) override;
+	void drawSkeleton(ShaderPtr shader) override;
 	bool isOnFrustum(Frustum& frustum) override;
 };
 
@@ -90,6 +92,23 @@ void RenderObject::draw(ShaderPtr shader) {
 			shader.get()->setMat4("model", model);
 			if (renderComponent->model) {
 				renderComponent->model->draw(shader);
+			}
+		}
+	}
+}
+
+void RenderObject::drawSkeleton(ShaderPtr shader) {
+	if (auto renderComponent = getComponent<RenderComponent>()) {
+		glm::mat4 model = glm::mat4(1.0f);
+		if (auto transform = getComponent<Transform>()) {
+			model = glm::translate(model, transform->translate);
+			model = glm::rotate(model, glm::radians(transform->rotate.z), glm::vec3(0, 0, 1));
+			model = glm::rotate(model, glm::radians(transform->rotate.y), glm::vec3(0, 1, 0));
+			model = glm::rotate(model, glm::radians(transform->rotate.x), glm::vec3(1, 0, 0));
+			model = glm::scale(model, transform->scale);
+			shader.get()->setMat4("model", model);
+			if (renderComponent->model && renderComponent->skeletonVisible) {
+				renderComponent->model->drawBones();
 			}
 		}
 	}
@@ -311,7 +330,7 @@ glm::mat4 DirectionLightObject::getLightMatrices() {
 	rotation = glm::rotate(rotation, glm::radians(transform->rotate.x), glm::vec3(1, 0, 0));
 	glm::vec3 direction(1.0, 0.0, 0.0);
 	direction = glm::mat3(rotation) * direction;
-	glm::mat4 lightProjection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, -10.0f, 10.0f);
+	glm::mat4 lightProjection = glm::ortho(-100.0f, 100.0f, -100.0f, 100.0f, -100.0f, 100.0f);
 	glm::mat4 lightView = glm::lookAt(-direction, glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 	return lightProjection * lightView;
 }

@@ -365,7 +365,7 @@ void GuiSystem::showBottomSideBar()
 	if (ImGui::BeginMenuBar()) {
 		if (ImGui::BeginMenu(u8"文件")) {
 			if (ImGui::MenuItem(u8"打开")) {
-				ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", u8"选择文件", ".obj\0*.obj\0\0");
+				ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", u8"选择文件", ".obj,.fbx");
 			}
 			ImGui::EndMenu();
 		}
@@ -440,6 +440,10 @@ void GuiSystem::registComponents()
 		});
 
 	registerComponentWidget<RenderComponent>("RenderComponent", [](std::shared_ptr<RenderComponent> renderComponent) {
+		ImGui::Text(u8"RenderComponent");
+		ImGui::Separator();
+		ImGui::Checkbox(u8"Skeleton", &renderComponent->skeletonVisible);
+		ImGui::Separator();
 		});
 
 	registerComponentWidget<PointLightComponent>("PointLightComponent", [](std::shared_ptr<PointLightComponent> pointLightComponent) {

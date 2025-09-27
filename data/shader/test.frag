@@ -12,13 +12,15 @@ in VS_OUT{
 layout(location = 0) out vec4 fragColor;
 layout(location = 1) out vec4 brightColor;
 
+uniform bool useDefaultMaterial;
+
 uniform sampler2D albedoMap;
 uniform sampler2D ambientMap;
 uniform sampler2D specularMap;
 uniform bool hasNormalMap;
 uniform sampler2D normalMap;
 uniform sampler2D shininessMap;
-#ifdef ENVIRONMENT_MAPPING
+#ifdef USE_ENVIRONMENT_MAPPING
 	uniform samplerCube skybox;
 #endif
 uniform sampler2D shadowMap;
@@ -108,7 +110,7 @@ vec3 calculateSpotLight(vec3 albedoColor, vec3 specularColor, vec3 cameraDir, ve
 	return result;
 };
 
-#ifdef ENVIRONMENT_MAPPING
+#ifdef USE_ENVIRONMENT_MAPPING
 vec3 calculateEnvironmentMapping(){
 	vec3 result;
 	vec3 cameraDir = normalize(cameraPos - fs_in.fragPos);
@@ -197,9 +199,19 @@ vec3 getNormal(bool hasNormalMap){
 
 void main()
 {
-	vec3 albedoColor = texture(albedoMap, fs_in.texCoords).rgb;
+	vec3 albedoColor;
+	if(useDefaultMaterial){
+		albedoColor = vec3(0.5,0.5,0.5);
+	}else{
+		albedoColor = texture(albedoMap, fs_in.texCoords).rgb;
+	}
 	albedoColor = pow(albedoColor, vec3(2.2));
-	vec3 specularColor = texture(specularMap, fs_in.texCoords).rgb;
+	vec3 specularColor;
+	if(useDefaultMaterial){
+		specularColor = vec3(1.0,1.0,1.0);
+	}else{
+		specularColor = texture(specularMap, fs_in.texCoords).rgb;
+	}
 	vec3 cameraDir = normalize(cameraPos - fs_in.fragPos);
 	vec3 normal = getNormal(hasNormalMap);
 	vec3 ambient = 0.1 * albedoColor;
@@ -207,7 +219,7 @@ void main()
 	result += calculateDirectionLight(albedoColor,specularColor,cameraDir,normal);
 	result += calculatePointLight(albedoColor,specularColor,cameraDir,normal);
 	result += calculateSpotLight(albedoColor,specularColor,cameraDir,normal);
-#ifdef ENVIRONMENT_MAPPING
+#ifdef USE_ENVIRONMENT_MAPPING
 	result += calculateEnvironmentMapping();
 #endif
 	float shadow = clamp(calculatePointLightShadow(normal) + calculateDirectionLightShadow(normal), 0.0, 1.0);

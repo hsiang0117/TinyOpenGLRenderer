@@ -40,6 +40,7 @@ void ResourceManager::init() {
 	shaderCache["screenQuad"] = std::make_shared<Shader>("data/shader/screenQuad.vert", "data/shader/screenQuad.frag");
 	shaderCache["lightCube"] = std::make_shared<Shader>("data/shader/lightCube.vert", "data/shader/lightCube.frag");
 	shaderCache["gaussianBlur"] = std::make_shared<Shader>("data/shader/gaussianBlur.vert", "data/shader/gaussianBlur.frag");
+	shaderCache["bone"] = std::make_shared<Shader>("data/shader/bone.vert", "data/shader/bone.frag");
 }
 
 void ResourceManager::update() {

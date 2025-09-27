@@ -4,11 +4,22 @@
 
 #include "material.hpp"
 #include "mesh.hpp"
+#include "utils.hpp"
 #include <unordered_map>
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
 #include <future>
+
+struct Node {
+	std::string name;
+	int id;
+	int parentIndex;
+	glm::vec3 position;
+	glm::mat4 transform;
+	glm::mat4 offsetMatrix;
+	bool isBoneNode;
+};
 
 class Model
 {
@@ -22,6 +33,7 @@ public:
 	std::string getPath() { return path; }
 	std::string getName() { return name; }
 	void draw(ShaderPtr shader);
+	void drawBones();
 	bool isReady() const { return loaded && glInitialized; }
 	void buildAABB(glm::vec3& min, glm::vec3& max);
 private:
@@ -29,14 +41,19 @@ private:
 
 	std::unordered_map<unsigned int, Material> materials;
 	std::vector<MeshPtr> meshes;
+	std::vector<Node> nodes;
 
 	std::string path;
 	std::string directory;
 	std::string name;
 
 	void loadModel(std::string path);
-	void processNode(aiNode* node, const aiScene* scene);
+	void processNode(aiNode* node, const aiScene* scene, int parentIndex);
 	Mesh processMesh(aiMesh* mesh, const aiScene* scene);
+	void processBone();
+	Node* findNode(std::string name);
+
+	GLuint VAO, VBO, lineVAO, lineVBO; //渲染骨骼节点用
 };
 
 std::future<std::shared_ptr<Model>> Model::LoadAsync(const char* path) {
@@ -61,6 +78,11 @@ bool Model::initGLResources()
 	for (auto it = materials.begin(); it != materials.end(); ++it) {
 		it->second.initGLResources();
 	}
+	glGenVertexArrays(1, &VAO);
+	glGenBuffers(1, &VBO);
+	glGenVertexArrays(1, &lineVAO);
+	glGenBuffers(1, &lineVBO);
+
 	glInitialized = true;
 	return true;
 }
@@ -77,6 +99,45 @@ void Model::draw(ShaderPtr shader)
 	}
 }
 
+void Model::drawBones()
+{
+	std::vector<glm::vec3> bonePositions;
+	for (const auto& node : nodes) {
+		if (node.isBoneNode) {
+			bonePositions.push_back(node.position);
+		}
+	}
+	if (!bonePositions.empty()) {
+		glBindVertexArray(VAO);
+		glBindBuffer(GL_ARRAY_BUFFER, VBO);
+		glBufferData(GL_ARRAY_BUFFER, bonePositions.size() * sizeof(glm::vec3), &bonePositions[0], GL_STATIC_DRAW);
+		glEnableVertexAttribArray(0);
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), (void*)0);
+		glDrawArrays(GL_POINTS, 0, static_cast<GLsizei>(bonePositions.size()));
+		glBindVertexArray(0);
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
+	}
+
+	std::vector<glm::vec3> lineVertices;
+	for(int i = 0;i<nodes.size(); i++) {
+		if (nodes[i].isBoneNode && nodes[nodes[i].parentIndex].isBoneNode && nodes[i].parentIndex != -1) {
+			lineVertices.push_back(nodes[i].position);
+			lineVertices.push_back(nodes[nodes[i].parentIndex].position);
+		}
+	}
+
+	if (!lineVertices.empty()) {
+		glBindVertexArray(lineVAO);
+		glBindBuffer(GL_ARRAY_BUFFER, lineVBO);
+		glBufferData(GL_ARRAY_BUFFER, lineVertices.size() * sizeof(glm::vec3), lineVertices.data(), GL_STATIC_DRAW);
+		glEnableVertexAttribArray(0);
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), (void*)0);
+		glDrawArrays(GL_LINES, 0, static_cast<GLsizei>(lineVertices.size()));
+		glBindVertexArray(0);
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
+	}
+}
+
 void Model::buildAABB(glm::vec3& min, glm::vec3& max)
 {
 	// 初始化min和max为极值
@@ -84,7 +145,7 @@ void Model::buildAABB(glm::vec3& min, glm::vec3& max)
 	max = glm::vec3(std::numeric_limits<float>::lowest());
 
 	for (const auto& meshPtr : meshes) {
-		if (!meshPtr) continue;
+		if (!meshPtr) continue; 
 		for (const auto& vertex : meshPtr->vertices) {
 			min.x = std::min(min.x, vertex.position.x);
 			min.y = std::min(min.y, vertex.position.y);
@@ -110,22 +171,54 @@ void Model::loadModel(std::string path)
 	this->path = path;
 	directory = path.substr(0, path.find_last_of('\\')) + "\\";
 	name = path.substr(path.find_last_of('\\') + 1, path.find_first_of('.') - path.find_last_of('\\') - 1);
-	processNode(scene->mRootNode, scene);
+	processNode(scene->mRootNode, scene, -1);
 	importer.FreeScene();
 	loaded = true;
 }
 
-void Model::processNode(aiNode* node, const aiScene* scene)
-{
+void Model::processNode(aiNode* node, const aiScene* scene, int parentIndex)
+{	
+	int currentIndex;
+	if (findNode(node->mName.C_Str()) == nullptr) {
+		Node n;
+		n.name = node->mName.C_Str();
+		n.id = static_cast<int>(nodes.size());
+		n.parentIndex = parentIndex;
+		n.transform = AssimpGLMHelpers::ConvertMatrixToGLMFormat(node->mTransformation);
+		n.position = n.transform * glm::vec4(0, 0, 0, 1);
+		while(parentIndex != -1) {
+			n.position = nodes[parentIndex].transform * glm::vec4(n.position,1.0f);
+			parentIndex = nodes[parentIndex].parentIndex;
+		}
+		n.offsetMatrix = glm::mat4(1.0f);
+		n.isBoneNode = false;
+		nodes.push_back(n);
+		currentIndex = n.id;
+	}
+	else {
+		auto it = std::find_if(nodes.begin(), nodes.end(), [&node](const Node& n) {
+			return n.name == node->mName.C_Str();
+			});
+		if (it != nodes.end()) {
+			it->parentIndex = parentIndex;
+			it->transform = AssimpGLMHelpers::ConvertMatrixToGLMFormat(node->mTransformation);
+			it->position = it->transform * glm::vec4(0, 0, 0, 1);
+			while (parentIndex != -1) {
+				it->position = nodes[parentIndex].transform * glm::vec4(it->position, 1.0f);
+				parentIndex = nodes[parentIndex].parentIndex;
+			}
+			currentIndex = it->id;
+		}
+	}
+	for (unsigned int i = 0; i < node->mNumChildren; i++)
+	{
+		processNode(node->mChildren[i], scene, currentIndex);
+	}
 	for (unsigned int i = 0; i < node->mNumMeshes; i++)
 	{
 		aiMesh* mesh = scene->mMeshes[node->mMeshes[i]];
 		MeshPtr meshPtr = std::make_shared<Mesh>(processMesh(mesh, scene));
 		meshes.push_back(meshPtr);
-	}
-	for (unsigned int i = 0; i < node->mNumChildren; i++)
-	{
-		processNode(node->mChildren[i], scene);
 	}
 }
 
@@ -185,7 +278,53 @@ Mesh Model::processMesh(aiMesh* mesh, const aiScene* scene)
 		{
 			vertex.bitangent = glm::vec3(0.0f);
 		}
+		for (int i = 0; i < MAX_BONE_INFLUENCE; i++) {
+			vertex.boneIDs[i] = -1;
+			vertex.weights[i] = 0.0;
+		}
 		result.vertices.push_back(vertex);
+	}
+
+	for (int boneIndex = 0; boneIndex < mesh->mNumBones; boneIndex++) {
+		int boneID = -1;
+		std::string boneName = mesh->mBones[boneIndex]->mName.C_Str();
+		if (findNode(boneName) == nullptr) {
+			Node node;
+			node.name = boneName;
+			node.id = static_cast<int>(nodes.size());
+			node.parentIndex = -1;
+			node.transform = glm::mat4(1.0f);
+			node.offsetMatrix = AssimpGLMHelpers::ConvertMatrixToGLMFormat(mesh->mBones[boneIndex]->mOffsetMatrix);
+			node.position = glm::vec3(0.0f);
+			node.isBoneNode = true;
+			nodes.push_back(node);
+			boneID = node.id;
+		}
+		else {
+			auto it = std::find_if(nodes.begin(), nodes.end(), [&boneName](const Node& node) {
+				return node.name == boneName;
+				});
+			if (it != nodes.end()) {
+				it->offsetMatrix = AssimpGLMHelpers::ConvertMatrixToGLMFormat(mesh->mBones[boneIndex]->mOffsetMatrix);
+				it->isBoneNode = true;
+				boneID = it->id;
+			}
+		}
+		assert(boneID != -1);
+		auto weights = mesh->mBones[boneIndex]->mWeights;
+		int numWeights = mesh->mBones[boneIndex]->mNumWeights;
+		for (int weightIndex = 0; weightIndex < numWeights; weightIndex++) {
+			int vertexID = weights[weightIndex].mVertexId;
+			float weight = weights[weightIndex].mWeight;
+			assert(vertexID <= result.vertices.size());
+			for (int i = 0; i < MAX_BONE_INFLUENCE; i++) {
+				if (result.vertices[vertexID].boneIDs[i] < 0) {
+					result.vertices[vertexID].boneIDs[i] = boneID;
+					result.vertices[vertexID].weights[i] = weight;
+					break;
+				}
+			}
+		}
 	}
 
 	for (unsigned int i = 0; i < mesh->mNumFaces; i++)
@@ -218,8 +357,17 @@ Mesh Model::processMesh(aiMesh* mesh, const aiScene* scene)
 			materials.insert({ mesh->mMaterialIndex, mat });
 		}
 	}
-
 	return result;
+}
+
+Node* Model::findNode(std::string name)
+{
+	for (auto& node : nodes) {
+		if (node.name == name) {
+			return &node;
+		}
+	}
+	return nullptr;
 }
 
 using ModelPtr = std::shared_ptr<Model>;

@@ -152,6 +152,7 @@
     <ClInclude Include="include\imgui\imgui_impl_opengl3.h" />
     <ClInclude Include="include\imgui\imgui_impl_opengl3_loader.h" />
     <ClInclude Include="include\imgui\imgui_internal.h" />
+    <ClInclude Include="src\bone.hpp" />
     <ClInclude Include="src\camera.hpp" />
     <ClInclude Include="src\component.hpp" />
     <ClInclude Include="src\core\guiSystem.hpp" />
@@ -169,9 +170,12 @@
     <ClInclude Include="src\shader.hpp" />
     <ClInclude Include="src\skybox.hpp" />
     <ClInclude Include="src\texture.hpp" />
+    <ClInclude Include="src\utils.hpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="data\config.json" />
+    <None Include="data\shader\bone.frag" />
+    <None Include="data\shader\bone.vert" />
     <None Include="data\shader\depth.frag" />
     <None Include="data\shader\depth.vert" />
     <None Include="data\shader\depthCube.frag" />

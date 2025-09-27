@@ -7,6 +7,8 @@
 #include <glm/glm.hpp>
 #include <vector>
 
+#define MAX_BONE_INFLUENCE 4
+
 struct Vertex
 {
     glm::vec3 position;
@@ -14,6 +16,8 @@ struct Vertex
     glm::vec2 texCoords;
 	glm::vec3 tangent;
 	glm::vec3 bitangent;
+	int boneIDs[MAX_BONE_INFLUENCE];
+    float weights[MAX_BONE_INFLUENCE];
 };
 
 class Mesh
@@ -73,6 +77,10 @@ void Mesh::setupMesh()
 	glEnableVertexAttribArray(3);
 	glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, bitangent));
 	glEnableVertexAttribArray(4);
+	glVertexAttribIPointer(5, 4, GL_INT, sizeof(Vertex), (void*)offsetof(Vertex, boneIDs));
+	glEnableVertexAttribArray(5);
+	glVertexAttribPointer(6, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, weights));
+	glEnableVertexAttribArray(6);
 
     glBindVertexArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);

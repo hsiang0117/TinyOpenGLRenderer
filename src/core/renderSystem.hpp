@@ -3,8 +3,8 @@
 #pragma once
 
 #include "guiSystem.hpp"
-#include "../glBuffer.hpp"
 #include "resourceManager.hpp"
+#include "../glBuffer.hpp"
 #include <glad/glad.h>
 #include <glm/gtc/type_ptr.hpp>
 #include <GLFW/glfw3.h>
@@ -20,8 +20,8 @@ private:
 	float x, y, width, height; //viewport width and height
 	UniformBuffer uboMatrices;
 	ShaderStorageBuffer ssboPointLights, ssboDirectionLight, ssboSpotLights;
-	FrameBuffer directionLightDepthFBO, pointLightDepthFBO, hdrFBO, pingpongFBO[2];
-	Texture2D directionLightDepthTexture, hdrTexture, brightTexture, pingpongTexture[2];
+	FrameBuffer directionLightDepthFBO, pointLightDepthFBO, hdrFBO, pingpongFBO[2], boneFBO;
+	Texture2D directionLightDepthTexture, hdrTexture, brightTexture, pingpongTexture[2], boneTexture;
 	RenderBuffer hdrDepthBuffer;
 	CubeMapArray pointLightDepthTexture;
 	void drawScreenQuad();
@@ -30,13 +30,14 @@ private:
 void RenderSystem::init() {
 	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
 		std::cout << "Failed to initialize GLAD" << std::endl;
-		exit(EXIT_FAILURE);
+		exit(EXIT_FAILURE); 
 	}
 	x = GuiSystem::leftSideBarWidth;
 	y = GuiSystem::bottomSideBarHeight;
 	width = Input::getInstance().getWindowWidth() - GuiSystem::leftSideBarWidth - GuiSystem::rightSideBarWidth;
 	height = Input::getInstance().getWindowHeight() - GuiSystem::bottomSideBarHeight;
 	glEnable(GL_DEPTH_TEST);
+	glEnable(GL_PROGRAM_POINT_SIZE);
 	glDepthFunc(GL_LEQUAL);
 
 	uboMatrices.init();
@@ -99,6 +100,12 @@ void RenderSystem::init() {
 	pingpongFBO[1].bind();
 	pingpongFBO[1].attachTexture2D(pingpongTexture[1], GL_COLOR_ATTACHMENT0);
 	pingpongFBO[1].unbind();
+
+	boneFBO.init();
+	boneTexture = Texture2D(width, height, GL_CLAMP_TO_BORDER, GL_LINEAR, GL_RGBA, GL_RGBA, GL_FLOAT);
+	boneFBO.bind();
+	boneFBO.attachTexture2D(boneTexture, GL_COLOR_ATTACHMENT0);
+	boneFBO.unbind();
 }
 
 void RenderSystem::update() {
@@ -110,6 +117,7 @@ void RenderSystem::update() {
 		hdrDepthBuffer.resetSize(width, height);
 		pingpongTexture[0].resetSize(width, height);
 		pingpongTexture[1].resetSize(width, height);
+		boneTexture.resetSize(width, height);
 	}
 	if (Input::getInstance().isUiResized()) {
 		x = GuiSystem::leftSideBarWidth;
@@ -121,6 +129,7 @@ void RenderSystem::update() {
 		hdrDepthBuffer.resetSize(width, height);
 		pingpongTexture[0].resetSize(width, height);
 		pingpongTexture[1].resetSize(width, height);
+		boneTexture.resetSize(width, height);	
 	}
 }
 
@@ -142,6 +151,7 @@ void RenderSystem::render(Camera& camera) {
 	ShaderPtr depthCubeShader = ResourceManager::getInstance().shaderCache["depthCube"];
 	ShaderPtr lightCubeShader = ResourceManager::getInstance().shaderCache["lightCube"];
 	ShaderPtr gaussianBlurShader = ResourceManager::getInstance().shaderCache["gaussianBlur"];
+	ShaderPtr boneShader = ResourceManager::getInstance().shaderCache["bone"];
 
 	glViewport(0, 0, 1024, 1024);
 	//shadowmapPass
@@ -284,6 +294,17 @@ void RenderSystem::render(Camera& camera) {
 	hdrFBO.unbind();
 
 	glViewport(0, 0, width, height);
+	boneShader->use();
+	boneFBO.bind();
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	for (int i = 0; i < ResourceManager::getInstance().gameObjects.size(); i++) {
+		GameObjectPtr object = ResourceManager::getInstance().gameObjects[i];
+		if (object->getType() == GameObject::Type::RENDEROBJECT && object->isOnFrustum(frustum)) {
+			object->drawSkeleton(boneShader);
+		}
+	}
+	boneFBO.unbind();
+
 	gaussianBlurShader->use();
 	for (int i = 0; i < 10; i++) {
 		pingpongFBO[i % 2].bind();
@@ -304,8 +325,10 @@ void RenderSystem::render(Camera& camera) {
 	screenQuadShader->use();
 	screenQuadShader->setInt("colorBuffer", 0);
 	screenQuadShader->setInt("blurBuffer", 1);
+	screenQuadShader->setInt("boneBuffer", 2);
 	hdrTexture.use(GL_TEXTURE0);
-	pingpongTexture[0].use(GL_TEXTURE1);
+	pingpongTexture[1].use(GL_TEXTURE1);
+	boneTexture.use(GL_TEXTURE2);
 	drawScreenQuad();
 }
 
