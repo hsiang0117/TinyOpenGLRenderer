@@ -16,7 +16,7 @@ void main()
 	float maxSize = 5.0;
 	float near = 0.1;
 	float far = 100.0;
-	float depth = gl_Position.z / gl_Position.w;
-	float normDepth = clamp((depth - near) / (far - near), 0.0, 1.0);
+	float viewSpaceDepth = abs((view * model * vec4(aPos, 1.0)).z);
+	float normDepth = clamp((viewSpaceDepth - near) / (far - near), 0.0, 1.0);
 	gl_PointSize = mix(maxSize, minSize, normDepth);
 }

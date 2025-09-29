@@ -243,7 +243,10 @@ void GuiSystem::showLeftSideBar()
 	ImGui::EndChild();
 
 	ImGui::SetCursorScreenPos({ leftSideBarWidth, 0 });
-	ImGui::InvisibleButton("##SplitterLeft", ImVec2(SPLITTER_THICKNESS, viewport->Size.y - bottomSideBarHeight - SPLITTER_THICKNESS));
+	float height = viewport->Size.y - bottomSideBarHeight - SPLITTER_THICKNESS;
+	if (height > 0) {
+		ImGui::InvisibleButton("##SplitterLeft", ImVec2(SPLITTER_THICKNESS, height));
+	}
 	if (ImGui::IsItemActive()) {
 		leftSideBarWidth = leftSideBarWidth + ImGui::GetIO().MouseDelta.x;
 		leftSideBarWidth = clamp(leftSideBarWidth, 100, viewport->Size.x / 3);
@@ -343,7 +346,10 @@ void GuiSystem::showRightSideBar(double deltaTime)
 	ImGui::EndChild();
 
 	ImGui::SetCursorScreenPos({ viewport->Size.x - rightSideBarWidth - SPLITTER_THICKNESS, 0 });
-	ImGui::InvisibleButton("##SplitterRight", ImVec2(4, viewport->Size.y - bottomSideBarHeight - SPLITTER_THICKNESS));
+	float height = viewport->Size.y - bottomSideBarHeight - SPLITTER_THICKNESS;
+	if (height > 0) {
+		ImGui::InvisibleButton("##SplitterRight", ImVec2(SPLITTER_THICKNESS, height));
+	}
 	if (ImGui::IsItemActive()) {
 		rightSideBarWidth = rightSideBarWidth - ImGui::GetIO().MouseDelta.x;
 		rightSideBarWidth = clamp(rightSideBarWidth, 100, viewport->Size.x / 3);
@@ -406,7 +412,10 @@ void GuiSystem::showBottomSideBar()
 	ImGui::EndChild();
 
 	ImGui::SetCursorScreenPos({ 0, viewport->Size.y - bottomSideBarHeight - SPLITTER_THICKNESS });
-	ImGui::InvisibleButton("##SplitterBottom", ImVec2(viewport->Size.x, SPLITTER_THICKNESS));
+	float width = viewport->Size.x;
+	if(width > 0) {
+		ImGui::InvisibleButton("##SplitterBottom", ImVec2(width, SPLITTER_THICKNESS));
+	}
 	if (ImGui::IsItemActive()) {
 		bottomSideBarHeight = bottomSideBarHeight - ImGui::GetIO().MouseDelta.y;
 		bottomSideBarHeight = clamp(bottomSideBarHeight, 100, viewport->Size.y / 2);
