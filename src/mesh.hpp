@@ -7,6 +7,7 @@
 #include <glm/glm.hpp>
 #include <vector>
 
+#define MAX_BONES 500
 #define MAX_BONE_INFLUENCE 4
 
 struct Vertex

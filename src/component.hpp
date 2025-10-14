@@ -166,4 +166,15 @@ void DynamicMaterialComponent::setMaterial() {
 	material.normalPath = normalPath;
 	material.initGLResources();
 }
+
+class AnimatorComponent : public Component {
+public:
+	AnimatorComponent() : Component("AnimatorComponent"), playing(false) {}
+	void update(float dt) { animator.updateAnimation(dt); }
+	void setAnimation(Animation* animation) { animator.playAnimation(animation); }
+	std::vector<glm::mat4>& getFinalBoneMatrices() { return animator.getFinalBoneMatrices(); }
+	bool playing;
+private:
+	Animator animator;
+};
 #endif

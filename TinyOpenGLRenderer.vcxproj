@@ -152,6 +152,8 @@
     <ClInclude Include="include\imgui\imgui_impl_opengl3.h" />
     <ClInclude Include="include\imgui\imgui_impl_opengl3_loader.h" />
     <ClInclude Include="include\imgui\imgui_internal.h" />
+    <ClInclude Include="src\animation.hpp" />
+    <ClInclude Include="src\assimpNode.hpp" />
     <ClInclude Include="src\bone.hpp" />
     <ClInclude Include="src\camera.hpp" />
     <ClInclude Include="src\component.hpp" />

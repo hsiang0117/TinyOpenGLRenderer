@@ -396,6 +396,11 @@ void GuiSystem::showBottomSideBar()
 				gameObject->addComponent<Transform>();
 				gameObject->addComponent<RenderComponent>();
 				gameObject->getComponent<RenderComponent>()->setModel(it->second);
+				auto hasAnimation = it->second->hasAnimation();
+				if (hasAnimation) {
+					gameObject->addComponent<AnimatorComponent>();
+					gameObject->getComponent<AnimatorComponent>()->setAnimation(&it->second->getAnimation());
+				}
 				ResourceManager::getInstance().gameObjects.push_back(gameObject);
 			}
 			ImGui::EndPopup();
@@ -519,6 +524,21 @@ void GuiSystem::registComponents()
 		ImGui::Separator();
 		ImGui::Checkbox(u8"Enabled", &shadowCasterCube->enabled);
 		ImGui::DragFloat(u8"FarPlane", &shadowCasterCube->farPlane);
+		});
+
+	registerComponentWidget<AnimatorComponent>("AnimatorComponent", [](std::shared_ptr<AnimatorComponent> animatorComponent) {
+		ImGui::Text(u8"Animator");
+		ImGui::Separator();
+		if (animatorComponent->playing) {
+			if (ImGui::Button(u8"ÔÝÍ£")) {
+				animatorComponent->playing = false;
+			}
+		}
+		else {
+			if (ImGui::Button(u8"²¥·Å")) {
+				animatorComponent->playing = true;
+			}
+		}
 		});
 }
 

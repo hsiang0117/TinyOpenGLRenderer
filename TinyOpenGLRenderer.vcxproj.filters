@@ -143,6 +143,12 @@
     <ClInclude Include="src\bone.hpp">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="src\animation.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="src\assimpNode.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="data\config.json">

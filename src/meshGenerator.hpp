@@ -11,6 +11,7 @@ public:
 	static MeshPtr generatePlane();
 private:
 	static void computeTangents(std::vector<Vertex>& vertices, std::vector<GLuint>& indices);
+	static void setDefaultBoneData(std::vector<Vertex>& vertices); //先这样搞吧，后续再想办法优化
 };
 
 MeshPtr MeshGenerator::generateCube() {
@@ -81,6 +82,7 @@ MeshPtr MeshGenerator::generateCube() {
 			  33, 34, 35
 		};
 		computeTangents(cube.vertices, cube.indices);
+		setDefaultBoneData(cube.vertices);
 		cube.initGLResources();
 	}
 	return std::make_shared<Mesh>(cube);
@@ -130,6 +132,7 @@ MeshPtr MeshGenerator::generateSphere(int sectorCount, int stackCount)
 		sphere.vertices = vertices;
 		sphere.indices = indices;
 		computeTangents(sphere.vertices, sphere.indices);
+		setDefaultBoneData(sphere.vertices);
 		sphere.initGLResources();
 	}
 	return std::make_shared<Mesh>(sphere);
@@ -152,6 +155,7 @@ MeshPtr MeshGenerator::generatePlane()
 			0, 2, 3
 		};
 		computeTangents(plane.vertices, plane.indices);
+		setDefaultBoneData(plane.vertices);
 		plane.initGLResources();
 	}
 	return std::make_shared<Mesh>(plane);
@@ -186,6 +190,16 @@ void MeshGenerator::computeTangents(std::vector<Vertex>& vertices, std::vector<G
 	for (auto& v : vertices) {
 		v.tangent = glm::normalize(v.tangent);
 		v.bitangent = glm::normalize(v.bitangent);
+	}
+}
+
+void MeshGenerator::setDefaultBoneData(std::vector<Vertex>& vertices)
+{
+	for (auto& v : vertices) {
+		for (int i = 0; i < MAX_BONE_INFLUENCE; i++) {
+			v.boneIDs[i] = -1;
+			v.weights[i] = -1.0f;
+		}
 	}
 }
 

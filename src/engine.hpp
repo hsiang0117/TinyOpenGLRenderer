@@ -44,7 +44,7 @@ void Engine::run() {
 		windowSystem.update();
 		ResourceManager::getInstance().update();
 		camera.update(deltaTime);
-		renderSystem.update();
+		renderSystem.update(deltaTime);
 		guiSystem.beginFrame();
 		renderSystem.render(camera);
 		guiSystem.render(deltaTime);

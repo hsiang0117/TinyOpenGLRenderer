@@ -5,21 +5,13 @@
 #include "material.hpp"
 #include "mesh.hpp"
 #include "utils.hpp"
+#include "assimpNode.hpp"
+#include "animation.hpp"
 #include <unordered_map>
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
 #include <future>
-
-struct Node {
-	std::string name;
-	int id;
-	int parentIndex;
-	glm::vec3 position;
-	glm::mat4 transform;
-	glm::mat4 offsetMatrix;
-	bool isBoneNode;
-};
 
 class Model
 {
@@ -36,12 +28,17 @@ public:
 	void drawBones();
 	bool isReady() const { return loaded && glInitialized; }
 	void buildAABB(glm::vec3& min, glm::vec3& max);
+	Node* findNode(std::string name);
+	std::vector<Node>& getAllNodes() { return nodes; }
+	bool hasAnimation() const { return animation.isValid(); }
+	Animation& getAnimation() { return animation; }
 private:
 	bool loaded = false, glInitialized = false;
 
 	std::unordered_map<unsigned int, Material> materials;
 	std::vector<MeshPtr> meshes;
 	std::vector<Node> nodes;
+	Animation animation;
 
 	std::string path;
 	std::string directory;
@@ -50,8 +47,6 @@ private:
 	void loadModel(std::string path);
 	void processNode(aiNode* node, const aiScene* scene, int parentIndex);
 	Mesh processMesh(aiMesh* mesh, const aiScene* scene);
-	void processBone();
-	Node* findNode(std::string name);
 
 	GLuint VAO, VBO, lineVAO, lineVBO; //äÖÈ¾¹Ç÷À½ÚµãÓÃ
 };
@@ -172,6 +167,7 @@ void Model::loadModel(std::string path)
 	directory = path.substr(0, path.find_last_of('\\')) + "\\";
 	name = path.substr(path.find_last_of('\\') + 1, path.find_first_of('.') - path.find_last_of('\\') - 1);
 	processNode(scene->mRootNode, scene, -1);
+	animation = Animation(scene, nodes);
 	importer.FreeScene();
 	loaded = true;
 }
@@ -184,6 +180,8 @@ void Model::processNode(aiNode* node, const aiScene* scene, int parentIndex)
 		n.name = node->mName.C_Str();
 		n.id = static_cast<int>(nodes.size());
 		n.parentIndex = parentIndex;
+		if(n.parentIndex != -1)
+			nodes[n.parentIndex].childrenIndices.push_back(n.id);
 		n.transform = AssimpGLMHelpers::ConvertMatrixToGLMFormat(node->mTransformation);
 		n.position = n.transform * glm::vec4(0, 0, 0, 1);
 		while(parentIndex != -1) {
@@ -191,7 +189,6 @@ void Model::processNode(aiNode* node, const aiScene* scene, int parentIndex)
 			parentIndex = nodes[parentIndex].parentIndex;
 		}
 		n.offsetMatrix = glm::mat4(1.0f);
-		n.isBoneNode = false;
 		nodes.push_back(n);
 		currentIndex = n.id;
 	}
@@ -201,6 +198,8 @@ void Model::processNode(aiNode* node, const aiScene* scene, int parentIndex)
 			});
 		if (it != nodes.end()) {
 			it->parentIndex = parentIndex;
+			if (it->parentIndex != -1)
+				nodes[it->parentIndex].childrenIndices.push_back(it->id);
 			it->transform = AssimpGLMHelpers::ConvertMatrixToGLMFormat(node->mTransformation);
 			it->position = it->transform * glm::vec4(0, 0, 0, 1);
 			while (parentIndex != -1) {
@@ -280,7 +279,7 @@ Mesh Model::processMesh(aiMesh* mesh, const aiScene* scene)
 		}
 		for (int i = 0; i < MAX_BONE_INFLUENCE; i++) {
 			vertex.boneIDs[i] = -1;
-			vertex.weights[i] = 0.0;
+			vertex.weights[i] = -1.0f;
 		}
 		result.vertices.push_back(vertex);
 	}
@@ -316,7 +315,7 @@ Mesh Model::processMesh(aiMesh* mesh, const aiScene* scene)
 		for (int weightIndex = 0; weightIndex < numWeights; weightIndex++) {
 			int vertexID = weights[weightIndex].mVertexId;
 			float weight = weights[weightIndex].mWeight;
-			assert(vertexID <= result.vertices.size());
+			assert(vertexID < result.vertices.size());
 			for (int i = 0; i < MAX_BONE_INFLUENCE; i++) {
 				if (result.vertices[vertexID].boneIDs[i] < 0) {
 					result.vertices[vertexID].boneIDs[i] = boneID;

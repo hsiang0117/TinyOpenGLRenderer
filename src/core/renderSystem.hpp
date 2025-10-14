@@ -14,7 +14,7 @@ public:
 	RenderSystem() = default;
 	~RenderSystem() = default;
 	void init();
-	void update();
+	void update(double deltaTime);
 	void render(Camera& camera);
 private:
 	float x, y, width, height; //viewport width and height
@@ -108,7 +108,7 @@ void RenderSystem::init() {
 	boneFBO.unbind();
 }
 
-void RenderSystem::update() {
+void RenderSystem::update(double deltaTime) {
 	if (Input::getInstance().isWindowResized()) {
 		width = Input::getInstance().getWindowWidth() - GuiSystem::leftSideBarWidth - GuiSystem::rightSideBarWidth;
 		height = Input::getInstance().getWindowHeight() - GuiSystem::bottomSideBarHeight;
@@ -130,6 +130,17 @@ void RenderSystem::update() {
 		pingpongTexture[0].resetSize(width, height);
 		pingpongTexture[1].resetSize(width, height);
 		boneTexture.resetSize(width, height);	
+	}
+	for(int i = 0;i<ResourceManager::getInstance().gameObjects.size();i++){
+		auto object = ResourceManager::getInstance().gameObjects[i];
+		if (object->getType() == GameObject::Type::RENDEROBJECT) {
+			auto animator = object->getComponent<AnimatorComponent>();
+			if (animator) {
+				if (animator->playing) {
+					animator->update(deltaTime);
+				}
+			}
+		}
 	}
 }
 

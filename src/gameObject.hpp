@@ -90,9 +90,17 @@ void RenderObject::draw(ShaderPtr shader) {
 			model = glm::rotate(model, glm::radians(transform->rotate.x), glm::vec3(1, 0, 0));
 			model = glm::scale(model, transform->scale);
 			shader.get()->setMat4("model", model);
-			if (renderComponent->model) {
-				renderComponent->model->draw(shader);
+		}
+		if (auto animator = getComponent<AnimatorComponent>()) {
+			if (renderComponent->model && renderComponent->model->hasAnimation()) {
+				auto boneMatrices = animator->getFinalBoneMatrices();
+				for (int i = 0; i < boneMatrices.size(); i++) {
+					shader.get()->setMat4(("finalBoneMatrices[" + std::to_string(i) + "]").c_str(), boneMatrices[i]);
+				}
 			}
+		}
+		if (renderComponent->model) {
+			renderComponent->model->draw(shader);
 		}
 	}
 }
@@ -418,6 +426,9 @@ void StaticMeshObject::draw(ShaderPtr shader) {
 			model = glm::rotate(model, glm::radians(transform->rotate.x), glm::vec3(1, 0, 0));
 			model = glm::scale(model, transform->scale);
 			shader.get()->setMat4("model", model);
+			for (int i = 0; i < 100; i++) {
+				shader.get()->setMat4(("finalBoneMatrices[" + std::to_string(i) + "]").c_str(), glm::mat4(1.0f));
+			}
 			if (staticMeshComponent->mesh) {
 				staticMeshComponent->mesh->draw();
 			}
