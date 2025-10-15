@@ -170,11 +170,38 @@ void DynamicMaterialComponent::setMaterial() {
 class AnimatorComponent : public Component {
 public:
 	AnimatorComponent() : Component("AnimatorComponent"), playing(false) {}
+	std::vector<std::string> getAnimationsNames();
 	void update(float dt) { animator.updateAnimation(dt); }
-	void setAnimation(Animation* animation) { animator.playAnimation(animation); }
+	void setAnimation(std::vector<Animation>* animations) { this->animations = animations; }
+	void playAnimation(std::string name);
 	std::vector<glm::mat4>& getFinalBoneMatrices() { return animator.getFinalBoneMatrices(); }
+	std::string getCurrentAnimation() const { return currentAnimation; }
 	bool playing;
 private:
+	std::string currentAnimation;
+	std::vector<Animation>* animations;
 	Animator animator;
 };
+
+std::vector<std::string> AnimatorComponent::getAnimationsNames() {
+	std::vector<std::string> names;
+	if (animations) {
+		for (auto& anim : *animations) {
+			names.push_back(anim.getName());
+		}
+	}
+	return names;
+}
+
+void AnimatorComponent::playAnimation(std::string name) { 
+	if (animations) {
+		currentAnimation = name;
+		for (auto i = 0; i < animations->size(); i++) {
+			if ((*animations)[i].getName() == name) {
+				animator.playAnimation(&(*animations)[i]);
+				break;
+			}
+		}
+	}
+}
 #endif

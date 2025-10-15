@@ -396,11 +396,8 @@ void GuiSystem::showBottomSideBar()
 				gameObject->addComponent<Transform>();
 				gameObject->addComponent<RenderComponent>();
 				gameObject->getComponent<RenderComponent>()->setModel(it->second);
-				auto hasAnimation = it->second->hasAnimation();
-				if (hasAnimation) {
-					gameObject->addComponent<AnimatorComponent>();
-					gameObject->getComponent<AnimatorComponent>()->setAnimation(&it->second->getAnimation());
-				}
+				gameObject->addComponent<AnimatorComponent>();
+				gameObject->getComponent<AnimatorComponent>()->setAnimation(&it->second->getAnimations());
 				ResourceManager::getInstance().gameObjects.push_back(gameObject);
 			}
 			ImGui::EndPopup();
@@ -529,6 +526,19 @@ void GuiSystem::registComponents()
 	registerComponentWidget<AnimatorComponent>("AnimatorComponent", [](std::shared_ptr<AnimatorComponent> animatorComponent) {
 		ImGui::Text(u8"Animator");
 		ImGui::Separator();
+		if(ImGui::BeginCombo(u8"##AnimatorCombo", animatorComponent->getCurrentAnimation().c_str())) {
+			for (const auto& name : animatorComponent->getAnimationsNames()) {
+				bool isSelected = (animatorComponent->getCurrentAnimation() == name);
+				if (ImGui::Selectable(name.c_str(), isSelected)) {
+					animatorComponent->playAnimation(name);
+				}
+				if (isSelected) {
+					ImGui::SetItemDefaultFocus();
+				}
+			}
+			ImGui::EndCombo();
+		}
+		ImGui::SameLine();
 		if (animatorComponent->playing) {
 			if (ImGui::Button(u8"ÔÝÍ£")) {
 				animatorComponent->playing = false;

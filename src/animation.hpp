@@ -10,7 +10,7 @@ class Animation
 {
 public:
 	Animation() {};
-	Animation(const aiScene* scene, std::vector<Node> nodes);
+	Animation(const aiAnimation* animation, std::vector<Node> nodes);
 	~Animation() = default;
 	Bone* findBone(const std::string& name);
 	float getTicksPerSecond() { return ticksPerSecond; }
@@ -18,7 +18,9 @@ public:
 	Node& getRootNode() { return nodes[0]; }
 	std::vector<Node>& getAllNodes() { return nodes; }
 	bool isValid() const { return valid; }
+	std::string getName() const { return name; }
 private:
+	std::string name;
 	bool valid;
 	float duration;
 	float ticksPerSecond;
@@ -27,13 +29,13 @@ private:
 	void readMissingBones(const aiAnimation* animation, std::vector<Node>& nodes);
 };
 
-Animation::Animation(const aiScene* scene, std::vector<Node> nodes)
+Animation::Animation(const aiAnimation* animation, std::vector<Node> nodes)
 {
-	auto animation = scene->mAnimations[1];
 	if (!animation) {
 		valid = false;
 		return;
 	}
+	name = animation->mName.C_Str();
 	valid = true;
 	this->nodes = nodes;
 	duration = animation->mDuration;
@@ -76,6 +78,8 @@ void Animation::readMissingBones(const aiAnimation* animation, std::vector<Node>
 		}
 	}
 }
+
+using AnimationPtr = std::shared_ptr<Animation>;
 
 class Animator
 {

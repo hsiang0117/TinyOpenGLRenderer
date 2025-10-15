@@ -30,15 +30,14 @@ public:
 	void buildAABB(glm::vec3& min, glm::vec3& max);
 	Node* findNode(std::string name);
 	std::vector<Node>& getAllNodes() { return nodes; }
-	bool hasAnimation() const { return animation.isValid(); }
-	Animation& getAnimation() { return animation; }
+	std::vector<Animation>& getAnimations() { return animations; }
 private:
 	bool loaded = false, glInitialized = false;
 
 	std::unordered_map<unsigned int, Material> materials;
 	std::vector<MeshPtr> meshes;
 	std::vector<Node> nodes;
-	Animation animation;
+	std::vector<Animation> animations;
 
 	std::string path;
 	std::string directory;
@@ -167,7 +166,9 @@ void Model::loadModel(std::string path)
 	directory = path.substr(0, path.find_last_of('\\')) + "\\";
 	name = path.substr(path.find_last_of('\\') + 1, path.find_first_of('.') - path.find_last_of('\\') - 1);
 	processNode(scene->mRootNode, scene, -1);
-	animation = Animation(scene, nodes);
+	for(auto i = 0; i<scene->mNumAnimations; i++) {
+		animations.emplace_back(scene->mAnimations[i], nodes);
+	}
 	importer.FreeScene();
 	loaded = true;
 }

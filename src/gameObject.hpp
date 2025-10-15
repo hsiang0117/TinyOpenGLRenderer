@@ -92,11 +92,9 @@ void RenderObject::draw(ShaderPtr shader) {
 			shader.get()->setMat4("model", model);
 		}
 		if (auto animator = getComponent<AnimatorComponent>()) {
-			if (renderComponent->model && renderComponent->model->hasAnimation()) {
-				auto boneMatrices = animator->getFinalBoneMatrices();
-				for (int i = 0; i < boneMatrices.size(); i++) {
-					shader.get()->setMat4(("finalBoneMatrices[" + std::to_string(i) + "]").c_str(), boneMatrices[i]);
-				}
+			auto boneMatrices = animator->getFinalBoneMatrices();
+			for (int i = 0; i < boneMatrices.size(); i++) {
+				shader.get()->setMat4(("finalBoneMatrices[" + std::to_string(i) + "]").c_str(), boneMatrices[i]);
 			}
 		}
 		if (renderComponent->model) {
