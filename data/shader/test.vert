@@ -32,6 +32,9 @@ uniform mat4 lightSpaceMatrix;
 void main()
 {
 	vec4 totalPosition = vec4(0.0);
+    vec3 totalNormal = vec3(0.0);
+    vec3 totalTangent = vec3(0.0);
+    vec3 totalBitangent = vec3(0.0);
 	bool hasBone = false;
 	for(int i = 0; i < MAX_BONE_INFLUENCE; i++)
 	{
@@ -42,22 +45,33 @@ void main()
 		if(boneIds[i] >= MAX_BONES)
 		{
 			totalPosition = vec4(aPos, 1.0);
+            totalNormal = aNormal;
+            totalTangent = aTangent;
+            totalBitangent = aBitangent;
 			break;
 		}
-		totalPosition += finalBoneMatrices[boneIds[i]] * vec4(aPos, 1.0) * weights[i];
+		mat4 boneMatrix = finalBoneMatrices[boneIds[i]];
+        mat3 boneMatrix3 = mat3(boneMatrix);
+        totalPosition += boneMatrix * vec4(aPos, 1.0) * weights[i];
+        totalNormal   += boneMatrix3 * aNormal * weights[i];
+        totalTangent  += boneMatrix3 * aTangent * weights[i];
+        totalBitangent+= boneMatrix3 * aBitangent * weights[i];
 		hasBone = true;
 	}
 	if(!hasBone)
 	{
 		totalPosition = vec4(aPos, 1.0);
+		totalNormal = aNormal;
+		totalTangent = aTangent;
+		totalBitangent = aBitangent;
 	}
 	gl_Position = projection * view * model * totalPosition;
-	vs_out.normal = normalize(mat3(transpose(inverse(model)))*aNormal);
+	vs_out.normal = normalize(mat3(transpose(inverse(model)))*totalNormal);
 	vs_out.texCoords = aTexCoords;
 	vs_out.fragPos = (model*totalPosition).xyz;
 	vs_out.fragPosLightSpace = lightSpaceMatrix * vec4(vs_out.fragPos, 1.0);
-	vec3 T = normalize(mat3(model) * aTangent);
-	vec3 B = normalize(mat3(model) * aBitangent);
-	vec3 N = normalize(mat3(model) * aNormal);
+	vec3 T = normalize(mat3(model) * totalTangent);
+	vec3 B = normalize(mat3(model) * totalBitangent);
+	vec3 N = normalize(mat3(model) * totalNormal);
 	vs_out.TBN = mat3(T, B, N);
 }
