@@ -121,6 +121,10 @@ vec3 calculateEnvironmentMapping(){
 #endif
 
 float calculateDirectionLightShadow(vec3 normal){
+	float shadow = 0.0;
+	if (directionLightNum==0){
+		return shadow;
+	}
 	vec3 lightDir = normalize(-directionLight.direction.xyz);
 	float bias = max(0.05 * (1.0 - dot(normal, lightDir)), 0.005);
 	vec3 projCoords = fs_in.fragPosLightSpace.xyz / fs_in.fragPosLightSpace.w;
@@ -128,7 +132,6 @@ float calculateDirectionLightShadow(vec3 normal){
 	if (projCoords.z > 1.0){
 		return 0.0;
 	}
-	float shadow = 0.0;
 	float currentDepth = projCoords.z;
 #ifdef PCF_SHADOW
 	vec2 texelSize = 1.0 / textureSize(shadowMap, 0);
