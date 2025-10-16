@@ -175,6 +175,7 @@
     <ClInclude Include="src\utils.hpp" />
   </ItemGroup>
   <ItemGroup>
+    <None Include=".gitignore" />
     <None Include="data\config.json" />
     <None Include="data\shader\bone.frag" />
     <None Include="data\shader\bone.vert" />

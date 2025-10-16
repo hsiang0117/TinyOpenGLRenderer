@@ -45,7 +45,7 @@ private:
 
 	void loadModel(std::string path);
 	void processNode(aiNode* node, const aiScene* scene, int parentIndex);
-	Mesh processMesh(aiMesh* mesh, const aiScene* scene);
+	Mesh processMesh(aiMesh* mesh, const aiScene* scene, glm::mat4 nodeTransform);
 
 	GLuint VAO, VBO, lineVAO, lineVBO; //äÖÈ¾¹Ç÷À½ÚµãÓÃ
 };
@@ -217,12 +217,13 @@ void Model::processNode(aiNode* node, const aiScene* scene, int parentIndex)
 	for (unsigned int i = 0; i < node->mNumMeshes; i++)
 	{
 		aiMesh* mesh = scene->mMeshes[node->mMeshes[i]];
-		MeshPtr meshPtr = std::make_shared<Mesh>(processMesh(mesh, scene));
+		auto nodeTransform = AssimpGLMHelpers::ConvertMatrixToGLMFormat(node->mTransformation);
+		MeshPtr meshPtr = std::make_shared<Mesh>(processMesh(mesh, scene, nodeTransform));
 		meshes.push_back(meshPtr);
 	}
 }
 
-Mesh Model::processMesh(aiMesh* mesh, const aiScene* scene)
+Mesh Model::processMesh(aiMesh* mesh, const aiScene* scene, glm::mat4 nodeTransform)
 {
 	Mesh result;
 
@@ -233,6 +234,7 @@ Mesh Model::processMesh(aiMesh* mesh, const aiScene* scene)
 		vector.x = mesh->mVertices[i].x;
 		vector.y = mesh->mVertices[i].y;
 		vector.z = mesh->mVertices[i].z;
+		vector = nodeTransform * glm::vec4(vector, 1.0f);
 		vertex.position = vector;
 		if (mesh->mNormals)
 		{

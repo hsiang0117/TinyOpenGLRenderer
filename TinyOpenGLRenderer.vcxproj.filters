@@ -211,5 +211,8 @@
     <None Include="data\shader\bone.frag">
       <Filter>资源文件\shader</Filter>
     </None>
+    <None Include=".gitignore">
+      <Filter>资源文件</Filter>
+    </None>
   </ItemGroup>
 </Project>
