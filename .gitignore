@@ -364,3 +364,4 @@ FodyWeavers.xsd
 
 data/model
 /data/shader/settings.glsl
+/imgui.ini
