@@ -174,7 +174,7 @@ public:
 	void update(float dt) { animator.updateAnimation(dt); }
 	void setAnimation(std::vector<Animation>* animations) { this->animations = animations; }
 	void playAnimation(std::string name);
-	std::vector<glm::mat4>& getFinalBoneMatrices() { return animator.getFinalBoneMatrices(); }
+	Texture2D& getBoneMatrixTexture() { return animator.getBoneMatrixTexture(); }
 	std::string getCurrentAnimation() const { return currentAnimation; }
 	bool playing;
 private:

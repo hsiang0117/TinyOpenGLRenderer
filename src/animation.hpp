@@ -88,35 +88,29 @@ public:
 	Animator(Animation* animation);
 	void updateAnimation(float dt);
 	void playAnimation(Animation* pAnimation);
-	void calculateBoneTransform(const Node& node, const glm::mat4 parentTransform);
-	std::vector<glm::mat4>& getFinalBoneMatrices() { return finalBoneMatrices; }
+	void calculateBoneTransform(Node& node, const glm::mat4 parentTransform);
+	Texture2D& getBoneMatrixTexture() { return boneMatrixTexture; }
 private:
 	Animation* currentAnimation;
 	float currentTime;
 	float deltaTime;
-	std::vector<glm::mat4> finalBoneMatrices;
+	Texture2D boneMatrixTexture;
 };
 
 Animator::Animator()
 {
+	currentAnimation = nullptr;
 	currentTime = 0.0f;
 	deltaTime = 0.0f;
-	finalBoneMatrices.reserve(MAX_BONES);
-	for (int i = 0; i < MAX_BONES; i++) {
-		finalBoneMatrices.push_back(glm::mat4(1.0f));
-	}
-	currentAnimation = nullptr;
+	boneMatrixTexture = Texture2D(4, MAX_BONES, GL_CLAMP_TO_BORDER, GL_LINEAR, GL_RGBA32F, GL_RGBA, GL_FLOAT);
 }
 
 Animator::Animator(Animation* animation)
 {
+	currentAnimation = animation;
 	currentTime = 0.0f;
 	deltaTime = 0.0f;
-	finalBoneMatrices.reserve(MAX_BONES);
-	for (int i = 0; i < MAX_BONES; i++) {
-		finalBoneMatrices.push_back(glm::mat4(1.0f));
-	}
-	currentAnimation = animation;
+	boneMatrixTexture = Texture2D(4, MAX_BONES, GL_CLAMP_TO_BORDER, GL_LINEAR, GL_RGBA32F, GL_RGBA, GL_FLOAT);
 }
 
 void Animator::updateAnimation(float dt)
@@ -135,7 +129,7 @@ void Animator::playAnimation(Animation* pAnimation)
 	currentTime = 0.0f;
 }
 
-void Animator::calculateBoneTransform(const Node& node, const glm::mat4 parentTransform)
+void Animator::calculateBoneTransform(Node& node, const glm::mat4 parentTransform)
 {
 	std::string nodeName = node.name;
 	glm::mat4 nodeTransform = node.transform;
@@ -145,7 +139,10 @@ void Animator::calculateBoneTransform(const Node& node, const glm::mat4 parentTr
 		bone->update(currentTime);
 		nodeTransform = bone->getLocalTransform();
 		globalTransformation = parentTransform * nodeTransform;
-		finalBoneMatrices[bone->getBoneID()] = globalTransformation * node.offsetMatrix;
+		if (bone->getBoneID() >= 0 && bone->getBoneID() < MAX_BONES) {
+			auto matrix = globalTransformation * node.offsetMatrix;
+			boneMatrixTexture.subImage2D(0, bone->getBoneID(), 4, 1, glm::value_ptr(matrix));
+		}
 	}
 	for(auto childIndex : node.childrenIndices) {
 		calculateBoneTransform(currentAnimation->getAllNodes()[childIndex], globalTransformation);

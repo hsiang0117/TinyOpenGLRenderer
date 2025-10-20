@@ -254,21 +254,13 @@ void RenderSystem::render(Camera& camera) {
 			auto shadowCaster = object->getComponent<ShadowCaster2D>();
 			if (shadowCaster->enabled) {
 				defaultShader->setMat4("lightSpaceMatrix", object->getLightMatrices());
-				directionLightDepthTexture.use(GL_TEXTURE6);
 			}
 		}
 	}
 	defaultShader->setInt("pointLightNum", ResourceManager::getInstance().pointLightNum);
 	defaultShader->setInt("directionLightNum", ResourceManager::getInstance().directionLightNum);
 	defaultShader->setInt("spotLightNum", ResourceManager::getInstance().spotLightNum);
-	defaultShader->setInt("albedoMap", 0);
-	defaultShader->setInt("ambientMap", 1);
-	defaultShader->setInt("specularMap", 2);
-	defaultShader->setInt("normalMap", 3);
-	defaultShader->setInt("shininessMap", 4);
-	defaultShader->setInt("skyBox", 5);
-	defaultShader->setInt("shadowMap", 6);
-	defaultShader->setInt("shadowMapArray", 7);
+	directionLightDepthTexture.use(GL_TEXTURE6);
 	pointLightDepthTexture.use(GL_TEXTURE7);
 
 	glViewport(0, 0, width, height);
@@ -320,7 +312,6 @@ void RenderSystem::render(Camera& camera) {
 	for (int i = 0; i < 10; i++) {
 		pingpongFBO[i % 2].bind();
 		glClear(GL_COLOR_BUFFER_BIT);
-		gaussianBlurShader->setInt("image", 0);
 		gaussianBlurShader->setBool("horizontal", i % 2 == 0);
 		if (i == 0) {
 			brightTexture.use(GL_TEXTURE0);
@@ -334,9 +325,6 @@ void RenderSystem::render(Camera& camera) {
 
 	glViewport(x, y, width, height);
 	screenQuadShader->use();
-	screenQuadShader->setInt("colorBuffer", 0);
-	screenQuadShader->setInt("blurBuffer", 1);
-	screenQuadShader->setInt("boneBuffer", 2);
 	hdrTexture.use(GL_TEXTURE0);
 	pingpongTexture[1].use(GL_TEXTURE1);
 	boneTexture.use(GL_TEXTURE2);

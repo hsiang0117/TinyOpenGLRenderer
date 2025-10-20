@@ -31,6 +31,7 @@ public:
 	Node* findNode(std::string name);
 	std::vector<Node>& getAllNodes() { return nodes; }
 	std::vector<Animation>& getAnimations() { return animations; }
+	Texture2D& getBoneMatrixTexture() { return boneMatrixTexture; }
 private:
 	bool loaded = false, glInitialized = false;
 
@@ -46,6 +47,8 @@ private:
 	void loadModel(std::string path);
 	void processNode(aiNode* node, const aiScene* scene, int parentIndex);
 	Mesh processMesh(aiMesh* mesh, const aiScene* scene, glm::mat4 nodeTransform);
+
+	Texture2D boneMatrixTexture;
 
 	GLuint VAO, VBO, lineVAO, lineVBO; //äÖÈ¾¹Ç÷À½ÚµãÓÃ
 };
@@ -161,7 +164,6 @@ void Model::loadModel(std::string path)
 		std::cerr << "ERROR::ASSIMP::" << importer.GetErrorString() << std::endl;
 		return;
 	}
-
 	this->path = path;
 	directory = path.substr(0, path.find_last_of('\\')) + "\\";
 	name = path.substr(path.find_last_of('\\') + 1, path.find_first_of('.') - path.find_last_of('\\') - 1);
@@ -206,7 +208,7 @@ void Model::processNode(aiNode* node, const aiScene* scene, int parentIndex)
 			while (parentIndex != -1) {
 				it->position = nodes[parentIndex].transform * glm::vec4(it->position, 1.0f);
 				parentIndex = nodes[parentIndex].parentIndex;
-			}
+			} 
 			currentIndex = it->id;
 		}
 	}
@@ -218,6 +220,11 @@ void Model::processNode(aiNode* node, const aiScene* scene, int parentIndex)
 	{
 		aiMesh* mesh = scene->mMeshes[node->mMeshes[i]];
 		auto nodeTransform = AssimpGLMHelpers::ConvertMatrixToGLMFormat(node->mTransformation);
+		auto parent = node->mParent;
+		while (parent) {
+			nodeTransform = AssimpGLMHelpers::ConvertMatrixToGLMFormat(parent->mTransformation) * nodeTransform;
+			parent = parent->mParent;
+		}
 		MeshPtr meshPtr = std::make_shared<Mesh>(processMesh(mesh, scene, nodeTransform));
 		meshes.push_back(meshPtr);
 	}

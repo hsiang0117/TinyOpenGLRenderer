@@ -92,10 +92,8 @@ void RenderObject::draw(ShaderPtr shader) {
 			shader.get()->setMat4("model", model);
 		}
 		if (auto animator = getComponent<AnimatorComponent>()) {
-			auto boneMatrices = animator->getFinalBoneMatrices();
-			for (int i = 0; i < boneMatrices.size(); i++) {
-				shader.get()->setMat4(("finalBoneMatrices[" + std::to_string(i) + "]").c_str(), boneMatrices[i]);
-			}
+			auto boneMatrixTexture = animator->getBoneMatrixTexture();
+			boneMatrixTexture.use(GL_TEXTURE8);
 		}
 		if (renderComponent->model) {
 			renderComponent->model->draw(shader);
@@ -113,9 +111,9 @@ void RenderObject::drawSkeleton(ShaderPtr shader) {
 			model = glm::rotate(model, glm::radians(transform->rotate.x), glm::vec3(1, 0, 0));
 			model = glm::scale(model, transform->scale);
 			shader.get()->setMat4("model", model);
-			if (renderComponent->model && renderComponent->skeletonVisible) {
-				renderComponent->model->drawBones();
-			}
+		}		
+		if (renderComponent->model && renderComponent->skeletonVisible) {
+			renderComponent->model->drawBones();
 		}
 	}
 }

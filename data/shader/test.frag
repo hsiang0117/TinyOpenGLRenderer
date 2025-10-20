@@ -14,17 +14,17 @@ layout(location = 1) out vec4 brightColor;
 
 uniform bool useDefaultMaterial;
 
-uniform sampler2D albedoMap;
-uniform sampler2D ambientMap;
-uniform sampler2D specularMap;
+layout (binding = 0) uniform sampler2D albedoMap;
+layout (binding = 1) uniform sampler2D ambientMap;
+layout (binding = 2) uniform sampler2D specularMap;
 uniform bool hasNormalMap;
-uniform sampler2D normalMap;
-uniform sampler2D shininessMap;
+layout (binding = 3) uniform sampler2D normalMap;
+layout (binding = 4) uniform sampler2D shininessMap;
 #ifdef USE_ENVIRONMENT_MAPPING
-	uniform samplerCube skybox;
+	layout (binding = 5) uniform samplerCube skybox;
 #endif
-uniform sampler2D shadowMap;
-uniform samplerCubeArray shadowMapArray;
+layout (binding = 6) uniform sampler2D shadowMap;
+layout (binding = 7) uniform samplerCubeArray shadowMapArray;
 
 uniform vec3 cameraPos;
 

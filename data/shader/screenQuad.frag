@@ -3,9 +3,9 @@
 
 in vec2 texCoords;
 
-uniform sampler2D colorBuffer;
-uniform sampler2D blurBuffer;
-uniform sampler2D boneBuffer;
+layout (binding = 0) uniform sampler2D colorBuffer;
+layout (binding = 1) uniform sampler2D blurBuffer;
+layout (binding = 2) uniform sampler2D boneBuffer;
 uniform float exposure = 1.0;
 
 out vec4 fragColor;

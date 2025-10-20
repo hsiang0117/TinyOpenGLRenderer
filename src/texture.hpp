@@ -31,6 +31,7 @@ public:
 	virtual void use(GLenum textureUnit) override;
 	void setBorderColor(float r, float g, float b, float a);
 	void resetSize(int width, int height);
+	void subImage2D(int xOffset, int yOffset, int width, int height, const void* data);
 	Type getType() { return type; }
 private:
 	Type type;
@@ -101,6 +102,13 @@ void Texture2D::setBorderColor(float r, float g, float b, float a) {
 void Texture2D::resetSize(int width, int height) {
 	glBindTexture(GL_TEXTURE_2D, ID);
 	glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, width, height, 0, format, dataType, nullptr);
+	glBindTexture(GL_TEXTURE_2D, 0);
+}
+
+void Texture2D::subImage2D(int xOffset, int yOffset, int width, int height, const void* data)
+{
+	glBindTexture(GL_TEXTURE_2D, ID);
+	glTexSubImage2D(GL_TEXTURE_2D, 0, xOffset, yOffset, width, height, format, dataType, data);
 	glBindTexture(GL_TEXTURE_2D, 0);
 }
 
