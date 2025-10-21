@@ -9,8 +9,7 @@
 class Animation 
 {
 public:
-	Animation() {};
-	Animation(const aiAnimation* animation, std::vector<Node> nodes);
+	Animation(const aiAnimation* animation, std::vector<Node>& nodes);
 	~Animation() = default;
 	Bone* findBone(const std::string& name);
 	float getTicksPerSecond() { return ticksPerSecond; }
@@ -24,12 +23,13 @@ private:
 	bool valid;
 	float duration;
 	float ticksPerSecond;
-	std::vector<Node> nodes;
+	std::vector<Node>& nodes;
 	std::vector<Bone> bones;
 	void readMissingBones(const aiAnimation* animation, std::vector<Node>& nodes);
 };
 
-Animation::Animation(const aiAnimation* animation, std::vector<Node> nodes)
+Animation::Animation(const aiAnimation* animation, std::vector<Node>& nodes)
+	: nodes(nodes)
 {
 	if (!animation) {
 		valid = false;
@@ -37,7 +37,6 @@ Animation::Animation(const aiAnimation* animation, std::vector<Node> nodes)
 	}
 	name = animation->mName.C_Str();
 	valid = true;
-	this->nodes = nodes;
 	duration = animation->mDuration;
 	ticksPerSecond = animation->mTicksPerSecond ? animation->mTicksPerSecond : 25.0f;
 	readMissingBones(animation, this->nodes);
@@ -144,6 +143,7 @@ void Animator::calculateBoneTransform(Node& node, const glm::mat4 parentTransfor
 			boneMatrixTexture.subImage2D(0, bone->getBoneID(), 4, 1, glm::value_ptr(matrix));
 		}
 	}
+	node.position = glm::vec3(globalTransformation[3]);
 	for(auto childIndex : node.childrenIndices) {
 		calculateBoneTransform(currentAnimation->getAllNodes()[childIndex], globalTransformation);
 	}

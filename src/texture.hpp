@@ -30,6 +30,7 @@ public:
 	Texture2D(const char* path, Type type, GLenum wrap, GLenum filter); // Load texture from file.
 	virtual void use(GLenum textureUnit) override;
 	void setBorderColor(float r, float g, float b, float a);
+	void setDefaultColor(float r, float g, float b, float a);
 	void resetSize(int width, int height);
 	void subImage2D(int xOffset, int yOffset, int width, int height, const void* data);
 	Type getType() { return type; }
@@ -97,6 +98,11 @@ void Texture2D::setBorderColor(float r, float g, float b, float a) {
 	glBindTexture(GL_TEXTURE_2D, ID);
 	glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, new float[4] { r, g, b, a });
 	glBindTexture(GL_TEXTURE_2D, 0);
+}
+
+void Texture2D::setDefaultColor(float r, float g, float b, float a)
+{
+	glClearTexImage(ID, 0, format, dataType, new float[4] { r, g, b, a });
 }
 
 void Texture2D::resetSize(int width, int height) {
