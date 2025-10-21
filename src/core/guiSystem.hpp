@@ -397,10 +397,12 @@ void GuiSystem::showBottomSideBar()
 				gameObject->addComponent<RenderComponent>();
 				gameObject->getComponent<RenderComponent>()->setModel(it->second);
 				gameObject->addComponent<SkeletonViewerComponent>(it->second->getNodes());
-				gameObject->addComponent<AnimatorComponent>(gameObject->getComponent<SkeletonViewerComponent>()->getNodes());
-				gameObject->getComponent<AnimatorComponent>()->setAnimation(&it->second->getAnimations());
-				gameObject->getComponent<AnimatorComponent>()->playAnimation(it->second->getAnimations()[0].getName());
-				gameObject->getComponent<AnimatorComponent>()->update(0.0);
+				if (it->second->getAnimations().size() > 0) {
+					gameObject->addComponent<AnimatorComponent>(gameObject->getComponent<SkeletonViewerComponent>()->getNodes());
+					gameObject->getComponent<AnimatorComponent>()->setAnimation(&it->second->getAnimations());
+					gameObject->getComponent<AnimatorComponent>()->playAnimation(it->second->getAnimations()[0].getName());
+					gameObject->getComponent<AnimatorComponent>()->update(0.0);
+				}
 				ResourceManager::getInstance().gameObjects.push_back(gameObject);
 			}
 			ImGui::EndPopup();
