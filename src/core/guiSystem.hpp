@@ -396,8 +396,11 @@ void GuiSystem::showBottomSideBar()
 				gameObject->addComponent<Transform>();
 				gameObject->addComponent<RenderComponent>();
 				gameObject->getComponent<RenderComponent>()->setModel(it->second);
-				gameObject->addComponent<AnimatorComponent>();
+				gameObject->addComponent<SkeletonViewerComponent>(it->second->getNodes());
+				gameObject->addComponent<AnimatorComponent>(gameObject->getComponent<SkeletonViewerComponent>()->getNodes());
 				gameObject->getComponent<AnimatorComponent>()->setAnimation(&it->second->getAnimations());
+				gameObject->getComponent<AnimatorComponent>()->playAnimation(it->second->getAnimations()[0].getName());
+				gameObject->getComponent<AnimatorComponent>()->update(0.0);
 				ResourceManager::getInstance().gameObjects.push_back(gameObject);
 			}
 			ImGui::EndPopup();
@@ -451,10 +454,6 @@ void GuiSystem::registComponents()
 		});
 
 	registerComponentWidget<RenderComponent>("RenderComponent", [](std::shared_ptr<RenderComponent> renderComponent) {
-		ImGui::Text(u8"RenderComponent");
-		ImGui::Separator();
-		ImGui::Checkbox(u8"Skeleton", &renderComponent->skeletonVisible);
-		ImGui::Separator();
 		});
 
 	registerComponentWidget<PointLightComponent>("PointLightComponent", [](std::shared_ptr<PointLightComponent> pointLightComponent) {
@@ -549,6 +548,13 @@ void GuiSystem::registComponents()
 				animatorComponent->playing = true;
 			}
 		}
+		});
+
+	registerComponentWidget<SkeletonViewerComponent>("SkeletonViewerComponent", [](std::shared_ptr<SkeletonViewerComponent> skeletonViewerComponent) {
+		ImGui::Text(u8"SkeletonViewer");
+		ImGui::Separator();
+		ImGui::Checkbox(u8"Show", &skeletonViewerComponent->show);
+		ImGui::Separator();
 		});
 }
 

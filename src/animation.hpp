@@ -14,8 +14,6 @@ public:
 	Bone* findBone(const std::string& name);
 	float getTicksPerSecond() { return ticksPerSecond; }
 	float getDuration() { return duration; }
-	Node& getRootNode() { return nodes[0]; }
-	std::vector<Node>& getAllNodes() { return nodes; }
 	bool isValid() const { return valid; }
 	std::string getName() const { return name; }
 private:
@@ -23,13 +21,11 @@ private:
 	bool valid;
 	float duration;
 	float ticksPerSecond;
-	std::vector<Node>& nodes;
 	std::vector<Bone> bones;
 	void readMissingBones(const aiAnimation* animation, std::vector<Node>& nodes);
 };
 
 Animation::Animation(const aiAnimation* animation, std::vector<Node>& nodes)
-	: nodes(nodes)
 {
 	if (!animation) {
 		valid = false;
@@ -39,7 +35,7 @@ Animation::Animation(const aiAnimation* animation, std::vector<Node>& nodes)
 	valid = true;
 	duration = animation->mDuration;
 	ticksPerSecond = animation->mTicksPerSecond ? animation->mTicksPerSecond : 25.0f;
-	readMissingBones(animation, this->nodes);
+	readMissingBones(animation, nodes);
 }
 
 Bone* Animation::findBone(const std::string& name)
@@ -83,20 +79,22 @@ using AnimationPtr = std::shared_ptr<Animation>;
 class Animator
 {
 public:
-	Animator();
-	Animator(Animation* animation);
+	Animator(std::vector<Node>& nodes);
+	Animator(Animation* animation, std::vector<Node>& nodes);
 	void updateAnimation(float dt);
 	void playAnimation(Animation* pAnimation);
 	void calculateBoneTransform(Node& node, const glm::mat4 parentTransform);
 	Texture2D& getBoneMatrixTexture() { return boneMatrixTexture; }
 private:
+	std::vector<Node>& nodes;
 	Animation* currentAnimation;
 	float currentTime;
 	float deltaTime;
 	Texture2D boneMatrixTexture;
 };
 
-Animator::Animator()
+Animator::Animator(std::vector<Node>& nodes)
+	: nodes(nodes)
 {
 	currentAnimation = nullptr;
 	currentTime = 0.0f;
@@ -104,7 +102,8 @@ Animator::Animator()
 	boneMatrixTexture = Texture2D(4, MAX_BONES, GL_CLAMP_TO_BORDER, GL_LINEAR, GL_RGBA32F, GL_RGBA, GL_FLOAT);
 }
 
-Animator::Animator(Animation* animation)
+Animator::Animator(Animation* animation, std::vector<Node>& nodes)
+	: nodes(nodes)
 {
 	currentAnimation = animation;
 	currentTime = 0.0f;
@@ -118,7 +117,7 @@ void Animator::updateAnimation(float dt)
 	if (currentAnimation) {
 		currentTime += currentAnimation->getTicksPerSecond() * deltaTime;
 		currentTime = fmod(currentTime, currentAnimation->getDuration());
-		calculateBoneTransform(currentAnimation->getRootNode(), glm::mat4(1.0f));
+		calculateBoneTransform(nodes[0], glm::mat4(1.0f));
 	}
 }
 
@@ -145,7 +144,7 @@ void Animator::calculateBoneTransform(Node& node, const glm::mat4 parentTransfor
 	}
 	node.position = glm::vec3(globalTransformation[3]);
 	for(auto childIndex : node.childrenIndices) {
-		calculateBoneTransform(currentAnimation->getAllNodes()[childIndex], globalTransformation);
+		calculateBoneTransform(nodes[childIndex], globalTransformation);
 	}
 }
 

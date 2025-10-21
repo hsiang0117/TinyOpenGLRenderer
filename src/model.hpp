@@ -25,11 +25,10 @@ public:
 	std::string getPath() { return path; }
 	std::string getName() { return name; }
 	void draw(ShaderPtr shader);
-	void drawBones();
 	bool isReady() const { return loaded && glInitialized; }
 	void buildAABB(glm::vec3& min, glm::vec3& max);
 	Node* findNode(std::string name);
-	std::vector<Node>& getAllNodes() { return nodes; }
+	std::vector<Node>& getNodes() { return nodes; }
 	std::vector<Animation>& getAnimations() { return animations; }
 	Texture2D& getBoneMatrixTexture() { return boneMatrixTexture; }
 private:
@@ -75,11 +74,6 @@ bool Model::initGLResources()
 	for (auto it = materials.begin(); it != materials.end(); ++it) {
 		it->second.initGLResources();
 	}
-	glGenVertexArrays(1, &VAO);
-	glGenBuffers(1, &VBO);
-	glGenVertexArrays(1, &lineVAO);
-	glGenBuffers(1, &lineVBO);
-
 	glInitialized = true;
 	return true;
 }
@@ -93,45 +87,6 @@ void Model::draw(ShaderPtr shader)
 			material->second.bind(shader);
 		}
 		meshes[i]->draw();
-	}
-}
-
-void Model::drawBones()
-{
-	std::vector<glm::vec3> bonePositions;
-	for (const auto& node : nodes) {
-		if (node.isBoneNode) {
-			bonePositions.push_back(node.position);
-		}
-	}
-	if (!bonePositions.empty()) {
-		glBindVertexArray(VAO);
-		glBindBuffer(GL_ARRAY_BUFFER, VBO);
-		glBufferData(GL_ARRAY_BUFFER, bonePositions.size() * sizeof(glm::vec3), &bonePositions[0], GL_STATIC_DRAW);
-		glEnableVertexAttribArray(0);
-		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), (void*)0);
-		glDrawArrays(GL_POINTS, 0, static_cast<GLsizei>(bonePositions.size()));
-		glBindVertexArray(0);
-		glBindBuffer(GL_ARRAY_BUFFER, 0);
-	}
-
-	std::vector<glm::vec3> lineVertices;
-	for(int i = 0;i<nodes.size(); i++) {
-		if (nodes[i].isBoneNode && nodes[nodes[i].parentIndex].isBoneNode && nodes[i].parentIndex != -1) {
-			lineVertices.push_back(nodes[i].position);
-			lineVertices.push_back(nodes[nodes[i].parentIndex].position);
-		}
-	}
-
-	if (!lineVertices.empty()) {
-		glBindVertexArray(lineVAO);
-		glBindBuffer(GL_ARRAY_BUFFER, lineVBO);
-		glBufferData(GL_ARRAY_BUFFER, lineVertices.size() * sizeof(glm::vec3), lineVertices.data(), GL_STATIC_DRAW);
-		glEnableVertexAttribArray(0);
-		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), (void*)0);
-		glDrawArrays(GL_LINES, 0, static_cast<GLsizei>(lineVertices.size()));
-		glBindVertexArray(0);
-		glBindBuffer(GL_ARRAY_BUFFER, 0);
 	}
 }
 

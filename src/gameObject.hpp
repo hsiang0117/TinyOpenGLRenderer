@@ -111,9 +111,10 @@ void RenderObject::drawSkeleton(ShaderPtr shader) {
 			model = glm::rotate(model, glm::radians(transform->rotate.x), glm::vec3(1, 0, 0));
 			model = glm::scale(model, transform->scale);
 			shader.get()->setMat4("model", model);
-		}		
-		if (renderComponent->model && renderComponent->skeletonVisible) {
-			renderComponent->model->drawBones();
+		}
+		if (auto skeletonViewer = getComponent<SkeletonViewerComponent>()) {
+			if (skeletonViewer->show)
+				skeletonViewer->drawSkeleton();
 		}
 	}
 }
