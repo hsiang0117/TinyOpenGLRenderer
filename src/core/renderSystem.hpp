@@ -181,7 +181,7 @@ void RenderSystem::render(Camera& camera) {
 				glCullFace(GL_FRONT);
 				for (int j = 0; j < ResourceManager::getInstance().gameObjects.size(); j++) {
 					GameObjectPtr object = ResourceManager::getInstance().gameObjects[j];
-					if (object->getType() == GameObject::Type::RENDEROBJECT) {
+					if (object->getType() == GameObject::Type::RENDEROBJECT && object->isOnFrustum(frustum)) {
 						object->draw(depthShader);
 					}
 				}
@@ -216,7 +216,7 @@ void RenderSystem::render(Camera& camera) {
 				glCullFace(GL_FRONT);
 				for (int k = 0; k < ResourceManager::getInstance().gameObjects.size(); k++) {
 					GameObjectPtr object = ResourceManager::getInstance().gameObjects[k];
-					if (object->getType() == GameObject::Type::RENDEROBJECT) {
+					if (object->getType() == GameObject::Type::RENDEROBJECT && object->isOnFrustum(frustum)) {
 						object->draw(depthCubeShader);
 					}
 				}
