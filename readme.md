@@ -2,6 +2,6 @@
 
 ![Image](data/image.png)
 
-# 2025-10-14 Support Bone Animation
+# Bone animation.
 
 ![Image](data/animation.gif)
