@@ -28,10 +28,10 @@ struct KeyScale {
 
 class Bone {
 public:
-	Bone(const std::string& name, int id, const aiNodeAnim* channel);
+	Bone() = default;
+	Bone(int id, const aiNodeAnim* channel);
 	void update(float animationTime);
 	glm::mat4 getLocalTransform() const { return localTransform; };
-	std::string getBoneName() const { return name; }
 	int getBoneID() const { return id; }
 	int getPositionIndex(float animationTime);
 	int getRotationIndex(float animationTime);
@@ -44,7 +44,6 @@ private:
 	int numRotations;
 	int numScalings;
 	glm::mat4 localTransform;
-	std::string name;
 	int id;
 
 	float getScaleFactor(float lastTimeStamp, float nextTimeStamp, float animationTime);
@@ -53,8 +52,8 @@ private:
 	glm::mat4 interpolateScaling(float animationTime);
 };
 
-Bone::Bone(const std::string& name, int id, const aiNodeAnim* channel)
-	: name(name), id(id), localTransform(1.0f)
+Bone::Bone(int id, const aiNodeAnim* channel)
+	: id(id), localTransform(1.0f)
 {
 	numPositions = channel->mNumPositionKeys;
 	for (int positionIndex = 0; positionIndex < numPositions; ++positionIndex) {

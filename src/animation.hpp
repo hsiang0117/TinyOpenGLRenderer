@@ -21,7 +21,7 @@ private:
 	bool valid;
 	float duration;
 	float ticksPerSecond;
-	std::vector<Bone> bones;
+	std::unordered_map<std::string, Bone> boneInfoMap;
 	void readMissingBones(const aiAnimation* animation, std::vector<Node>& nodes);
 };
 
@@ -40,12 +40,7 @@ Animation::Animation(const aiAnimation* animation, std::vector<Node>& nodes)
 
 Bone* Animation::findBone(const std::string& name)
 {
-	for (auto& bone : bones) {
-		if (bone.getBoneName() == name) {
-			return &bone;
-		}
-	}
-	return nullptr;
+	return boneInfoMap.count(name) ? &boneInfoMap[name] : nullptr;
 }
 
 void Animation::readMissingBones(const aiAnimation* animation, std::vector<Node>& nodes)
@@ -69,7 +64,7 @@ void Animation::readMissingBones(const aiAnimation* animation, std::vector<Node>
 				std::cout << "Error: Bone node not found in model nodes: " << boneName << std::endl;
 				continue;
 			}
-			bones.push_back(Bone(channel->mNodeName.C_Str(), id, channel));
+			boneInfoMap[node->name] = Bone(id, channel);
 		}
 	}
 }
