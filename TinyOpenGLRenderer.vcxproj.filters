@@ -149,6 +149,9 @@
     <ClInclude Include="src\assimpNode.hpp">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="src\ply.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="data\config.json">

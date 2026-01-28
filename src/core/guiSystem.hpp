@@ -121,25 +121,22 @@ void GuiSystem::showLeftSideBar()
 					gameObject->addComponent<ShadowCasterCube>();
 					gameObject->addComponent<StaticMeshComponent>();
 					gameObject->getComponent<StaticMeshComponent>()->setMesh(MeshGenerator::generateCube());
-					ResourceManager::getInstance().gameObjects.push_back(gameObject);
-					ResourceManager::getInstance().pointLightNum++;
+					ResourceManager::getInstance().addGameObject(gameObject);
 				}
 				if (ImGui::MenuItem(u8"平行光")) {
-					if (ResourceManager::getInstance().directionLightNum == 0) {
+					if (ResourceManager::getInstance().getDirectionLightCount() == 0) {
 						auto gameObject = std::make_shared<DirectionLightObject>("DirectionLight");
 						gameObject->addComponent<Transform>();
 						gameObject->addComponent<DirectionLightComponent>();
 						gameObject->addComponent<ShadowCaster2D>();
-						ResourceManager::getInstance().gameObjects.push_back(gameObject);
-						ResourceManager::getInstance().directionLightNum++;
+						ResourceManager::getInstance().addGameObject(gameObject);
 					}
 				}
 				if (ImGui::MenuItem(u8"聚光灯")) {
 					auto gameObject = std::make_shared<SpotLightObject>("SpotLight");
 					gameObject->addComponent<Transform>();
 					gameObject->addComponent<SpotLightComponent>();
-					ResourceManager::getInstance().gameObjects.push_back(gameObject);
-					ResourceManager::getInstance().spotLightNum++;
+					ResourceManager::getInstance().addGameObject(gameObject);
 				}
 				ImGui::EndMenu();
 			}
@@ -150,7 +147,7 @@ void GuiSystem::showLeftSideBar()
 					gameObject->addComponent<StaticMeshComponent>();
 					gameObject->getComponent<StaticMeshComponent>()->setMesh(MeshGenerator::generateCube());
 					gameObject->addComponent<DynamicMaterialComponent>();
-					ResourceManager::getInstance().gameObjects.push_back(gameObject);
+					ResourceManager::getInstance().addGameObject(gameObject);
 				}
 				if (ImGui::MenuItem(u8"平面")) {
 					auto gameObject = std::make_shared<StaticMeshObject>("Plane");
@@ -158,7 +155,7 @@ void GuiSystem::showLeftSideBar()
 					gameObject->addComponent<StaticMeshComponent>();
 					gameObject->getComponent<StaticMeshComponent>()->setMesh(MeshGenerator::generatePlane());
 					gameObject->addComponent<DynamicMaterialComponent>();
-					ResourceManager::getInstance().gameObjects.push_back(gameObject);
+					ResourceManager::getInstance().addGameObject(gameObject);
 				}
 				if (ImGui::MenuItem(u8"球体")) {
 					auto gameObject = std::make_shared<StaticMeshObject>("Sphere");
@@ -166,7 +163,7 @@ void GuiSystem::showLeftSideBar()
 					gameObject->addComponent<StaticMeshComponent>();
 					gameObject->getComponent<StaticMeshComponent>()->setMesh(MeshGenerator::generateSphere());
 					gameObject->addComponent<DynamicMaterialComponent>();
-					ResourceManager::getInstance().gameObjects.push_back(gameObject);
+					ResourceManager::getInstance().addGameObject(gameObject);
 				}
 				ImGui::EndMenu();
 			}
@@ -174,7 +171,7 @@ void GuiSystem::showLeftSideBar()
 				if (ImGui::MenuItem(u8"天空盒")) {
 					auto gameObject = std::make_shared<SkyBoxObject>("SkyBox");
 					gameObject->addComponent<SkyBoxComponent>();
-					ResourceManager::getInstance().gameObjects.push_back(gameObject);
+					ResourceManager::getInstance().addGameObject(gameObject);
 				}
 				ImGui::EndMenu();
 			}
@@ -188,8 +185,9 @@ void GuiSystem::showLeftSideBar()
 
 	auto renderObjectTreeNode = [&](const char* label, std::function<bool(GameObjectPtr)> predicate) {
 		if (ImGui::TreeNode(label)) {
-			for (int i = 0; i < ResourceManager::getInstance().gameObjects.size(); i++) {
-				GameObjectPtr object = ResourceManager::getInstance().gameObjects[i];
+			auto gameObjects = ResourceManager::getInstance().getGameObjects();
+			for (int i = 0; i < gameObjects.size(); i++) {
+				GameObjectPtr object = gameObjects[i];
 				if (predicate(object)) {
 					ImGui::PushID(i);
 					if (ImGui::Selectable(object->getName().c_str(), selected == i)) {
@@ -198,7 +196,7 @@ void GuiSystem::showLeftSideBar()
 					}
 					if (ImGui::BeginPopupContextItem("ObjectButtonContext")) {
 						if (ImGui::MenuItem(u8"remove")) {
-							ResourceManager::getInstance().removeQueue.push(i);
+							ResourceManager::getInstance().removeGameObject(i);
 							selected = -1;
 						}
 						ImGui::EndPopup();
@@ -300,7 +298,7 @@ void GuiSystem::showRightSideBar(double deltaTime)
 		else {
 			Shader::changeSettings("PCF_SHADOW", false);
 		}
-		ResourceManager::getInstance().shaderCache["default"]->reCompile();
+		ResourceManager::getInstance().getShader("default")->reCompile();
 	}
 	ImGui::Separator();
 
@@ -314,10 +312,10 @@ void GuiSystem::showRightSideBar(double deltaTime)
 		else {
 			Shader::changeSettings("USE_HDR", false);
 		}
-		ResourceManager::getInstance().shaderCache["screenQuad"]->reCompile();
+		ResourceManager::getInstance().getShader("screenQuad")->reCompile();
 	}
 	if (ImGui::SliderFloat(u8"曝光度", &exposure, 0.1f, 10.0f)) {
-		ResourceManager::getInstance().shaderCache["screenQuad"]->setFloat("exposure", exposure);
+		ResourceManager::getInstance().getShader("screenQuad")->setFloat("exposure", exposure);
 	}
 	if (ImGui::Checkbox(u8"Bloom", &bloomChecked)) {
 		if (bloomChecked) {
@@ -326,7 +324,7 @@ void GuiSystem::showRightSideBar(double deltaTime)
 		else {
 			Shader::changeSettings("USE_BLOOM", false);
 		}
-		ResourceManager::getInstance().shaderCache["screenQuad"]->reCompile();
+		ResourceManager::getInstance().getShader("screenQuad")->reCompile();
 	}
 	ImGui::Separator();
 
@@ -338,7 +336,7 @@ void GuiSystem::showRightSideBar(double deltaTime)
 		else {
 			Shader::changeSettings("USE_ENVIRONMENT_MAPPING", false);
 		}
-		ResourceManager::getInstance().shaderCache["default"]->reCompile();
+		ResourceManager::getInstance().getShader("default")->reCompile();
 	}
 	ImGui::Separator();
 
@@ -371,7 +369,7 @@ void GuiSystem::showBottomSideBar()
 	if (ImGui::BeginMenuBar()) {
 		if (ImGui::BeginMenu(u8"文件")) {
 			if (ImGui::MenuItem(u8"打开")) {
-				ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", u8"选择文件", ".obj,.fbx");
+				ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", u8"选择文件", ".obj,.fbx,.ply");
 			}
 			ImGui::EndMenu();
 		}
@@ -384,26 +382,25 @@ void GuiSystem::showBottomSideBar()
 	const float padding = 10.0f;
 
 	int i = 0;
-	for (auto it = ResourceManager::getInstance().modelCache.begin();
-		it != ResourceManager::getInstance().modelCache.end(); it++, i++) {
+	for (auto model : ResourceManager::getInstance().getAllModels()) {
 		ImGui::PushID(i);
-		ImGui::Button(it->second->getName().c_str(), ImVec2(itemWidth, itemHeight));
+		ImGui::Button(model->getName().c_str(), ImVec2(itemWidth, itemHeight));
 		if (ImGui::BeginPopupContextItem("ModelButtonContext"))
 		{
 			if (ImGui::MenuItem(u8"添加到场景"))
 			{
-				std::shared_ptr<RenderObject>gameObject = std::make_shared<RenderObject>(it->second->getName());
+				std::shared_ptr<RenderObject>gameObject = std::make_shared<RenderObject>(model->getName());
 				gameObject->addComponent<Transform>();
 				gameObject->addComponent<RenderComponent>();
-				gameObject->getComponent<RenderComponent>()->setModel(it->second);
-				gameObject->addComponent<SkeletonViewerComponent>(it->second->getNodes());
-				if (it->second->getAnimations().size() > 0) {
+				gameObject->getComponent<RenderComponent>()->setModel(model);
+				gameObject->addComponent<SkeletonViewerComponent>(model->getNodes());
+				if (model->getAnimations().size() > 0) {
 					gameObject->addComponent<AnimatorComponent>(gameObject->getComponent<SkeletonViewerComponent>()->getNodes());
-					gameObject->getComponent<AnimatorComponent>()->setAnimation(&it->second->getAnimations());
-					gameObject->getComponent<AnimatorComponent>()->playAnimation(it->second->getAnimations()[0].getName());
+					gameObject->getComponent<AnimatorComponent>()->setAnimation(&model->getAnimations());
+					gameObject->getComponent<AnimatorComponent>()->playAnimation(model->getAnimations()[0].getName());
 					gameObject->getComponent<AnimatorComponent>()->update(0.0);
 				}
-				ResourceManager::getInstance().gameObjects.push_back(gameObject);
+				ResourceManager::getInstance().addGameObject(gameObject);
 			}
 			ImGui::EndPopup();
 		}
@@ -438,7 +435,7 @@ void GuiSystem::showBottomSideBar()
 		if (ImGuiFileDialog::Instance()->IsOk())
 		{
 			std::string filePath = ImGuiFileDialog::Instance()->GetFilePathName();
-			ResourceManager::getInstance().modelQueue.push(filePath.c_str());
+			ResourceManager::getInstance().queueModelLoad(filePath);
 		}
 		ImGuiFileDialog::Instance()->Close();
 	}
@@ -556,6 +553,12 @@ void GuiSystem::registComponents()
 		ImGui::Text(u8"SkeletonViewer");
 		ImGui::Separator();
 		ImGui::Checkbox(u8"Show", &skeletonViewerComponent->show);
+		ImGui::Separator();
+		});
+
+	registerComponentWidget<GaussianSplattingComponent>("GaussianSplattingComponent", [](std::shared_ptr<GaussianSplattingComponent> gaussianSplattingComponent) {
+		ImGui::Text(u8"GaussianSplatting");
+		ImGui::Separator();
 		ImGui::Separator();
 		});
 }

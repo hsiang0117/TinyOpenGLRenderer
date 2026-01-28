@@ -169,6 +169,7 @@
     <ClInclude Include="src\mesh.hpp" />
     <ClInclude Include="src\meshGenerator.hpp" />
     <ClInclude Include="src\model.hpp" />
+    <ClInclude Include="src\ply.hpp" />
     <ClInclude Include="src\shader.hpp" />
     <ClInclude Include="src\skybox.hpp" />
     <ClInclude Include="src\texture.hpp" />

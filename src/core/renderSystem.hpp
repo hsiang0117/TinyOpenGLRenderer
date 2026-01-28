@@ -131,8 +131,8 @@ void RenderSystem::update(double deltaTime) {
 		pingpongTexture[1].resetSize(width, height);
 		boneTexture.resetSize(width, height);	
 	}
-	for(int i = 0;i<ResourceManager::getInstance().gameObjects.size();i++){
-		auto object = ResourceManager::getInstance().gameObjects[i];
+	for(int i = 0; i < ResourceManager::getInstance().getGameObjectCount(); i++){
+		auto object = ResourceManager::getInstance().getGameObjectAt(i);
 		if (object->getType() == GameObject::Type::RENDEROBJECT) {
 			auto animator = object->getComponent<AnimatorComponent>();
 			if (animator) {
@@ -155,20 +155,20 @@ void RenderSystem::render(Camera& camera) {
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	ShaderPtr defaultShader = ResourceManager::getInstance().shaderCache["default"];
-	ShaderPtr skyboxShader = ResourceManager::getInstance().shaderCache["skybox"];
-	ShaderPtr depthShader = ResourceManager::getInstance().shaderCache["depth"];
-	ShaderPtr screenQuadShader = ResourceManager::getInstance().shaderCache["screenQuad"];
-	ShaderPtr depthCubeShader = ResourceManager::getInstance().shaderCache["depthCube"];
-	ShaderPtr lightCubeShader = ResourceManager::getInstance().shaderCache["lightCube"];
-	ShaderPtr gaussianBlurShader = ResourceManager::getInstance().shaderCache["gaussianBlur"];
-	ShaderPtr boneShader = ResourceManager::getInstance().shaderCache["bone"];
+	ShaderPtr defaultShader = ResourceManager::getInstance().getShader("default");
+	ShaderPtr skyboxShader = ResourceManager::getInstance().getShader("skybox");
+	ShaderPtr depthShader = ResourceManager::getInstance().getShader("depth");
+	ShaderPtr screenQuadShader = ResourceManager::getInstance().getShader("screenQuad");
+	ShaderPtr depthCubeShader = ResourceManager::getInstance().getShader("depthCube");
+	ShaderPtr lightCubeShader = ResourceManager::getInstance().getShader("lightCube");
+	ShaderPtr gaussianBlurShader = ResourceManager::getInstance().getShader("gaussianBlur");
+	ShaderPtr boneShader = ResourceManager::getInstance().getShader("bone");
 
 	glViewport(0, 0, 1024, 1024);
 	//shadowmapPass
 	int pointLightIndex = 0;
-	for (int i = 0; i < ResourceManager::getInstance().gameObjects.size(); i++) {
-		GameObjectPtr object = ResourceManager::getInstance().gameObjects[i];
+	for (int i = 0; i < ResourceManager::getInstance().getGameObjectCount(); i++) {
+		GameObjectPtr object = ResourceManager::getInstance().getGameObjectAt(i);
 		if (object->getType() == GameObject::Type::DIRECTIONLIGHTOBJECT) {
 			depthShader->use();
 			auto shadowCaster = object->getComponent<ShadowCaster2D>();
@@ -179,8 +179,8 @@ void RenderSystem::render(Camera& camera) {
 				directionLightDepthFBO.attachTexture2D(directionLightDepthTexture, GL_DEPTH_ATTACHMENT);
 				glClear(GL_DEPTH_BUFFER_BIT);
 				glCullFace(GL_FRONT);
-				for (int j = 0; j < ResourceManager::getInstance().gameObjects.size(); j++) {
-					GameObjectPtr object = ResourceManager::getInstance().gameObjects[j];
+				for (int j = 0; j < ResourceManager::getInstance().getGameObjectCount(); j++) {
+					GameObjectPtr object = ResourceManager::getInstance().getGameObjectAt(j);
 					if (object->getType() == GameObject::Type::RENDEROBJECT && object->isOnFrustum(frustum)) {
 						object->draw(depthShader);
 					}
@@ -214,8 +214,8 @@ void RenderSystem::render(Camera& camera) {
 				}
 				pointLightDepthFBO.attachTexture(pointLightDepthTexture, GL_DEPTH_ATTACHMENT);
 				glCullFace(GL_FRONT);
-				for (int k = 0; k < ResourceManager::getInstance().gameObjects.size(); k++) {
-					GameObjectPtr object = ResourceManager::getInstance().gameObjects[k];
+				for (int k = 0; k < ResourceManager::getInstance().getGameObjectCount(); k++) {
+					GameObjectPtr object = ResourceManager::getInstance().getGameObjectAt(k);
 					if (object->getType() == GameObject::Type::RENDEROBJECT && object->isOnFrustum(frustum)) {
 						object->draw(depthCubeShader);
 					}
@@ -239,8 +239,8 @@ void RenderSystem::render(Camera& camera) {
 	defaultShader->use();
 	pointLightIndex = 0;
 	int spotLightIndex = 0;
-	for (int i = 0; i < ResourceManager::getInstance().gameObjects.size(); i++) {
-		GameObjectPtr object = ResourceManager::getInstance().gameObjects[i];
+	for (int i = 0; i < ResourceManager::getInstance().getGameObjectCount(); i++) {
+		GameObjectPtr object = ResourceManager::getInstance().getGameObjectAt(i);
 		if (object->getType() == GameObject::Type::POINTLIGHTOBJECT) {
 			object->sendToSSBO(pointLightIndex, ssboPointLights);
 			pointLightIndex++;
@@ -257,9 +257,9 @@ void RenderSystem::render(Camera& camera) {
 			}
 		}
 	}
-	defaultShader->setInt("pointLightNum", ResourceManager::getInstance().pointLightNum);
-	defaultShader->setInt("directionLightNum", ResourceManager::getInstance().directionLightNum);
-	defaultShader->setInt("spotLightNum", ResourceManager::getInstance().spotLightNum);
+	defaultShader->setInt("pointLightNum", ResourceManager::getInstance().getPointLightCount());
+	defaultShader->setInt("directionLightNum", ResourceManager::getInstance().getDirectionLightCount());
+	defaultShader->setInt("spotLightNum", ResourceManager::getInstance().getSpotLightCount());
 	directionLightDepthTexture.use(GL_TEXTURE6);
 	pointLightDepthTexture.use(GL_TEXTURE7);
 
@@ -269,8 +269,8 @@ void RenderSystem::render(Camera& camera) {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	defaultShader->use();
 	defaultShader->setVec3("cameraPos", camera.getPos());
-	for (int i = 0; i < ResourceManager::getInstance().gameObjects.size(); i++) {
-		GameObjectPtr object = ResourceManager::getInstance().gameObjects[i];
+	for (int i = 0; i < ResourceManager::getInstance().getGameObjectCount(); i++) {
+		GameObjectPtr object = ResourceManager::getInstance().getGameObjectAt(i);
 		if (object->getType() == GameObject::Type::RENDEROBJECT && object->isOnFrustum(frustum)) {
 			object->draw(defaultShader);
 		}
@@ -280,16 +280,16 @@ void RenderSystem::render(Camera& camera) {
 	}
 
 	lightCubeShader->use();
-	for (int i = 0; i < ResourceManager::getInstance().gameObjects.size(); i++) {
-		GameObjectPtr object = ResourceManager::getInstance().gameObjects[i];
+	for (int i = 0; i < ResourceManager::getInstance().getGameObjectCount(); i++) {
+		GameObjectPtr object = ResourceManager::getInstance().getGameObjectAt(i);
 		if (object->getType() == GameObject::Type::POINTLIGHTOBJECT && object->isOnFrustum(frustum)) {
 			object->draw(lightCubeShader);
 		}
 	}
 
 	skyboxShader->use();
-	for (int i = 0; i < ResourceManager::getInstance().gameObjects.size(); i++) {
-		GameObjectPtr object = ResourceManager::getInstance().gameObjects[i];
+	for (int i = 0; i < ResourceManager::getInstance().getGameObjectCount(); i++) {
+		GameObjectPtr object = ResourceManager::getInstance().getGameObjectAt(i);
 		if (object->getType() == GameObject::Type::SKYBOXOBJECT) {
 			object->draw(skyboxShader);
 		}
@@ -300,8 +300,8 @@ void RenderSystem::render(Camera& camera) {
 	boneShader->use();
 	boneFBO.bind();
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	for (int i = 0; i < ResourceManager::getInstance().gameObjects.size(); i++) {
-		GameObjectPtr object = ResourceManager::getInstance().gameObjects[i];
+	for (int i = 0; i < ResourceManager::getInstance().getGameObjectCount(); i++) {
+		GameObjectPtr object = ResourceManager::getInstance().getGameObjectAt(i);
 		if (object->getType() == GameObject::Type::RENDEROBJECT && object->isOnFrustum(frustum)) {
 			object->drawSkeleton(boneShader);
 		}
