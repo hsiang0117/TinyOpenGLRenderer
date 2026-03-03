@@ -48,8 +48,6 @@ private:
 	Mesh processMesh(aiMesh* mesh, const aiScene* scene, glm::mat4 nodeTransform);
 
 	Texture2D boneMatrixTexture;
-
-	GLuint VAO, VBO, lineVAO, lineVBO; //äÖÈ¾¹Ç÷À½ÚµãÓÃ
 };
 
 std::future<std::shared_ptr<Model>> Model::LoadAsync(const char* path) {
