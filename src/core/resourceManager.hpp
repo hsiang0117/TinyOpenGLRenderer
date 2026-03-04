@@ -207,6 +207,7 @@ public:
 		shaderLoader.registerShader("lightCube", "data/shader/lightCube.vert", "data/shader/lightCube.frag");
 		shaderLoader.registerShader("gaussianBlur", "data/shader/gaussianBlur.vert", "data/shader/gaussianBlur.frag");
 		shaderLoader.registerShader("bone", "data/shader/bone.vert", "data/shader/bone.frag");
+		shaderLoader.registerShader("volume", "data/shader/volume.vert", "data/shader/volume.frag");
 	}
 
 	void update() {

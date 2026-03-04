@@ -20,7 +20,7 @@ private:
 	float x, y, width, height; //viewport width and height
 	UniformBuffer uboMatrices;
 	ShaderStorageBuffer ssboPointLights, ssboDirectionLight, ssboSpotLights;
-	FrameBuffer directionLightDepthFBO, pointLightDepthFBO, hdrFBO, pingpongFBO[2], boneFBO;
+	FrameBuffer directionLightDepthFBO, pointLightDepthFBO, hdrFBO, pingpongFBO[2], afterEffectFBO;
 	Texture2D directionLightDepthTexture, hdrTexture, brightTexture, pingpongTexture[2], boneTexture;
 	RenderBuffer hdrDepthBuffer;
 	CubeMapArray pointLightDepthTexture;
@@ -38,6 +38,7 @@ void RenderSystem::init() {
 	height = Input::getInstance().getWindowHeight() - GuiSystem::bottomSideBarHeight;
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_PROGRAM_POINT_SIZE);
+	glEnable(GL_CULL_FACE);
 	glDepthFunc(GL_LEQUAL);
 
 	uboMatrices.init();
@@ -101,11 +102,11 @@ void RenderSystem::init() {
 	pingpongFBO[1].attachTexture2D(pingpongTexture[1], GL_COLOR_ATTACHMENT0);
 	pingpongFBO[1].unbind();
 
-	boneFBO.init();
+	afterEffectFBO.init();
 	boneTexture = Texture2D(width, height, GL_CLAMP_TO_BORDER, GL_LINEAR, GL_RGBA, GL_RGBA, GL_FLOAT);
-	boneFBO.bind();
-	boneFBO.attachTexture2D(boneTexture, GL_COLOR_ATTACHMENT0);
-	boneFBO.unbind();
+	afterEffectFBO.bind();
+	afterEffectFBO.attachTexture2D(boneTexture, GL_COLOR_ATTACHMENT0);
+	afterEffectFBO.unbind();
 }
 
 void RenderSystem::update(double deltaTime) {
@@ -163,6 +164,7 @@ void RenderSystem::render(Camera& camera) {
 	ShaderPtr lightCubeShader = ResourceManager::getInstance().getShader("lightCube");
 	ShaderPtr gaussianBlurShader = ResourceManager::getInstance().getShader("gaussianBlur");
 	ShaderPtr boneShader = ResourceManager::getInstance().getShader("bone");
+	ShaderPtr volumeShader = ResourceManager::getInstance().getShader("volume");
 
 	glViewport(0, 0, 1024, 1024);
 	//shadowmapPass
@@ -298,7 +300,7 @@ void RenderSystem::render(Camera& camera) {
 
 	glViewport(0, 0, width, height);
 	boneShader->use();
-	boneFBO.bind();
+	afterEffectFBO.bind();
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	for (int i = 0; i < ResourceManager::getInstance().getGameObjectCount(); i++) {
 		GameObjectPtr object = ResourceManager::getInstance().getGameObjectAt(i);
@@ -306,7 +308,16 @@ void RenderSystem::render(Camera& camera) {
 			object->drawSkeleton(boneShader);
 		}
 	}
-	boneFBO.unbind();
+
+	volumeShader->use();
+	volumeShader->setVec3("cameraPos", camera.getPos());
+	for (int i = 0; i < ResourceManager::getInstance().getGameObjectCount(); i++) {
+		GameObjectPtr object = ResourceManager::getInstance().getGameObjectAt(i);
+		if (object->getType() == GameObject::Type::VOLUMEOBJECT) {
+			object->draw(volumeShader);
+		}
+	}
+	afterEffectFBO.unbind();
 
 	gaussianBlurShader->use();
 	for (int i = 0; i < 10; i++) {

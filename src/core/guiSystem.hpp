@@ -173,6 +173,13 @@ void GuiSystem::showLeftSideBar()
 					gameObject->addComponent<SkyBoxComponent>();
 					ResourceManager::getInstance().addGameObject(gameObject);
 				}
+				if (ImGui::MenuItem(u8"Ìå»ýÎí")) {
+					auto gameObject = std::make_shared<RayMarchingVolumeObject>("Volume");
+					gameObject->addComponent<Transform>();
+					gameObject->addComponent<StaticMeshComponent>();
+					gameObject->getComponent<StaticMeshComponent>()->setMesh(MeshGenerator::generateCube());
+					ResourceManager::getInstance().addGameObject(gameObject);
+				}
 				ImGui::EndMenu();
 			}
 			ImGui::EndMenu();
@@ -215,7 +222,8 @@ void GuiSystem::showLeftSideBar()
 		});
 
 	renderObjectTreeNode(u8"Object", [](GameObjectPtr object) {
-		return object->getType() == GameObject::Type::RENDEROBJECT;
+		return object->getType() == GameObject::Type::RENDEROBJECT ||
+			object->getType() == GameObject::Type::VOLUMEOBJECT;
 		});
 
 	renderObjectTreeNode(u8"SkyBox", [](GameObjectPtr object) {
@@ -553,12 +561,6 @@ void GuiSystem::registComponents()
 		ImGui::Text(u8"SkeletonViewer");
 		ImGui::Separator();
 		ImGui::Checkbox(u8"Show", &skeletonViewerComponent->show);
-		ImGui::Separator();
-		});
-
-	registerComponentWidget<GaussianSplattingComponent>("GaussianSplattingComponent", [](std::shared_ptr<GaussianSplattingComponent> gaussianSplattingComponent) {
-		ImGui::Text(u8"GaussianSplatting");
-		ImGui::Separator();
 		ImGui::Separator();
 		});
 }

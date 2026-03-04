@@ -14,7 +14,8 @@ public:
 		POINTLIGHTOBJECT,
 		DIRECTIONLIGHTOBJECT,
 		SPOTLIGHTOBJECT,
-		SKYBOXOBJECT
+		SKYBOXOBJECT,
+		VOLUMEOBJECT
 	};
 
 	GameObject(std::string name);
@@ -486,5 +487,31 @@ bool StaticMeshObject::isOnFrustum(Frustum& frustum) {
 		}
 	}
 	return false;
+}
+
+class RayMarchingVolumeObject : public GameObject {
+public:
+	RayMarchingVolumeObject(std::string name) : GameObject(name) {
+		type = GameObject::Type::VOLUMEOBJECT;
+	}
+	void draw(ShaderPtr shader) override;
+};
+
+void RayMarchingVolumeObject::draw(ShaderPtr shader) {
+	if (auto staticMeshComponent = getComponent<StaticMeshComponent>()) {
+		glm::mat4 model = glm::mat4(1.0f);
+		if (auto transform = getComponent<Transform>()) {
+			model = glm::translate(model, transform->translate);
+			model = glm::scale(model, transform->scale);
+			shader->setMat4("model", model);
+			glm::vec3 minAABB = glm::vec3(model * glm::vec4(staticMeshComponent->aabb.min, 1.0f));
+			glm::vec3 maxAABB = glm::vec3(model * glm::vec4(staticMeshComponent->aabb.max, 1.0f));
+			shader->setVec3("aabbMin", minAABB);
+			shader->setVec3("aabbMax", maxAABB);
+		}
+		if (staticMeshComponent->mesh) {
+			staticMeshComponent->mesh->draw();
+		}
+	}
 }
 #endif // !GAMEOBJECT_HPP

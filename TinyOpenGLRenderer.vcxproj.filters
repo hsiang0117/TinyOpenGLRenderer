@@ -217,5 +217,11 @@
     <None Include=".gitignore">
       <Filter>资源文件</Filter>
     </None>
+    <None Include="data\shader\volume.vert">
+      <Filter>资源文件\shader</Filter>
+    </None>
+    <None Include="data\shader\volume.frag">
+      <Filter>资源文件\shader</Filter>
+    </None>
   </ItemGroup>
 </Project>
