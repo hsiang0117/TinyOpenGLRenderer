@@ -18,6 +18,7 @@ public:
     Shader(const char* vertexShaderPath, const char* geometryShaderPath, const char* fragmentShaderPath);
     void reCompile();
     void use();
+    void setVec2(const char* name, glm::vec2 vec);
     void setVec3(const char* name, glm::vec3 vec);
     void setMat4(const char* name, glm::mat4 mat);
     void setFloat(const char* name, float value);
@@ -206,6 +207,11 @@ void Shader::setVec3(const char* name, glm::vec3 vec) {
     glUniform3fv(location, 1, glm::value_ptr(vec));
 }
 
+void Shader::setVec2(const char* name, glm::vec2 vec) {
+    int location = glGetUniformLocation(ID, name);
+    glUniform2fv(location, 1, glm::value_ptr(vec));
+}
+
 void Shader::setMat4(const char* name, glm::mat4 mat) {
     int location = glGetUniformLocation(ID, name);
     glUniformMatrix4fv(location, 1, GL_FALSE, glm::value_ptr(mat));
@@ -231,38 +237,38 @@ void Shader::changeSettings(const char* name, bool value)
     const std::string filename = "data/shader/settings.glsl";
     std::ifstream in(filename);
     if (!in.is_open()) return;
-    std::stringstream buffer;
-    buffer << in.rdbuf();
-    in.close();
-    std::string content = buffer.str();
-
-    std::regex defineRe(R"(^(\s*//\s*)?#define\s+)" + std::string(name) + R"(\b.*$)",
-        std::regex_constants::ECMAScript);
-
-    auto replacer = [&](const std::smatch& m) -> std::string {
-        std::string prefix = m[1].matched ? m[1].str() : "";
-        if (value) {
-            if (prefix.find("//") == std::string::npos)
-                return m.str();
-            return m.str().substr(prefix.size());
-        }
-        else {
-            if (prefix.find("//") != std::string::npos)
-                return m.str();
-            return "//" + m.str();
-        }
-        };
 
     std::string result;
-    std::sregex_iterator it(content.begin(), content.end(), defineRe), end;
-    size_t lastPos = 0;
-    for (; it != end; ++it) {
-        std::smatch m = *it;
-        result += content.substr(lastPos, m.position() - lastPos);
-        result += replacer(m);
-        lastPos = m.position() + m.length();
+    std::string line;
+    std::regex defineRe(R"(^(\s*//\s*)?(#define\s+)" + std::string(name) + R"(\b.*)$)");
+
+    while (std::getline(in, line)) {
+        std::smatch m;
+        if (std::regex_match(line, m, defineRe)) {
+            bool hasComment = m[1].matched && m[1].str().find("//") != std::string::npos;
+            if (value) {
+                if (hasComment) {
+                    result += m[2].str() + "\n";
+                } else {
+                    result += line + "\n";
+                }
+            } else {
+                if (hasComment) {
+                    result += line + "\n";
+                } else {
+                    result += "//" + line + "\n";
+                }
+            }
+        } else {
+            result += line + "\n";
+        }
     }
-    result += content.substr(lastPos);
+    in.close();
+
+    if (!result.empty() && result.back() == '\n') {
+        result.pop_back();
+    }
+
     std::ofstream out(filename);
     out << result;
 }
