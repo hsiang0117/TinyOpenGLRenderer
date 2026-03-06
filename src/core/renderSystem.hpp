@@ -21,8 +21,9 @@ private:
 	UniformBuffer uboMatrices;
 	ShaderStorageBuffer ssboPointLights, ssboDirectionLight, ssboSpotLights;
 	FrameBuffer directionLightDepthFBO, pointLightDepthFBO, hdrFBO, pingpongFBO[2], afterEffectFBO;
-	Texture2D directionLightDepthTexture, hdrTexture, brightTexture, pingpongTexture[2], boneTexture;
-	RenderBuffer hdrDepthBuffer;
+	Texture2D directionLightDepthTexture, hdrTexture, brightTexture, pingpongTexture[2], afterEffectTexture, hdrDepthTexture;
+	Texture2D weatherMapTexture;
+	Texture3D noiseTexture3D;
 	CubeMapArray pointLightDepthTexture;
 	void drawScreenQuad();
 };
@@ -38,7 +39,6 @@ void RenderSystem::init() {
 	height = Input::getInstance().getWindowHeight() - GuiSystem::bottomSideBarHeight;
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_PROGRAM_POINT_SIZE);
-	glEnable(GL_CULL_FACE);
 	glDepthFunc(GL_LEQUAL);
 
 	uboMatrices.init();
@@ -82,11 +82,11 @@ void RenderSystem::init() {
 	hdrFBO.init();
 	hdrTexture = Texture2D(width, height, GL_CLAMP_TO_BORDER, GL_LINEAR, GL_RGBA16F, GL_RGBA, GL_FLOAT);
 	brightTexture = Texture2D(width, height, GL_CLAMP_TO_BORDER, GL_LINEAR, GL_RGBA16F, GL_RGBA, GL_FLOAT);
-	hdrDepthBuffer = RenderBuffer(width, height, GL_DEPTH_COMPONENT);
+	hdrDepthTexture = Texture2D(width, height, GL_CLAMP_TO_BORDER, GL_NEAREST, GL_DEPTH_COMPONENT, GL_DEPTH_COMPONENT, GL_FLOAT);
 	hdrFBO.bind();
 	hdrFBO.attachTexture2D(hdrTexture, GL_COLOR_ATTACHMENT0);
 	hdrFBO.attachTexture2D(brightTexture, GL_COLOR_ATTACHMENT1);
-	hdrFBO.attachRenderBuffer(hdrDepthBuffer, GL_DEPTH_ATTACHMENT);
+	hdrFBO.attachTexture2D(hdrDepthTexture, GL_DEPTH_ATTACHMENT);
 	GLenum attachments3[2] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
 	hdrFBO.drawBuffers(attachments3);
 	hdrFBO.unbind();
@@ -103,10 +103,13 @@ void RenderSystem::init() {
 	pingpongFBO[1].unbind();
 
 	afterEffectFBO.init();
-	boneTexture = Texture2D(width, height, GL_CLAMP_TO_BORDER, GL_LINEAR, GL_RGBA, GL_RGBA, GL_FLOAT);
+	afterEffectTexture = Texture2D(width, height, GL_CLAMP_TO_BORDER, GL_LINEAR, GL_RGBA, GL_RGBA, GL_FLOAT);
 	afterEffectFBO.bind();
-	afterEffectFBO.attachTexture2D(boneTexture, GL_COLOR_ATTACHMENT0);
+	afterEffectFBO.attachTexture2D(afterEffectTexture, GL_COLOR_ATTACHMENT0);
 	afterEffectFBO.unbind();
+
+	noiseTexture3D = NoiseTextureGenerator3D::generateWorleyNoiseTexture3D(128, 128, 128);
+	weatherMapTexture = NoiseTextureGenerator3D::generateWeatherMapTexture2D(512, 512);
 }
 
 void RenderSystem::update(double deltaTime) {
@@ -115,10 +118,10 @@ void RenderSystem::update(double deltaTime) {
 		height = Input::getInstance().getWindowHeight() - GuiSystem::bottomSideBarHeight;
 		hdrTexture.resetSize(width, height);
 		brightTexture.resetSize(width, height);
-		hdrDepthBuffer.resetSize(width, height);
+		hdrDepthTexture.resetSize(width, height);
 		pingpongTexture[0].resetSize(width, height);
 		pingpongTexture[1].resetSize(width, height);
-		boneTexture.resetSize(width, height);
+		afterEffectTexture.resetSize(width, height);
 	}
 	if (Input::getInstance().isUiResized()) {
 		x = GuiSystem::leftSideBarWidth;
@@ -127,10 +130,10 @@ void RenderSystem::update(double deltaTime) {
 		height = Input::getInstance().getWindowHeight() - GuiSystem::bottomSideBarHeight;
 		hdrTexture.resetSize(width, height);
 		brightTexture.resetSize(width, height);
-		hdrDepthBuffer.resetSize(width, height);
+		hdrDepthTexture.resetSize(width, height);
 		pingpongTexture[0].resetSize(width, height);
 		pingpongTexture[1].resetSize(width, height);
-		boneTexture.resetSize(width, height);	
+		afterEffectTexture.resetSize(width, height);	
 	}
 	for(int i = 0; i < ResourceManager::getInstance().getGameObjectCount(); i++){
 		auto object = ResourceManager::getInstance().getGameObjectAt(i);
@@ -180,6 +183,7 @@ void RenderSystem::render(Camera& camera) {
 				directionLightDepthFBO.bind();
 				directionLightDepthFBO.attachTexture2D(directionLightDepthTexture, GL_DEPTH_ATTACHMENT);
 				glClear(GL_DEPTH_BUFFER_BIT);
+				glEnable(GL_CULL_FACE);
 				glCullFace(GL_FRONT);
 				for (int j = 0; j < ResourceManager::getInstance().getGameObjectCount(); j++) {
 					GameObjectPtr object = ResourceManager::getInstance().getGameObjectAt(j);
@@ -187,7 +191,7 @@ void RenderSystem::render(Camera& camera) {
 						object->draw(depthShader);
 					}
 				}
-				glCullFace(GL_BACK);
+				glDisable(GL_CULL_FACE);
 				directionLightDepthFBO.unbind();
 			}
 			else {
@@ -215,6 +219,7 @@ void RenderSystem::render(Camera& camera) {
 					glClear(GL_DEPTH_BUFFER_BIT);
 				}
 				pointLightDepthFBO.attachTexture(pointLightDepthTexture, GL_DEPTH_ATTACHMENT);
+				glEnable(GL_CULL_FACE);
 				glCullFace(GL_FRONT);
 				for (int k = 0; k < ResourceManager::getInstance().getGameObjectCount(); k++) {
 					GameObjectPtr object = ResourceManager::getInstance().getGameObjectAt(k);
@@ -222,7 +227,7 @@ void RenderSystem::render(Camera& camera) {
 						object->draw(depthCubeShader);
 					}
 				}
-				glCullFace(GL_BACK);
+				glDisable(GL_CULL_FACE);
 				pointLightDepthFBO.unbind();
 			}
 			else {
@@ -299,9 +304,53 @@ void RenderSystem::render(Camera& camera) {
 	hdrFBO.unbind();
 
 	glViewport(0, 0, width, height);
-	boneShader->use();
 	afterEffectFBO.bind();
+	glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glEnable(GL_CULL_FACE);
+	glCullFace(GL_FRONT);
+	volumeShader->use();
+	volumeShader->setVec3("cameraPos", camera.getPos());
+	volumeShader->setInt("depthMap", 0);
+	volumeShader->setInt("noiseTexture", 1);
+	volumeShader->setInt("weatherMap", 2);
+	volumeShader->setVec2("resolution", glm::vec2(width, height));
+	volumeShader->setFloat("time", (float)glfwGetTime());
+	bool foundDirLight = false;
+	for (int i = 0; i < ResourceManager::getInstance().getGameObjectCount(); i++) {
+		GameObjectPtr object = ResourceManager::getInstance().getGameObjectAt(i);
+		if (object->getType() == GameObject::Type::DIRECTIONLIGHTOBJECT) {
+			auto transform = object->getComponent<Transform>();
+			auto dirLight = object->getComponent<DirectionLightComponent>();
+			glm::mat4 rotation(1.0);
+			rotation = glm::rotate(rotation, glm::radians(transform->rotate.z), glm::vec3(0, 0, 1));
+			rotation = glm::rotate(rotation, glm::radians(transform->rotate.y), glm::vec3(0, 1, 0));
+			rotation = glm::rotate(rotation, glm::radians(transform->rotate.x), glm::vec3(1, 0, 0));
+			glm::vec3 direction(1.0, 0.0, 0.0);
+			direction = glm::mat3(rotation) * direction;
+
+			volumeShader->setVec3("lightDir", -direction);
+			volumeShader->setVec3("lightColor", dirLight->color * dirLight->brightness);
+			foundDirLight = true;
+			break;
+		}
+	}
+	if (!foundDirLight) {
+		volumeShader->setVec3("lightDir", glm::vec3(0.0, 1.0, 0.0));
+		volumeShader->setVec3("lightColor", glm::vec3(1.0));
+	}
+	hdrDepthTexture.use(GL_TEXTURE0);
+	noiseTexture3D.use(GL_TEXTURE1);
+	weatherMapTexture.use(GL_TEXTURE2);
+	for (int i = 0; i < ResourceManager::getInstance().getGameObjectCount(); i++) {
+		GameObjectPtr object = ResourceManager::getInstance().getGameObjectAt(i);
+		if (object->getType() == GameObject::Type::VOLUMEOBJECT) {
+			object->draw(volumeShader);
+		}
+	}
+	glDisable(GL_CULL_FACE);
+
+	boneShader->use();
 	for (int i = 0; i < ResourceManager::getInstance().getGameObjectCount(); i++) {
 		GameObjectPtr object = ResourceManager::getInstance().getGameObjectAt(i);
 		if (object->getType() == GameObject::Type::RENDEROBJECT && object->isOnFrustum(frustum)) {
@@ -309,16 +358,9 @@ void RenderSystem::render(Camera& camera) {
 		}
 	}
 
-	volumeShader->use();
-	volumeShader->setVec3("cameraPos", camera.getPos());
-	for (int i = 0; i < ResourceManager::getInstance().getGameObjectCount(); i++) {
-		GameObjectPtr object = ResourceManager::getInstance().getGameObjectAt(i);
-		if (object->getType() == GameObject::Type::VOLUMEOBJECT) {
-			object->draw(volumeShader);
-		}
-	}
 	afterEffectFBO.unbind();
 
+	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 	gaussianBlurShader->use();
 	for (int i = 0; i < 10; i++) {
 		pingpongFBO[i % 2].bind();
@@ -338,7 +380,7 @@ void RenderSystem::render(Camera& camera) {
 	screenQuadShader->use();
 	hdrTexture.use(GL_TEXTURE0);
 	pingpongTexture[1].use(GL_TEXTURE1);
-	boneTexture.use(GL_TEXTURE2);
+	afterEffectTexture.use(GL_TEXTURE2);
 	drawScreenQuad();
 }
 

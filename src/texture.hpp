@@ -251,4 +251,35 @@ void RenderBuffer::resetSize(int width, int height) {
 	glBindRenderbuffer(GL_RENDERBUFFER, 0);
 }
 
+class Texture3D : public Texture {
+	public:
+	Texture3D() {};
+	Texture3D(int width, int height, int depth, GLenum wrap, GLenum filter, GLenum internalFormat, GLenum format, GLenum dataType);
+	void subImage3D(int xOffset, int yOffset, int zOffset, int width, int height, int depth, const void* data);
+	virtual void use(GLenum textureUnit) override;
+};
+
+Texture3D::Texture3D(int width, int height, int depth, GLenum wrap, GLenum filter, GLenum internalFormat, GLenum format, GLenum dataType) {
+	glGenTextures(1, &ID);
+	glBindTexture(GL_TEXTURE_3D, ID);
+	glTexImage3D(GL_TEXTURE_3D, 0, internalFormat, width, height, depth, 0, format, dataType, nullptr);
+	glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, wrap);
+	glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, wrap);
+	glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, wrap);
+	glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, filter);
+	glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, filter);
+	glBindTexture(GL_TEXTURE_3D, 0);
+}
+
+void Texture3D::subImage3D(int xOffset, int yOffset, int zOffset, int width, int height, int depth, const void* data) {
+	glBindTexture(GL_TEXTURE_3D, ID);
+	glTexSubImage3D(GL_TEXTURE_3D, 0, xOffset, yOffset, zOffset, width, height, depth, GL_RED, GL_UNSIGNED_BYTE, data);
+	glBindTexture(GL_TEXTURE_3D, 0);
+}
+
+void Texture3D::use(GLenum textureUnit) {
+	glActiveTexture(textureUnit);
+	glBindTexture(GL_TEXTURE_3D, ID);
+}
+
 #endif // !TEXTURE_HPP

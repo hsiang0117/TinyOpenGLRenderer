@@ -310,7 +310,7 @@ void GuiSystem::showRightSideBar(double deltaTime)
 	}
 	ImGui::Separator();
 
-	static bool hdrChecked = false;
+	static bool hdrChecked = true;
 	static float exposure = 1.0;
 	static bool bloomChecked = false;
 	if (ImGui::Checkbox(u8"HDR", &hdrChecked)) {
