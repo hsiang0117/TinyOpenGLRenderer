@@ -149,7 +149,7 @@ Frustum Camera::getFrustum(const float scrWidth, const float scrHeight) {
 }
 
 void Camera::processKeyboard(Direction d, double deltaTime) {
-	float cameraSpeed = 2.5f * deltaTime;
+	float cameraSpeed = 5.0f * deltaTime;
 	switch (d) {
 	case FRONT:
 		pos += cameraSpeed * front;

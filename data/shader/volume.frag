@@ -2,13 +2,7 @@
 
 layout(location = 0) out vec4 fragColor;
 
-in vec3 WorldPos;
-
-layout (std140, binding = 0) uniform Matrices{
-	mat4 view;
-	mat4 projection;
-};
-
+uniform mat4 invVP;
 uniform vec3 cameraPos;
 uniform vec3 lightDir;
 uniform vec3 lightColor;
@@ -16,7 +10,8 @@ uniform vec3 aabbMin;
 uniform vec3 aabbMax;
 
 uniform sampler2D depthMap;
-uniform sampler3D noiseTexture;
+uniform sampler3D worleyNoiseTexture;
+uniform sampler3D perlinNoiseTexture;
 uniform sampler2D weatherMap;
 uniform vec2 resolution;
 uniform float time;
@@ -44,26 +39,29 @@ float interleavedGradientNoise(vec2 screenPos) {
 
 float hg(float cosAngle, float g){
 	float g2 = g * g;
-	return (1.0 - g2) / (4.0 * 3.1415926 * pow(1.0 + g2 - 2.0 * g * cosAngle, 1.5));
+	float t = 1.0 + g2 - 2.0 * g * cosAngle;
+	return (1.0 - g2) / (4.0 * 3.1415926 * t * sqrt(t));
 }
 
 float phase(float cosAngle){
 	float blend = 0.5;
-	vec4 phaseParams = vec4(0.72, 1.0, 0.5, 1.58);
+	vec4 phaseParams = vec4(0.72, -0.5, 0.5, 1.58);
 	float hgBlend = hg(cosAngle, phaseParams.x) * (1.0 - blend) + hg(cosAngle, phaseParams.y) * blend;
 	return phaseParams.z + hgBlend * phaseParams.w;
 }
 
 float sampleNoise(vec3 p){
 	p += vec3(time, 0.0, time);
-	return texture(noiseTexture, p * 0.01).r;
+	return texture(worleyNoiseTexture, p * 0.01).r;
 }
 
 float getEdgeFade(vec3 p, float fadeDistance) {
-	float dstX = min(p.x - aabbMin.x, aabbMax.x - p.x);
-	float dstZ = min(p.z - aabbMin.z, aabbMax.z - p.z);
-	float edgeDist = min(dstX, dstZ);
-	return smoothstep(0.0, fadeDistance, edgeDist);
+	vec3 center = (aabbMin + aabbMax) * 0.5;
+	vec3 extent = (aabbMax - aabbMin) * 0.5;
+	float radius = min(extent.x, extent.z);
+	vec2 offset = p.xz - center.xz;
+	float dist = length(offset);
+	return smoothstep(radius, radius - fadeDistance, dist);
 }
 
 float remap(float value, float low1, float high1, float low2, float high2) {
@@ -79,13 +77,22 @@ float getHeightGradient(float heightFraction, float cloudType) {
 }
 
 float getCloudDensity(vec3 p) {
+	vec3 warp = vec3(
+		texture(perlinNoiseTexture, p * 0.003).r,
+		0.0,
+		texture(perlinNoiseTexture, p * 0.003 + vec3(43.0, 17.0, 59.0)).r
+	);
+	vec3 warpedP = p + (warp - 0.5) * 25.0;
+
 	float baseNoise = 0.0;
 	float amplitude = 0.5;
 	float frequency = 1.0;
+	vec3 offset = vec3(0.0);
 	for(int i = 0; i < 4; i++) {
-		baseNoise += sampleNoise(p * frequency) * amplitude;
+		baseNoise += sampleNoise((warpedP + offset) * frequency) * amplitude;
 		amplitude *= 0.5;
 		frequency *= 2.0;
+		offset += vec3(31.416, -47.853, 12.679);
 	}
 
 	vec2 weatherUv = vec2((p.x - aabbMin.x) / (aabbMax.x - aabbMin.x), (p.z - aabbMin.z) / (aabbMax.z - aabbMin.z));
@@ -100,10 +107,10 @@ float getCloudDensity(vec3 p) {
 	baseDensity = clamp(remap(baseDensity, 1.0 - coverage, 1.0, 0.0, 1.0), 0.0, 1.0);
 	if (baseDensity <= 0.0) return 0.0;
 
-	vec3 detailPos = p + vec3(time * 0.5, 0.0, time * 0.5);
-	float detailNoise = texture(noiseTexture, detailPos * 0.05).r;
+	vec3 detailPos = p + vec3(time, 0.0, time);
+	float detailNoise = texture(perlinNoiseTexture, detailPos * 0.01).r;
 	float detailModifier = mix(detailNoise, 1.0 - detailNoise, clamp(heightFraction * 5.0, 0.0, 1.0));
-	baseDensity = clamp(remap(baseDensity, detailModifier * 0.15, 1.0, 0.0, 1.0), 0.0, 1.0);
+	baseDensity = clamp(remap(baseDensity, detailModifier * 0.35, 1.0, 0.0, 1.0), 0.0, 1.0);
 
 	baseDensity *= getEdgeFade(p, 10.0);
 
@@ -138,21 +145,20 @@ float lightMarch(vec3 startPos, vec3 lightDir){
 		testPoint += lightDir * stepLen;
 		sumDensity += max(0.0, getCloudDensityLight(testPoint) * stepLen);
 	}
-	float lightAttenuation = 3.0;
+	float lightAttenuation = 2.0;
 	float transmittance = exp(-sumDensity * lightAttenuation);
 	return transmittance;
 }
 
-vec4 cloudRayMarching(vec3 rayOrigin, vec3 rayDirection, float maxDst){
+vec4 cloudRayMarching(vec3 rayOrigin, vec3 rayDirection, float maxDst, mat4 invVP){
 	float stepLen = maxDst / 64.0;
 	vec2 uv = gl_FragCoord.xy / resolution;
 	float jitter = interleavedGradientNoise(gl_FragCoord.xy) * stepLen;
 	vec3 testPoint = rayOrigin + rayDirection * jitter;
 
 	float depth = texture(depthMap, uv).r;
-	if (depth < 1.0) {
+	if (depth < 0.999) {
 		vec4 ndc = vec4(uv * 2.0 - 1.0, depth * 2.0 - 1.0, 1.0);
-		mat4 invVP = inverse(projection * view);
 		vec4 worldOpaquePos = invVP * ndc;
 		worldOpaquePos /= worldOpaquePos.w;
 
@@ -199,10 +205,10 @@ vec4 cloudRayMarching(vec3 rayOrigin, vec3 rayDirection, float maxDst){
 		vec3 ambientLight = mix(ambientBottom, ambientTop, heightFraction);
 		ambientLight *= length(lightColor) * 0.25;
 
-		vec3 currentLight = totalScattering * 10.0 + ambientLight;
+		vec3 currentLight = (totalScattering + ambientLight) * 5.0;
 		lightEnergy += density * currentStepLen * transmittance * currentLight;
 
-		float viewAttenuation = 3.0;
+		float viewAttenuation = 2.0;
 		transmittance *= exp(-density * currentStepLen * viewAttenuation);
 		if(transmittance < 0.01) break;
 	}
@@ -212,10 +218,19 @@ vec4 cloudRayMarching(vec3 rayOrigin, vec3 rayDirection, float maxDst){
 
 void main()
 {
-	vec3 rayDir = normalize(WorldPos - cameraPos);
+	vec2 uv = gl_FragCoord.xy / resolution;
+	vec4 clipFar = vec4(uv * 2.0 - 1.0, 1.0, 1.0);
+	vec4 worldFar = invVP * clipFar;
+	worldFar /= worldFar.w;
+	vec3 rayDir = normalize(worldFar.xyz - cameraPos);
+
 	vec2 boundsInfo = rayBoxDst(aabbMin, aabbMax, cameraPos, rayDir);
+	if (boundsInfo.y <= 0.0) {
+		fragColor = vec4(0.0);
+		return;
+	}
 	vec3 rayOrigin = cameraPos + rayDir * boundsInfo.x;
-	vec4 res = cloudRayMarching(rayOrigin, rayDir, boundsInfo.y);
+	vec4 res = cloudRayMarching(rayOrigin, rayDir, boundsInfo.y, invVP);
 
 	fragColor = res;
 }

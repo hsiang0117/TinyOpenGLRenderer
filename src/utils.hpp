@@ -131,42 +131,64 @@ public:
 			return ((h & 1) == 0 ? u : -u) + ((h & 2) == 0 ? v : -v);
 		};
 
-		auto noise = [&](float x, float y, float z) {
-			int X = (int)std::floor(x) & 255;
-			int Y = (int)std::floor(y) & 255;
-			int Z = (int)std::floor(z) & 255;
+		float baseFrequency = 4.0f;
 
-			x -= std::floor(x);
-			y -= std::floor(y);
-			z -= std::floor(z);
+		auto noise = [&](float x, float y, float z, int per) {
+			int xi = (int)std::floor(x);
+			int yi = (int)std::floor(y);
+			int zi = (int)std::floor(z);
 
-			float u = fade(x);
-			float v = fade(y);
-			float w = fade(z);
+			float xf = x - std::floor(x);
+			float yf = y - std::floor(y);
+			float zf = z - std::floor(z);
 
-			int A = p[X] + Y, AA = p[A] + Z, AB = p[A + 1] + Z;
-			int B = p[X + 1] + Y, BA = p[B] + Z, BB = p[B + 1] + Z;
+			float u = fade(xf);
+			float v = fade(yf);
+			float w = fade(zf);
 
-			float res = lerp(w, lerp(v, lerp(u, grad(p[AA], x, y, z),
-				grad(p[BA], x - 1.0f, y, z)),
-				lerp(u, grad(p[AB], x, y - 1.0f, z),
-					grad(p[BB], x - 1.0f, y - 1.0f, z))),
-				lerp(v, lerp(u, grad(p[AA + 1], x, y, z - 1.0f),
-					grad(p[BA + 1], x - 1.0f, y, z - 1.0f)),
-					lerp(u, grad(p[AB + 1], x, y - 1.0f, z - 1.0f),
-						grad(p[BB + 1], x - 1.0f, y - 1.0f, z - 1.0f))));
+			auto wrap = [](int val, int per) {
+				int r = val % per;
+				return r < 0 ? r + per : r;
+			};
+
+			int x0 = wrap(xi, per), x1 = wrap(xi + 1, per);
+			int y0 = wrap(yi, per), y1 = wrap(yi + 1, per);
+			int z0 = wrap(zi, per), z1 = wrap(zi + 1, per);
+
+			int aaa = p[p[p[x0] + y0] + z0];
+			int aba = p[p[p[x0] + y1] + z0];
+			int aab = p[p[p[x0] + y0] + z1];
+			int abb = p[p[p[x0] + y1] + z1];
+			int baa = p[p[p[x1] + y0] + z0];
+			int bba = p[p[p[x1] + y1] + z0];
+			int bab = p[p[p[x1] + y0] + z1];
+			int bbb = p[p[p[x1] + y1] + z1];
+
+			float res = lerp(w,
+				lerp(v,
+					lerp(u, grad(aaa, xf, yf, zf), grad(baa, xf - 1.0f, yf, zf)),
+					lerp(u, grad(aba, xf, yf - 1.0f, zf), grad(bba, xf - 1.0f, yf - 1.0f, zf))),
+				lerp(v,
+					lerp(u, grad(aab, xf, yf, zf - 1.0f), grad(bab, xf - 1.0f, yf, zf - 1.0f)),
+					lerp(u, grad(abb, xf, yf - 1.0f, zf - 1.0f), grad(bbb, xf - 1.0f, yf - 1.0f, zf - 1.0f))));
 			return (res + 1.0f) / 2.0f;
 		};
-
-		float frequency = 4.0f;
 		for (int z = 0; z < depth; z++) {
 			for (int y = 0; y < height; y++) {
 				for (int x = 0; x < width; x++) {
-					float nx = (float)x / width * frequency;
-					float ny = (float)y / height * frequency;
-					float nz = (float)z / depth * frequency;
+					float nx = (float)x / width;
+					float ny = (float)y / height;
+					float nz = (float)z / depth;
 
-					float n = noise(nx, ny, nz);
+					float n = 0.0f;
+					float amplitude = 0.5f;
+					float freq = baseFrequency;
+					for (int i = 0; i < 4; i++) {
+						n += noise(nx * freq, ny * freq, nz * freq, (int)freq) * amplitude;
+						amplitude *= 0.5f;
+						freq *= 2.0f;
+					}
+					n = (n - 0.5f) * 2.5f + 0.5f;
 					n = std::max(0.0f, std::min(1.0f, n));
 					data[x + y * width + z * width * height] = (unsigned char)(n * 255.0f);
 				}

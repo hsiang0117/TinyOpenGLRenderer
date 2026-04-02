@@ -23,7 +23,8 @@ private:
 	FrameBuffer directionLightDepthFBO, pointLightDepthFBO, hdrFBO, pingpongFBO[2], afterEffectFBO;
 	Texture2D directionLightDepthTexture, hdrTexture, brightTexture, pingpongTexture[2], afterEffectTexture, hdrDepthTexture;
 	Texture2D weatherMapTexture;
-	Texture3D noiseTexture3D;
+	Texture3D worleyNoiseTexture3D;
+	Texture3D perlinNoiseTexture3D;
 	CubeMapArray pointLightDepthTexture;
 	void drawScreenQuad();
 };
@@ -103,12 +104,13 @@ void RenderSystem::init() {
 	pingpongFBO[1].unbind();
 
 	afterEffectFBO.init();
-	afterEffectTexture = Texture2D(width, height, GL_CLAMP_TO_BORDER, GL_LINEAR, GL_RGBA, GL_RGBA, GL_FLOAT);
+	afterEffectTexture = Texture2D(width, height, GL_CLAMP_TO_BORDER, GL_LINEAR, GL_RGBA16F, GL_RGBA, GL_FLOAT);
 	afterEffectFBO.bind();
 	afterEffectFBO.attachTexture2D(afterEffectTexture, GL_COLOR_ATTACHMENT0);
 	afterEffectFBO.unbind();
 
-	noiseTexture3D = NoiseTextureGenerator3D::generateWorleyNoiseTexture3D(128, 128, 128);
+	worleyNoiseTexture3D = NoiseTextureGenerator3D::generateWorleyNoiseTexture3D(128, 128, 128);
+	perlinNoiseTexture3D = NoiseTextureGenerator3D::generatePerlinNoiseTexture3D(128, 128, 128);
 	weatherMapTexture = NoiseTextureGenerator3D::generateWeatherMapTexture2D(512, 512);
 }
 
@@ -306,16 +308,17 @@ void RenderSystem::render(Camera& camera) {
 	glViewport(0, 0, width, height);
 	afterEffectFBO.bind();
 	glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	glEnable(GL_CULL_FACE);
-	glCullFace(GL_FRONT);
+	glClear(GL_COLOR_BUFFER_BIT);
 	volumeShader->use();
 	volumeShader->setVec3("cameraPos", camera.getPos());
 	volumeShader->setInt("depthMap", 0);
-	volumeShader->setInt("noiseTexture", 1);
+	volumeShader->setInt("worleyNoiseTexture", 1);
 	volumeShader->setInt("weatherMap", 2);
+	volumeShader->setInt("perlinNoiseTexture", 3);
 	volumeShader->setVec2("resolution", glm::vec2(width, height));
 	volumeShader->setFloat("time", (float)glfwGetTime());
+	glm::mat4 invVP = glm::inverse(camera.getProjectionMat((float)width, (float)height) * camera.getViewMat());
+	volumeShader->setMat4("invVP", invVP);
 	bool foundDirLight = false;
 	for (int i = 0; i < ResourceManager::getInstance().getGameObjectCount(); i++) {
 		GameObjectPtr object = ResourceManager::getInstance().getGameObjectAt(i);
@@ -340,15 +343,26 @@ void RenderSystem::render(Camera& camera) {
 		volumeShader->setVec3("lightColor", glm::vec3(1.0));
 	}
 	hdrDepthTexture.use(GL_TEXTURE0);
-	noiseTexture3D.use(GL_TEXTURE1);
+	worleyNoiseTexture3D.use(GL_TEXTURE1);
 	weatherMapTexture.use(GL_TEXTURE2);
+	perlinNoiseTexture3D.use(GL_TEXTURE3);
 	for (int i = 0; i < ResourceManager::getInstance().getGameObjectCount(); i++) {
 		GameObjectPtr object = ResourceManager::getInstance().getGameObjectAt(i);
 		if (object->getType() == GameObject::Type::VOLUMEOBJECT) {
-			object->draw(volumeShader);
+			auto staticMesh = object->getComponent<StaticMeshComponent>();
+			auto transform = object->getComponent<Transform>();
+			if (staticMesh && transform) {
+				glm::mat4 model = glm::mat4(1.0f);
+				model = glm::translate(model, transform->translate);
+				model = glm::scale(model, transform->scale);
+				glm::vec3 minAABB = glm::vec3(model * glm::vec4(staticMesh->aabb.min, 1.0f));
+				glm::vec3 maxAABB = glm::vec3(model * glm::vec4(staticMesh->aabb.max, 1.0f));
+				volumeShader->setVec3("aabbMin", minAABB);
+				volumeShader->setVec3("aabbMax", maxAABB);
+				drawScreenQuad();
+			}
 		}
 	}
-	glDisable(GL_CULL_FACE);
 
 	boneShader->use();
 	for (int i = 0; i < ResourceManager::getInstance().getGameObjectCount(); i++) {
