@@ -1,4 +1,4 @@
-#ifndef GUISYSTEM_HPP
+ï»¿#ifndef GUISYSTEM_HPP
 #define GUISYSTEM_HPP
 #pragma once
 
@@ -14,7 +14,7 @@
 
 #define SPLITTER_THICKNESS 4
 
-// ×é¼þ¶ÔÓ¦äÖÈ¾·½·¨£¬½ÓÊÕÒ»¸ö×é¼þÖ¸Õë£¬·µ»Øvoid
+// ï¿½ï¿½ï¿½ï¿½ï¿½Ó¦ï¿½ï¿½È¾ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½ï¿½ï¿½ï¿½Ö¸ï¿½ë£¬ï¿½ï¿½ï¿½ï¿½void
 using ComponentWidgetFunc = std::function<void(ComponentPtr)>;
 
 class GuiSystem {
@@ -26,18 +26,18 @@ public:
 	void render(double deltaTime);
 	void shutDown();
 
-	// ×¢²á×é¼þµÄäÖÈ¾·½·¨£¬´«Èë×é¼þÃû³ÆºÍäÖÈ¾º¯Êý
+	// ×¢ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½È¾ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Æºï¿½ï¿½ï¿½È¾ï¿½ï¿½ï¿½ï¿½
 	template<typename T>
 	void registerComponentWidget(const std::string& componentName, std::function<void(std::shared_ptr<T>)> func);
 
-	// ¸ù¾Ý×é¼þäÖÈ¾¶ÔÓ¦µÄwidget
+	// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½È¾ï¿½ï¿½Ó¦ï¿½ï¿½widget
 	void showComponentWidget(std::shared_ptr<Component> comp);
 
 	static float leftSideBarWidth;
 	static float rightSideBarWidth;
 	static float bottomSideBarHeight;
 private:
-	// ×é¼þÃûºÍ¶ÔÓ¦äÖÈ¾º¯ÊýµÄ×¢²á±í
+	// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Í¶ï¿½Ó¦ï¿½ï¿½È¾ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½×¢ï¿½ï¿½ï¿½
 	static std::unordered_map<std::string, ComponentWidgetFunc>& getWidgetRegistry() {
 		static std::unordered_map<std::string, ComponentWidgetFunc> registry;
 		return registry;
@@ -110,11 +110,11 @@ void GuiSystem::showLeftSideBar()
 	ImGui::BeginChild(u8"scenePanel", ImVec2(0, avalableSize.y/2), false, ImGuiWindowFlags_MenuBar);
 
 	if (ImGui::BeginMenuBar()) {
-		ImGui::Text(u8"³¡¾°");
-		if (ImGui::BeginMenu(u8"Ìí¼Ó")) {
-			if (ImGui::BeginMenu(u8"¹âÔ´")) {
-				if (ImGui::MenuItem(u8"µã¹âÔ´")) {
-					auto gameObject = std::make_shared<PointLightObject>("PointLight");
+		ImGui::Text("Scene");
+		if (ImGui::BeginMenu("Add")) {
+			if (ImGui::BeginMenu("Light")) {
+				if (ImGui::MenuItem("Point Light")) {
+					auto gameObject = std::make_shared<GameObject>("PointLight");
 					gameObject->addComponent<Transform>();
 					gameObject->getComponent<Transform>()->scale = glm::vec3(0.2f);
 					gameObject->addComponent<PointLightComponent>();
@@ -123,42 +123,42 @@ void GuiSystem::showLeftSideBar()
 					gameObject->getComponent<StaticMeshComponent>()->setMesh(MeshGenerator::generateCube());
 					ResourceManager::getInstance().addGameObject(gameObject);
 				}
-				if (ImGui::MenuItem(u8"Æ½ÐÐ¹â")) {
+				if (ImGui::MenuItem("Direction Light")) {
 					if (ResourceManager::getInstance().getDirectionLightCount() == 0) {
-						auto gameObject = std::make_shared<DirectionLightObject>("DirectionLight");
+						auto gameObject = std::make_shared<GameObject>("DirectionLight");
 						gameObject->addComponent<Transform>();
 						gameObject->addComponent<DirectionLightComponent>();
 						gameObject->addComponent<ShadowCaster2D>();
 						ResourceManager::getInstance().addGameObject(gameObject);
 					}
 				}
-				if (ImGui::MenuItem(u8"¾Û¹âµÆ")) {
-					auto gameObject = std::make_shared<SpotLightObject>("SpotLight");
+				if (ImGui::MenuItem("Spot Light")) {
+					auto gameObject = std::make_shared<GameObject>("SpotLight");
 					gameObject->addComponent<Transform>();
 					gameObject->addComponent<SpotLightComponent>();
 					ResourceManager::getInstance().addGameObject(gameObject);
 				}
 				ImGui::EndMenu();
 			}
-			if (ImGui::BeginMenu(u8"¾²Ì¬Íø¸ñÌå")) {
-				if (ImGui::MenuItem(u8"Á¢·½Ìå")) {
-					auto gameObject = std::make_shared<StaticMeshObject>("Cube");
+			if (ImGui::BeginMenu("Static Mesh")) {
+				if (ImGui::MenuItem("Cube")) {
+					auto gameObject = std::make_shared<GameObject>("Cube");
 					gameObject->addComponent<Transform>();
 					gameObject->addComponent<StaticMeshComponent>();
 					gameObject->getComponent<StaticMeshComponent>()->setMesh(MeshGenerator::generateCube());
 					gameObject->addComponent<DynamicMaterialComponent>();
 					ResourceManager::getInstance().addGameObject(gameObject);
 				}
-				if (ImGui::MenuItem(u8"Æ½Ãæ")) {
-					auto gameObject = std::make_shared<StaticMeshObject>("Plane");
+				if (ImGui::MenuItem("Plane")) {
+					auto gameObject = std::make_shared<GameObject>("Plane");
 					gameObject->addComponent<Transform>();
 					gameObject->addComponent<StaticMeshComponent>();
 					gameObject->getComponent<StaticMeshComponent>()->setMesh(MeshGenerator::generatePlane());
 					gameObject->addComponent<DynamicMaterialComponent>();
 					ResourceManager::getInstance().addGameObject(gameObject);
 				}
-				if (ImGui::MenuItem(u8"ÇòÌå")) {
-					auto gameObject = std::make_shared<StaticMeshObject>("Sphere");
+				if (ImGui::MenuItem("Sphere")) {
+					auto gameObject = std::make_shared<GameObject>("Sphere");
 					gameObject->addComponent<Transform>();
 					gameObject->addComponent<StaticMeshComponent>();
 					gameObject->getComponent<StaticMeshComponent>()->setMesh(MeshGenerator::generateSphere());
@@ -167,17 +167,18 @@ void GuiSystem::showLeftSideBar()
 				}
 				ImGui::EndMenu();
 			}
-			if (ImGui::BeginMenu(u8"ÆäËû")) {
-				if (ImGui::MenuItem(u8"Ìì¿ÕºÐ")) {
-					auto gameObject = std::make_shared<SkyBoxObject>("SkyBox");
+			if (ImGui::BeginMenu("Other")) {
+				if (ImGui::MenuItem("SkyBox")) {
+					auto gameObject = std::make_shared<GameObject>("SkyBox");
 					gameObject->addComponent<SkyBoxComponent>();
 					ResourceManager::getInstance().addGameObject(gameObject);
 				}
-				if (ImGui::MenuItem(u8"Ìå»ýÎí")) {
-					auto gameObject = std::make_shared<RayMarchingVolumeObject>("Volume");
+				if (ImGui::MenuItem("Volume Cloud")) {
+					auto gameObject = std::make_shared<GameObject>("Volume");
 					gameObject->addComponent<Transform>();
 					gameObject->addComponent<StaticMeshComponent>();
 					gameObject->getComponent<StaticMeshComponent>()->setMesh(MeshGenerator::generateCube());
+					gameObject->addComponent<VolumeMarkerComponent>();
 					ResourceManager::getInstance().addGameObject(gameObject);
 				}
 				ImGui::EndMenu();
@@ -216,25 +217,25 @@ void GuiSystem::showLeftSideBar()
 		};
 
 	renderObjectTreeNode(u8"Light", [](GameObjectPtr object) {
-		return object->getType() == GameObject::Type::POINTLIGHTOBJECT ||
-			object->getType() == GameObject::Type::DIRECTIONLIGHTOBJECT ||
-			object->getType() == GameObject::Type::SPOTLIGHTOBJECT;
+		return object->has<PointLightComponent>() ||
+			object->has<DirectionLightComponent>() ||
+			object->has<SpotLightComponent>();
 		});
 
 	renderObjectTreeNode(u8"Object", [](GameObjectPtr object) {
-		return object->getType() == GameObject::Type::RENDEROBJECT ||
-			object->getType() == GameObject::Type::VOLUMEOBJECT;
+		return object->has<RenderComponent>() ||
+			(object->has<StaticMeshComponent>() && !object->has<PointLightComponent>() && !object->has<SkyBoxComponent>());
 		});
 
 	renderObjectTreeNode(u8"SkyBox", [](GameObjectPtr object) {
-		return object->getType() == GameObject::Type::SKYBOXOBJECT;
+		return object->has<SkyBoxComponent>();
 		});
 	ImGui::EndChild();
 	ImGui::EndChild();
 
 	ImGui::BeginChild(u8"detailPanel", ImVec2(0, 0), false, ImGuiWindowFlags_MenuBar);
 	if (ImGui::BeginMenuBar()) {
-		ImGui::Text(u8"Ï¸½Ú");
+		ImGui::Text("Detail");
 		ImGui::EndMenuBar();
 	}
 	ImGui::BeginChild(u8"detailRegion", ImVec2(0, 0), true);
@@ -272,7 +273,7 @@ void GuiSystem::showRightSideBar(double deltaTime)
 	ImGui::BeginChild("RightSidebar", ImVec2(rightSideBarWidth, viewport->Size.y - bottomSideBarHeight - SPLITTER_THICKNESS), true, ImGuiWindowFlags_NoMove);
 	ImGui::BeginChild(u8"renderSettingsPanel", ImVec2(0, 0), false, ImGuiWindowFlags_MenuBar);
 	if (ImGui::BeginMenuBar()) {
-		ImGui::Text(u8"äÖÈ¾ÉèÖÃ");
+		ImGui::Text("Render Settings");
 		ImGui::EndMenuBar();
 	}
 
@@ -291,7 +292,7 @@ void GuiSystem::showRightSideBar(double deltaTime)
 
 	std::string str = u8"FPS: " + std::to_string((int)fps);
 	static bool vsyncChecked = true;
-	if (ImGui::Checkbox(u8"´¹Ö±Í¬²½", &vsyncChecked)) {
+	if (ImGui::Checkbox("VSync", &vsyncChecked)) {
 		WindowSystem::setVsync(vsyncChecked);
 	}
 	ImGui::SameLine();
@@ -299,7 +300,7 @@ void GuiSystem::showRightSideBar(double deltaTime)
 	ImGui::Separator();
 
 	static bool softShadowChecked = true;
-	if (ImGui::Checkbox(u8"ÈíÒõÓ°", &softShadowChecked)) {
+	if (ImGui::Checkbox("Soft Shadow", &softShadowChecked)) {
 		if (softShadowChecked) {
 			Shader::changeSettings("PCF_SHADOW", true);
 		}
@@ -322,7 +323,7 @@ void GuiSystem::showRightSideBar(double deltaTime)
 		}
 		ResourceManager::getInstance().getShader("screenQuad")->reCompile();
 	}
-	if (ImGui::SliderFloat(u8"ÆØ¹â¶È", &exposure, 0.1f, 10.0f)) {
+	if (ImGui::SliderFloat("Exposure", &exposure, 0.1f, 10.0f)) {
 		ResourceManager::getInstance().getShader("screenQuad")->setFloat("exposure", exposure);
 	}
 	if (ImGui::Checkbox(u8"Bloom", &bloomChecked)) {
@@ -337,7 +338,7 @@ void GuiSystem::showRightSideBar(double deltaTime)
 	ImGui::Separator();
 
 	static bool environmentMappingChecked = false;
-	if (ImGui::Checkbox(u8"»·¾³Ó³Éä", &environmentMappingChecked)) {
+	if (ImGui::Checkbox("Environment Mapping", &environmentMappingChecked)) {
 		if (environmentMappingChecked) {
 			Shader::changeSettings("USE_ENVIRONMENT_MAPPING", true);
 		}
@@ -375,9 +376,9 @@ void GuiSystem::showBottomSideBar()
 	ImGui::BeginChild("BottomSidebar", ImVec2(viewport->Size.x, bottomSideBarHeight), true, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_MenuBar);
 
 	if (ImGui::BeginMenuBar()) {
-		if (ImGui::BeginMenu(u8"ÎÄ¼þ")) {
-			if (ImGui::MenuItem(u8"´ò¿ª")) {
-				ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", u8"Ñ¡ÔñÎÄ¼þ", ".obj,.fbx,.ply");
+		if (ImGui::BeginMenu("File")) {
+			if (ImGui::MenuItem("Open")) {
+				ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".obj,.fbx,.ply");
 			}
 			ImGui::EndMenu();
 		}
@@ -395,9 +396,9 @@ void GuiSystem::showBottomSideBar()
 		ImGui::Button(model->getName().c_str(), ImVec2(itemWidth, itemHeight));
 		if (ImGui::BeginPopupContextItem("ModelButtonContext"))
 		{
-			if (ImGui::MenuItem(u8"Ìí¼Óµ½³¡¾°"))
+			if (ImGui::MenuItem("Add to Scene"))
 			{
-				std::shared_ptr<RenderObject>gameObject = std::make_shared<RenderObject>(model->getName());
+				std::shared_ptr<GameObject> gameObject = std::make_shared<GameObject>(model->getName());
 				gameObject->addComponent<Transform>();
 				gameObject->addComponent<RenderComponent>();
 				gameObject->getComponent<RenderComponent>()->setModel(model);
@@ -496,8 +497,8 @@ void GuiSystem::registComponents()
 		ImGui::Text(u8"SkyBox");
 		ImGui::Separator();
 		static char buf[255];
-		ImGui::InputText(u8"Â·¾¶", buf, sizeof(buf)); ImGui::SameLine();
-		if (ImGui::Button(u8"È·ÈÏ")) {
+		ImGui::InputText("Path", buf, sizeof(buf)); ImGui::SameLine();
+		if (ImGui::Button("OK")) {
 			skyboxComponent->setSkyBox(std::string(buf));
 		}
 		});
@@ -511,7 +512,7 @@ void GuiSystem::registComponents()
 		ImGui::InputText(u8"albedo", dynamicMaterialComponent->albedoPath, 255);
 		ImGui::InputText(u8"specular", dynamicMaterialComponent->specularPath, 255);
 		ImGui::InputText(u8"normal", dynamicMaterialComponent->normalPath, 255);
-		if (ImGui::Button(u8"È·ÈÏ")) {
+		if (ImGui::Button("OK")) {
 			dynamicMaterialComponent->setMaterial();
 		}
 		});
@@ -546,12 +547,12 @@ void GuiSystem::registComponents()
 		}
 		ImGui::SameLine();
 		if (animatorComponent->playing) {
-			if (ImGui::Button(u8"ÔÝÍ£")) {
+			if (ImGui::Button("Pause")) {
 				animatorComponent->playing = false;
 			}
 		}
 		else {
-			if (ImGui::Button(u8"²¥·Å")) {
+			if (ImGui::Button("Play")) {
 				animatorComponent->playing = true;
 			}
 		}
@@ -566,18 +567,18 @@ void GuiSystem::registComponents()
 }
 
 
-// ×¢²á×é¼þ¶ÔÓ¦µÄUIäÖÈ¾·½·¨£¬´«Èë×é¼þÃû³ÆºÍäÖÈ¾º¯Êý
+// ×¢ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ó¦ï¿½ï¿½UIï¿½ï¿½È¾ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Æºï¿½ï¿½ï¿½È¾ï¿½ï¿½ï¿½ï¿½
 template<typename T>
 void GuiSystem::registerComponentWidget(const std::string& componentName, std::function<void(std::shared_ptr<T>)> func) {
 	getWidgetRegistry()[componentName] = [func](ComponentPtr comp) {
-		std::shared_ptr<T> specificComp = std::dynamic_pointer_cast<T>(comp); // ½«shared_ptr<T>×ª»»ÎªÊµ¼ÊµÄ×é¼þÖ¸Õë
+		std::shared_ptr<T> specificComp = std::dynamic_pointer_cast<T>(comp); // ï¿½ï¿½shared_ptr<T>×ªï¿½ï¿½ÎªÊµï¿½Êµï¿½ï¿½ï¿½ï¿½Ö¸ï¿½ï¿½
 		if (specificComp) {
 			func(specificComp);
 		}
 		};
 }
 
-// ¸ù¾Ý×é¼þäÖÈ¾¶ÔÓ¦µÄwidget
+// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½È¾ï¿½ï¿½Ó¦ï¿½ï¿½widget
 void GuiSystem::showComponentWidget(std::shared_ptr<Component> comp) {
 	std::string key = comp->getName();
 	auto& registry = getWidgetRegistry();
@@ -585,7 +586,7 @@ void GuiSystem::showComponentWidget(std::shared_ptr<Component> comp) {
 		registry[key](comp);
 	}
 	else {
-		ImGui::Text(u8"Ã»ÓÐ×¢²á %s µÄ±à¼­Æ÷", key.c_str());
+		ImGui::Text("No editor registered for %s", key.c_str());
 	}
 }
 #endif

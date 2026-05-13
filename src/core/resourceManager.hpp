@@ -1,4 +1,4 @@
-#ifndef RESOURCEMANAGER_HPP
+ï»¿#ifndef RESOURCEMANAGER_HPP
 #define RESOURCEMANAGER_HPP
 #pragma once
 
@@ -49,7 +49,7 @@ public:
 	}
 
 	void update() {
-		// ´¦ÀíÒì²½¼ÓÔØÈÎÎñ
+		// ï¿½ï¿½ï¿½ï¿½ï¿½ì²½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 		if (asyncFuture.valid() && asyncFuture.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
 			auto model = asyncFuture.get();
 			if (!asyncQueue.empty()) {
@@ -58,7 +58,7 @@ public:
 				addToCache(path, model);
 			}
 		}
-		// Æô¶¯ÐÂµÄÒì²½ÈÎÎñ
+		// ï¿½ï¿½ï¿½ï¿½ï¿½Âµï¿½ï¿½ì²½ï¿½ï¿½ï¿½ï¿½
 		if ((!asyncFuture.valid() || asyncFuture.wait_for(std::chrono::seconds(0)) == std::future_status::ready) 
 			&& !asyncQueue.empty()) {
 			auto path = asyncQueue.front();
@@ -112,20 +112,17 @@ public:
 	void addObject(GameObjectPtr obj) {
 		if (!obj) return;
 		objects.push_back(obj);
-		updateLightCount(obj, 1);
 	}
 
 	void removeObject(GameObjectPtr obj) {
 		auto it = std::find(objects.begin(), objects.end(), obj);
 		if (it != objects.end()) {
-			updateLightCount(*it, -1);
 			objects.erase(it);
 		}
 	}
 
 	void removeObjectByIndex(size_t idx) {
 		if (idx < objects.size()) {
-			updateLightCount(objects[idx], -1);
 			objects.erase(objects.begin() + idx);
 		}
 	}
@@ -157,38 +154,23 @@ public:
 		return filtered;
 	}
 
+	template<typename T>
+	std::vector<GameObjectPtr> getView() const {
+		std::vector<GameObjectPtr> filtered;
+		for (auto& obj : objects) {
+			if (obj && obj->has<T>()) filtered.push_back(obj);
+		}
+		return filtered;
+	}
+
 	size_t getObjectCount() const { return objects.size(); }
 	GameObjectPtr getObjectAt(size_t idx) const {
 		return (idx < objects.size()) ? objects[idx] : nullptr;
 	}
 
-	int getPointLightCount() const { return pointLightCount; }
-	int getDirectionLightCount() const { return directionLightCount; }
-	int getSpotLightCount() const { return spotLightCount; }
-
 private:
 	std::vector<GameObjectPtr> objects;
 	std::queue<size_t> removalQueue;
-	int pointLightCount = 0;
-	int directionLightCount = 0;
-	int spotLightCount = 0;
-
-	void updateLightCount(const GameObjectPtr& obj, int delta) {
-		if (!obj) return;
-		switch (obj->getType()) {
-			case GameObject::Type::POINTLIGHTOBJECT:
-				pointLightCount += delta;
-				break;
-			case GameObject::Type::DIRECTIONLIGHTOBJECT:
-				directionLightCount += delta;
-				break;
-			case GameObject::Type::SPOTLIGHTOBJECT:
-				spotLightCount += delta;
-				break;
-			default:
-				break;
-		}
-	}
 };
 
 class ResourceManager {
@@ -251,14 +233,13 @@ public:
 		return sceneManager.getObjectCount();
 	}
 
-	int getPointLightCount() const { return sceneManager.getPointLightCount(); }
-	int getDirectionLightCount() const { return sceneManager.getDirectionLightCount(); }
-	int getSpotLightCount() const { return sceneManager.getSpotLightCount(); }
+	int getPointLightCount() const { return (int)sceneManager.getView<PointLightComponent>().size(); }
+	int getDirectionLightCount() const { return (int)sceneManager.getView<DirectionLightComponent>().size(); }
+	int getSpotLightCount() const { return (int)sceneManager.getView<SpotLightComponent>().size(); }
 
-	std::vector<GameObjectPtr> getObjectsByType(GameObject::Type type) const {
-		return sceneManager.getObjects([type](const GameObjectPtr& obj) {
-			return obj && obj->getType() == type;
-			});
+	template<typename T>
+	std::vector<GameObjectPtr> getSceneView() const {
+		return sceneManager.getView<T>();
 	}
 private:
 	ResourceManager() = default;

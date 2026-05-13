@@ -72,6 +72,8 @@ public:
 	float constant;
 	float linear;
 	float quadratic;
+
+	static constexpr int glslSize = 48;
 };
 
 class DirectionLightComponent : public Component {
@@ -83,6 +85,8 @@ public:
 
 	glm::vec3 color;
 	float brightness;
+
+	static constexpr int glslSize = 32;
 };
 
 class SpotLightComponent : public Component {
@@ -98,6 +102,13 @@ public:
 	float brightness;
 	float cutOff;
 	float outerCutOff;
+
+	static constexpr int glslSize = 64;
+};
+
+class VolumeMarkerComponent : public Component {
+public:
+	VolumeMarkerComponent() : Component("VolumeMarkerComponent") {}
 };
 
 class SkyBoxComponent : public Component {

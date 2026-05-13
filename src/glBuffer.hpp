@@ -3,6 +3,7 @@
 #pragma once
 
 #include "texture.hpp"
+#include <initializer_list>
 
 class GLBuffer {
 public:
@@ -109,7 +110,7 @@ public:
 	void attachRenderBuffer(RenderBuffer& renderBuffer, GLenum type);
 	template<typename T>
 	void attachTextureLayer(T& textureArray, GLenum type, int index);
-	void drawBuffers(const GLenum type[]);
+	void drawBuffers(std::initializer_list<GLenum> types);
 	void readBuffer(const GLenum type);
 };
 
@@ -154,8 +155,8 @@ void FrameBuffer::attachTextureLayer(T& textureArray, GLenum type, int index) {
 	glFramebufferTextureLayer(GL_FRAMEBUFFER, type, textureArray.ID, 0, index);
 }
 
-void FrameBuffer::drawBuffers(const GLenum type[]) {
-	glDrawBuffers(sizeof(type) / sizeof(type[0]), type);
+void FrameBuffer::drawBuffers(std::initializer_list<GLenum> types) {
+	glDrawBuffers(static_cast<GLsizei>(types.size()), types.begin());
 }
 
 void FrameBuffer::readBuffer(const GLenum type) {
