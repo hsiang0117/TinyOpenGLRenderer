@@ -165,6 +165,7 @@
     <ClInclude Include="src\glBuffer.hpp" />
     <ClInclude Include="src\input.hpp" />
     <ClInclude Include="src\gameObject.hpp" />
+    <ClInclude Include="src\gameObjectFactory.hpp" />
     <ClInclude Include="src\material.hpp" />
     <ClInclude Include="src\mesh.hpp" />
     <ClInclude Include="src\meshGenerator.hpp" />

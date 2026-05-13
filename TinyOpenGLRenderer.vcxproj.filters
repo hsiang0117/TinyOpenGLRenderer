@@ -122,6 +122,9 @@
     <ClInclude Include="src\gameObject.hpp">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="src\gameObjectFactory.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
     <ClInclude Include="include\imgui\ImGuiFileDialogConfig.h">
       <Filter>源文件\thirdParty\imgui</Filter>
     </ClInclude>

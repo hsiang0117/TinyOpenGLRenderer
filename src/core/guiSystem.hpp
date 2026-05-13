@@ -5,6 +5,7 @@
 #include "../Input.hpp"
 #include "../component.hpp"
 #include "../meshGenerator.hpp"
+#include "../gameObjectFactory.hpp"
 #include "resourceManager.hpp"
 #include "imgui/imgui.h"
 #include "imgui/imgui_impl_glfw.h"
@@ -114,72 +115,36 @@ void GuiSystem::showLeftSideBar()
 		if (ImGui::BeginMenu("Add")) {
 			if (ImGui::BeginMenu("Light")) {
 				if (ImGui::MenuItem("Point Light")) {
-					auto gameObject = std::make_shared<GameObject>("PointLight");
-					gameObject->addComponent<Transform>();
-					gameObject->getComponent<Transform>()->scale = glm::vec3(0.2f);
-					gameObject->addComponent<PointLightComponent>();
-					gameObject->addComponent<ShadowCasterCube>();
-					gameObject->addComponent<StaticMeshComponent>();
-					gameObject->getComponent<StaticMeshComponent>()->setMesh(MeshGenerator::generateCube());
-					ResourceManager::getInstance().addGameObject(gameObject);
+					ResourceManager::getInstance().addGameObject(GameObjectFactory::createPointLight());
 				}
 				if (ImGui::MenuItem("Direction Light")) {
 					if (ResourceManager::getInstance().getDirectionLightCount() == 0) {
-						auto gameObject = std::make_shared<GameObject>("DirectionLight");
-						gameObject->addComponent<Transform>();
-						gameObject->addComponent<DirectionLightComponent>();
-						gameObject->addComponent<ShadowCaster2D>();
-						ResourceManager::getInstance().addGameObject(gameObject);
+						ResourceManager::getInstance().addGameObject(GameObjectFactory::createDirectionLight());
 					}
 				}
 				if (ImGui::MenuItem("Spot Light")) {
-					auto gameObject = std::make_shared<GameObject>("SpotLight");
-					gameObject->addComponent<Transform>();
-					gameObject->addComponent<SpotLightComponent>();
-					ResourceManager::getInstance().addGameObject(gameObject);
+					ResourceManager::getInstance().addGameObject(GameObjectFactory::createSpotLight());
 				}
 				ImGui::EndMenu();
 			}
 			if (ImGui::BeginMenu("Static Mesh")) {
 				if (ImGui::MenuItem("Cube")) {
-					auto gameObject = std::make_shared<GameObject>("Cube");
-					gameObject->addComponent<Transform>();
-					gameObject->addComponent<StaticMeshComponent>();
-					gameObject->getComponent<StaticMeshComponent>()->setMesh(MeshGenerator::generateCube());
-					gameObject->addComponent<DynamicMaterialComponent>();
-					ResourceManager::getInstance().addGameObject(gameObject);
+					ResourceManager::getInstance().addGameObject(GameObjectFactory::createCube());
 				}
 				if (ImGui::MenuItem("Plane")) {
-					auto gameObject = std::make_shared<GameObject>("Plane");
-					gameObject->addComponent<Transform>();
-					gameObject->addComponent<StaticMeshComponent>();
-					gameObject->getComponent<StaticMeshComponent>()->setMesh(MeshGenerator::generatePlane());
-					gameObject->addComponent<DynamicMaterialComponent>();
-					ResourceManager::getInstance().addGameObject(gameObject);
+					ResourceManager::getInstance().addGameObject(GameObjectFactory::createPlane());
 				}
 				if (ImGui::MenuItem("Sphere")) {
-					auto gameObject = std::make_shared<GameObject>("Sphere");
-					gameObject->addComponent<Transform>();
-					gameObject->addComponent<StaticMeshComponent>();
-					gameObject->getComponent<StaticMeshComponent>()->setMesh(MeshGenerator::generateSphere());
-					gameObject->addComponent<DynamicMaterialComponent>();
-					ResourceManager::getInstance().addGameObject(gameObject);
+					ResourceManager::getInstance().addGameObject(GameObjectFactory::createSphere());
 				}
 				ImGui::EndMenu();
 			}
 			if (ImGui::BeginMenu("Other")) {
 				if (ImGui::MenuItem("SkyBox")) {
-					auto gameObject = std::make_shared<GameObject>("SkyBox");
-					gameObject->addComponent<SkyBoxComponent>();
-					ResourceManager::getInstance().addGameObject(gameObject);
+					ResourceManager::getInstance().addGameObject(GameObjectFactory::createSkyBox());
 				}
 				if (ImGui::MenuItem("Volume Cloud")) {
-					auto gameObject = std::make_shared<GameObject>("Volume");
-					gameObject->addComponent<Transform>();
-					gameObject->addComponent<StaticMeshComponent>();
-					gameObject->getComponent<StaticMeshComponent>()->setMesh(MeshGenerator::generateCube());
-					gameObject->addComponent<VolumeMarkerComponent>();
-					ResourceManager::getInstance().addGameObject(gameObject);
+					ResourceManager::getInstance().addGameObject(GameObjectFactory::createVolumeCloud());
 				}
 				ImGui::EndMenu();
 			}
@@ -398,18 +363,7 @@ void GuiSystem::showBottomSideBar()
 		{
 			if (ImGui::MenuItem("Add to Scene"))
 			{
-				std::shared_ptr<GameObject> gameObject = std::make_shared<GameObject>(model->getName());
-				gameObject->addComponent<Transform>();
-				gameObject->addComponent<RenderComponent>();
-				gameObject->getComponent<RenderComponent>()->setModel(model);
-				gameObject->addComponent<SkeletonViewerComponent>(model->getNodes());
-				if (model->getAnimations().size() > 0) {
-					gameObject->addComponent<AnimatorComponent>(gameObject->getComponent<SkeletonViewerComponent>()->getNodes());
-					gameObject->getComponent<AnimatorComponent>()->setAnimation(&model->getAnimations());
-					gameObject->getComponent<AnimatorComponent>()->playAnimation(model->getAnimations()[0].getName());
-					gameObject->getComponent<AnimatorComponent>()->update(0.0);
-				}
-				ResourceManager::getInstance().addGameObject(gameObject);
+				ResourceManager::getInstance().addGameObject(GameObjectFactory::createFromModel(model));
 			}
 			ImGui::EndPopup();
 		}
