@@ -3,9 +3,6 @@
 #pragma once
 
 #include <glad/glad.h>
-#include <iostream>
-#define STB_IMAGE_IMPLEMENTATION
-#include "stb_image.h"
 
 class Texture {
 public:
@@ -16,7 +13,7 @@ public:
 };
 
 class Texture2D : public Texture {
-public:	
+public:
 	enum class Type {
 		ALBEDO,
 		AMBIENT,
@@ -26,8 +23,8 @@ public:
 		BUFFER
 	};
 	Texture2D() {};
-	Texture2D(int width, int height, GLenum wrap, GLenum filter, GLenum internalFormat, GLenum format, GLenum dataType); // Empty texture, for framebuffer usage etc.
-	Texture2D(const char* path, Type type, GLenum wrap, GLenum filter); // Load texture from file.
+	Texture2D(int width, int height, GLenum wrap, GLenum filter, GLenum internalFormat, GLenum format, GLenum dataType);
+	Texture2D(const char* path, Type type, GLenum wrap, GLenum filter);
 	virtual void use(GLenum textureUnit) override;
 	void setBorderColor(float r, float g, float b, float a);
 	void setDefaultColor(float r, float g, float b, float a);
@@ -39,107 +36,12 @@ private:
 	GLenum internalFormat, format, dataType;
 };
 
-Texture2D::Texture2D(int width, int height, GLenum wrap, GLenum filter, GLenum internalFormat, GLenum format, GLenum dataType) {
-	this->type = Type::BUFFER;
-	glGenTextures(1, &ID);
-	glBindTexture(GL_TEXTURE_2D, ID);
-	glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, width, height, 0, format, dataType, nullptr);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filter);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filter);
-	glBindTexture(GL_TEXTURE_2D, 0);
-	this->internalFormat = internalFormat;
-	this->format = format;
-	this->dataType = dataType;
-}
-
-Texture2D::Texture2D(const char* path, Type type, GLenum wrap, GLenum filter) {
-	this->type = type;
-	stbi_set_flip_vertically_on_load(true);
-	int width, height, nrChannels;
-	unsigned char* data = stbi_load(path, &width, &height, &nrChannels, 0);
-	if (!data) {
-		std::cerr << "Failed to load texture" << std::endl;
-	}
-	else {
-		GLenum internalFormat, format;
-		if (nrChannels == 1) {
-			internalFormat = GL_RED;
-			format = GL_RGB;
-		}
-		else if (nrChannels == 3) {
-			internalFormat = GL_RGB;
-			format = GL_RGB;
-		}
-		else if (nrChannels == 4) {
-			internalFormat = GL_RGBA;
-			format = GL_RGBA;
-		}
-		glGenTextures(1, &ID);
-		glBindTexture(GL_TEXTURE_2D, ID);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filter);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filter);
-		glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, width, height, 0, format, GL_UNSIGNED_BYTE, data);
-		glGenerateMipmap(GL_TEXTURE_2D);
-		glBindTexture(GL_TEXTURE_2D, 0);
-	}
-	stbi_image_free(data);
-}
-
-void Texture2D::use(GLenum textureUnit) {
-	glActiveTexture(textureUnit);
-	glBindTexture(GL_TEXTURE_2D, ID);
-}
-
-void Texture2D::setBorderColor(float r, float g, float b, float a) {
-	glBindTexture(GL_TEXTURE_2D, ID);
-	glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, new float[4] { r, g, b, a });
-	glBindTexture(GL_TEXTURE_2D, 0);
-}
-
-void Texture2D::setDefaultColor(float r, float g, float b, float a)
-{
-	glClearTexImage(ID, 0, format, dataType, new float[4] { r, g, b, a });
-}
-
-void Texture2D::resetSize(int width, int height) {
-	glBindTexture(GL_TEXTURE_2D, ID);
-	glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, width, height, 0, format, dataType, nullptr);
-	glBindTexture(GL_TEXTURE_2D, 0);
-}
-
-void Texture2D::subImage2D(int xOffset, int yOffset, int width, int height, const void* data)
-{
-	glBindTexture(GL_TEXTURE_2D, ID);
-	glTexSubImage2D(GL_TEXTURE_2D, 0, xOffset, yOffset, width, height, format, dataType, data);
-	glBindTexture(GL_TEXTURE_2D, 0);
-}
-
-class Texture2DArray :public Texture {
+class Texture2DArray : public Texture {
 public:
 	Texture2DArray() {}
 	Texture2DArray(int width, int height, int length, GLenum wrap, GLenum filter, GLenum internalFormat, GLenum format);
 	virtual void use(GLenum textureUnit) override;
 };
-
-Texture2DArray::Texture2DArray(int width, int height, int length, GLenum wrap, GLenum filter, GLenum internalFormat, GLenum format) {
-	glGenTextures(1, &ID);
-	glBindTexture(GL_TEXTURE_2D_ARRAY, ID);
-	glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, internalFormat, width, height, length, 0, format, GL_FLOAT, nullptr);
-	glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, wrap);
-	glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, wrap);
-	glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, filter);
-	glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, filter);
-	glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
-}
-
-void Texture2DArray::use(GLenum textureUnit) {
-	glActiveTexture(textureUnit);
-	glBindTexture(GL_TEXTURE_2D_ARRAY, ID);
-}
 
 class CubeMap : public Texture {
 public:
@@ -148,84 +50,12 @@ public:
 	virtual void use(GLenum textureUnit) override;
 };
 
-CubeMap::CubeMap(const char* folderPath, GLenum wrap, GLenum filter) {
-	std::vector<std::string> faces;
-	faces.push_back(folderPath + std::string("/right.jpg"));
-	faces.push_back(folderPath + std::string("/left.jpg"));
-	faces.push_back(folderPath + std::string("/top.jpg"));
-	faces.push_back(folderPath + std::string("/bottom.jpg"));
-	faces.push_back(folderPath + std::string("/front.jpg"));
-	faces.push_back(folderPath + std::string("/back.jpg"));
-	stbi_set_flip_vertically_on_load(false);
-	int width, height, nrChannels;
-	unsigned char* data;
-	bool validFlag = true;
-	glGenTextures(1, &ID);
-	glBindTexture(GL_TEXTURE_CUBE_MAP, ID);
-	for (int i = 0; i < faces.size(); i++) {
-		data = stbi_load(faces[i].c_str(), &width, &height, &nrChannels, 0);
-		if (data) {
-			GLenum informat, outformat;
-			if (nrChannels == 1) {
-				informat = GL_RED;
-				outformat = GL_RED;
-			}
-			else if (nrChannels == 3) {
-				informat = GL_RGB;
-				outformat = GL_RGB;
-			}
-			else if (nrChannels == 4) {
-				informat = GL_RGBA;
-				outformat = GL_RGBA;
-			}
-			glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, informat, width, height, 0, outformat, GL_UNSIGNED_BYTE, data);
-			stbi_image_free(data);
-		}
-		else {
-			validFlag = false;
-			break;
-		}
-	}
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, wrap);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, wrap);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, wrap);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, filter);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, filter);
-	glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
-	if (!validFlag) {
-		glDeleteTextures(1, &ID);
-		ID = 0;
-	}
-}
-
-void CubeMap::use(GLenum textureUnit) {
-	glActiveTexture(textureUnit);
-	glBindTexture(GL_TEXTURE_CUBE_MAP, ID);
-}
-
 class CubeMapArray : public Texture {
 public:
 	CubeMapArray() {};
 	CubeMapArray(int width, int height, int length, GLenum wrap, GLenum filter, GLenum internalFormat, GLenum format);
 	virtual void use(GLenum textureUnit) override;
 };
-
-CubeMapArray::CubeMapArray(int width, int height, int length, GLenum wrap, GLenum filter, GLenum internalFormat, GLenum format) {
-	glGenTextures(1, &ID);
-	glBindTexture(GL_TEXTURE_CUBE_MAP_ARRAY, ID);
-	glTexImage3D(GL_TEXTURE_CUBE_MAP_ARRAY, 0, internalFormat, width, height, length * 6, 0, format, GL_FLOAT, nullptr);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP_ARRAY, GL_TEXTURE_WRAP_S, wrap);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP_ARRAY, GL_TEXTURE_WRAP_T, wrap);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP_ARRAY, GL_TEXTURE_WRAP_R, wrap);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP_ARRAY, GL_TEXTURE_MIN_FILTER, filter);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP_ARRAY, GL_TEXTURE_MAG_FILTER, filter);
-	glBindTexture(GL_TEXTURE_CUBE_MAP_ARRAY, 0);
-}
-
-void CubeMapArray::use(GLenum textureUnit) {
-	glActiveTexture(textureUnit);
-	glBindTexture(GL_TEXTURE_CUBE_MAP_ARRAY, ID);
-}
 
 class RenderBuffer {
 public:
@@ -237,49 +67,12 @@ private:
 	GLenum internalFormat;
 };
 
-RenderBuffer::RenderBuffer(int width, int height, GLenum internalFormat) {
-	glGenRenderbuffers(1, &ID);
-	glBindRenderbuffer(GL_RENDERBUFFER, ID);
-	glRenderbufferStorage(GL_RENDERBUFFER, internalFormat, width, height);
-	glBindRenderbuffer(GL_RENDERBUFFER, 0);
-	this->internalFormat = internalFormat;
-}
-
-void RenderBuffer::resetSize(int width, int height) {
-	glBindRenderbuffer(GL_RENDERBUFFER, ID);
-	glRenderbufferStorage(GL_RENDERBUFFER, internalFormat, width, height);
-	glBindRenderbuffer(GL_RENDERBUFFER, 0);
-}
-
 class Texture3D : public Texture {
-	public:
+public:
 	Texture3D() {};
 	Texture3D(int width, int height, int depth, GLenum wrap, GLenum filter, GLenum internalFormat, GLenum format, GLenum dataType);
 	void subImage3D(int xOffset, int yOffset, int zOffset, int width, int height, int depth, const void* data);
 	virtual void use(GLenum textureUnit) override;
 };
-
-Texture3D::Texture3D(int width, int height, int depth, GLenum wrap, GLenum filter, GLenum internalFormat, GLenum format, GLenum dataType) {
-	glGenTextures(1, &ID);
-	glBindTexture(GL_TEXTURE_3D, ID);
-	glTexImage3D(GL_TEXTURE_3D, 0, internalFormat, width, height, depth, 0, format, dataType, nullptr);
-	glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, wrap);
-	glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, wrap);
-	glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, wrap);
-	glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, filter);
-	glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, filter);
-	glBindTexture(GL_TEXTURE_3D, 0);
-}
-
-void Texture3D::subImage3D(int xOffset, int yOffset, int zOffset, int width, int height, int depth, const void* data) {
-	glBindTexture(GL_TEXTURE_3D, ID);
-	glTexSubImage3D(GL_TEXTURE_3D, 0, xOffset, yOffset, zOffset, width, height, depth, GL_RED, GL_UNSIGNED_BYTE, data);
-	glBindTexture(GL_TEXTURE_3D, 0);
-}
-
-void Texture3D::use(GLenum textureUnit) {
-	glActiveTexture(textureUnit);
-	glBindTexture(GL_TEXTURE_3D, ID);
-}
 
 #endif // !TEXTURE_HPP
