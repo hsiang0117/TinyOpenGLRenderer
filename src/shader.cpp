@@ -13,6 +13,33 @@ static std::string readShaderFile(const char* shaderFilePath) {
     return fileStream.str();
 }
 
+Shader::~Shader() {
+    if (ID) {
+        glDeleteProgram(ID);
+        ID = 0;
+    }
+}
+
+Shader::Shader(Shader&& other) noexcept
+    : ID(other.ID),
+      vertexShaderPath(std::move(other.vertexShaderPath)),
+      fragmentShaderPath(std::move(other.fragmentShaderPath)),
+      geometryShaderPath(std::move(other.geometryShaderPath)) {
+    other.ID = 0;
+}
+
+Shader& Shader::operator=(Shader&& other) noexcept {
+    if (this != &other) {
+        if (ID) glDeleteProgram(ID);
+        ID = other.ID;
+        vertexShaderPath = std::move(other.vertexShaderPath);
+        fragmentShaderPath = std::move(other.fragmentShaderPath);
+        geometryShaderPath = std::move(other.geometryShaderPath);
+        other.ID = 0;
+    }
+    return *this;
+}
+
 std::string Shader::preprocessShader(const std::string shaderContent) {
     std::string processedContent = shaderContent;
     std::regex includeRegex(R"###(#include\s*"([^"]+)")###");

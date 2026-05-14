@@ -46,6 +46,36 @@ SkeletonViewerComponent::SkeletonViewerComponent(const std::vector<Node>& nodes)
 	glGenBuffers(1, &lineVBO);
 }
 
+SkeletonViewerComponent::~SkeletonViewerComponent() {
+	if (VAO) glDeleteVertexArrays(1, &VAO);
+	if (VBO) glDeleteBuffers(1, &VBO);
+	if (lineVAO) glDeleteVertexArrays(1, &lineVAO);
+	if (lineVBO) glDeleteBuffers(1, &lineVBO);
+}
+
+SkeletonViewerComponent::SkeletonViewerComponent(SkeletonViewerComponent&& other) noexcept
+	: Component(std::move(other)),
+	  nodes(std::move(other.nodes)),
+	  VAO(other.VAO), VBO(other.VBO), lineVAO(other.lineVAO), lineVBO(other.lineVBO) {
+	show = other.show;
+	other.VAO = other.VBO = other.lineVAO = other.lineVBO = 0;
+}
+
+SkeletonViewerComponent& SkeletonViewerComponent::operator=(SkeletonViewerComponent&& other) noexcept {
+	if (this != &other) {
+		if (VAO) glDeleteVertexArrays(1, &VAO);
+		if (VBO) glDeleteBuffers(1, &VBO);
+		if (lineVAO) glDeleteVertexArrays(1, &lineVAO);
+		if (lineVBO) glDeleteBuffers(1, &lineVBO);
+		Component::operator=(std::move(other));
+		nodes = std::move(other.nodes);
+		VAO = other.VAO; VBO = other.VBO; lineVAO = other.lineVAO; lineVBO = other.lineVBO;
+		show = other.show;
+		other.VAO = other.VBO = other.lineVAO = other.lineVBO = 0;
+	}
+	return *this;
+}
+
 void SkeletonViewerComponent::drawSkeleton() {
 	if (!show) return;
 	std::vector<glm::vec3> bonePositions;

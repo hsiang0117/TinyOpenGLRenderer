@@ -6,6 +6,26 @@
 #include <vector>
 #include <string>
 
+Texture::~Texture() {
+	if (ID) {
+		glDeleteTextures(1, &ID);
+		ID = 0;
+	}
+}
+
+Texture::Texture(Texture&& other) noexcept : ID(other.ID) {
+	other.ID = 0;
+}
+
+Texture& Texture::operator=(Texture&& other) noexcept {
+	if (this != &other) {
+		if (ID) glDeleteTextures(1, &ID);
+		ID = other.ID;
+		other.ID = 0;
+	}
+	return *this;
+}
+
 Texture2D::Texture2D(int width, int height, GLenum wrap, GLenum filter, GLenum internalFormat, GLenum format, GLenum dataType) {
 	this->type = Type::BUFFER;
 	glGenTextures(1, &ID);
@@ -179,6 +199,27 @@ RenderBuffer::RenderBuffer(int width, int height, GLenum internalFormat) {
 	glRenderbufferStorage(GL_RENDERBUFFER, internalFormat, width, height);
 	glBindRenderbuffer(GL_RENDERBUFFER, 0);
 	this->internalFormat = internalFormat;
+}
+
+RenderBuffer::~RenderBuffer() {
+	if (ID) {
+		glDeleteRenderbuffers(1, &ID);
+		ID = 0;
+	}
+}
+
+RenderBuffer::RenderBuffer(RenderBuffer&& other) noexcept : ID(other.ID), internalFormat(other.internalFormat) {
+	other.ID = 0;
+}
+
+RenderBuffer& RenderBuffer::operator=(RenderBuffer&& other) noexcept {
+	if (this != &other) {
+		if (ID) glDeleteRenderbuffers(1, &ID);
+		ID = other.ID;
+		internalFormat = other.internalFormat;
+		other.ID = 0;
+	}
+	return *this;
 }
 
 void RenderBuffer::resetSize(int width, int height) {

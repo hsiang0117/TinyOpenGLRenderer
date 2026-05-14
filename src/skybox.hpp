@@ -10,6 +10,11 @@
 class SkyBox {
 public:
 	SkyBox(std::string folderPath);
+	~SkyBox();
+	SkyBox(const SkyBox&) = delete;
+	SkyBox& operator=(const SkyBox&) = delete;
+	SkyBox(SkyBox&& other) noexcept;
+	SkyBox& operator=(SkyBox&& other) noexcept;
 	bool initGLResources();
 	bool isReady() const { return glInitialized; }
 	void draw();
@@ -18,7 +23,7 @@ private:
 	std::string folderPath;
 	bool glInitialized = false;
 	CubeMap cubemap;
-	GLuint VAO, VBO;
+	GLuint VAO = 0, VBO = 0;
 	float vertices[108] = {
 		-1.0f,  1.0f, -1.0f,
 		-1.0f, -1.0f, -1.0f,

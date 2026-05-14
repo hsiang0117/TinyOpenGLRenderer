@@ -23,7 +23,6 @@ public:
 private:
 	unsigned int index;
 	std::vector<Texture2D> textures;
-	void deleteTextures();
 };
 
 #endif // !MATERIAL_HPP

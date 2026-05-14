@@ -13,6 +13,11 @@ public:
     GLuint ID;
     Shader(const char* vertexShaderPath, const char* fragmentShaderPath);
     Shader(const char* vertexShaderPath, const char* geometryShaderPath, const char* fragmentShaderPath);
+    ~Shader();
+    Shader(const Shader&) = delete;
+    Shader& operator=(const Shader&) = delete;
+    Shader(Shader&& other) noexcept;
+    Shader& operator=(Shader&& other) noexcept;
     void reCompile();
     void use();
     void setVec2(const char* name, glm::vec2 vec);

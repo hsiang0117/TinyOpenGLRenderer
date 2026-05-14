@@ -99,7 +99,7 @@ void RenderSystem::drawRenderable(const GameObjectPtr& obj, ShaderPtr shader) {
 
 	if (auto renderComponent = obj->getComponent<RenderComponent>()) {
 		if (auto animator = obj->getComponent<AnimatorComponent>()) {
-			auto boneMatrixTexture = animator->getBoneMatrixTexture();
+			auto& boneMatrixTexture = animator->getBoneMatrixTexture();
 			boneMatrixTexture.use(GL_TEXTURE8);
 		}
 		if (renderComponent->model) {

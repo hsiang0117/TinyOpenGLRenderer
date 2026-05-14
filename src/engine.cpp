@@ -29,6 +29,7 @@ void Engine::run() {
 		windowSystem.swapBuffers();
 	}
 	guiSystem.shutDown();
+	ResourceManager::getInstance().shutdown();
 	windowSystem.shutDown();
 }
 

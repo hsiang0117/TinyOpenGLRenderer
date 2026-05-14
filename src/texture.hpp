@@ -6,8 +6,14 @@
 
 class Texture {
 public:
-	Texture() = default;
-	~Texture() = default;
+	Texture() : ID(0) {}
+	virtual ~Texture();
+
+	Texture(const Texture&) = delete;
+	Texture& operator=(const Texture&) = delete;
+	Texture(Texture&& other) noexcept;
+	Texture& operator=(Texture&& other) noexcept;
+
 	GLuint ID;
 	virtual void use(GLenum textureUnit) = 0;
 };
@@ -60,8 +66,13 @@ public:
 class RenderBuffer {
 public:
 	GLuint ID;
-	RenderBuffer() {};
+	RenderBuffer() : ID(0) {}
 	RenderBuffer(int width, int height, GLenum internalFormat);
+	~RenderBuffer();
+	RenderBuffer(const RenderBuffer&) = delete;
+	RenderBuffer& operator=(const RenderBuffer&) = delete;
+	RenderBuffer(RenderBuffer&& other) noexcept;
+	RenderBuffer& operator=(RenderBuffer&& other) noexcept;
 	void resetSize(int width, int height);
 private:
 	GLenum internalFormat;

@@ -2,6 +2,37 @@
 
 SkyBox::SkyBox(std::string folderPath) { this->folderPath = folderPath; }
 
+SkyBox::~SkyBox() {
+	if (VAO) glDeleteVertexArrays(1, &VAO);
+	if (VBO) glDeleteBuffers(1, &VBO);
+}
+
+SkyBox::SkyBox(SkyBox&& other) noexcept
+	: folderPath(std::move(other.folderPath)),
+	  glInitialized(other.glInitialized),
+	  cubemap(std::move(other.cubemap)),
+	  VAO(other.VAO), VBO(other.VBO) {
+	other.VAO = 0;
+	other.VBO = 0;
+	other.glInitialized = false;
+}
+
+SkyBox& SkyBox::operator=(SkyBox&& other) noexcept {
+	if (this != &other) {
+		if (VAO) glDeleteVertexArrays(1, &VAO);
+		if (VBO) glDeleteBuffers(1, &VBO);
+		folderPath = std::move(other.folderPath);
+		glInitialized = other.glInitialized;
+		cubemap = std::move(other.cubemap);
+		VAO = other.VAO;
+		VBO = other.VBO;
+		other.VAO = 0;
+		other.VBO = 0;
+		other.glInitialized = false;
+	}
+	return *this;
+}
+
 bool SkyBox::initGLResources() {
 	if (glInitialized) return false;
 	glGenVertexArrays(1, &VAO);

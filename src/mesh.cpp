@@ -4,8 +4,44 @@
 
 Mesh::Mesh(std::vector<Vertex> vertices, std::vector<GLuint> indices)
 {
-    this->vertices = vertices;
-    this->indices = indices;
+    this->vertices = std::move(vertices);
+    this->indices = std::move(indices);
+}
+
+Mesh::~Mesh() {
+    if (glInitialized) {
+        glDeleteVertexArrays(1, &VAO);
+        glDeleteBuffers(1, &VBO);
+        glDeleteBuffers(1, &EBO);
+    }
+}
+
+Mesh::Mesh(Mesh&& other) noexcept
+    : vertices(std::move(other.vertices)),
+      indices(std::move(other.indices)),
+      VAO(other.VAO), VBO(other.VBO), EBO(other.EBO),
+      materialIndex(other.materialIndex),
+      glInitialized(other.glInitialized) {
+    other.VAO = other.VBO = other.EBO = 0;
+    other.glInitialized = false;
+}
+
+Mesh& Mesh::operator=(Mesh&& other) noexcept {
+    if (this != &other) {
+        if (glInitialized) {
+            glDeleteVertexArrays(1, &VAO);
+            glDeleteBuffers(1, &VBO);
+            glDeleteBuffers(1, &EBO);
+        }
+        vertices = std::move(other.vertices);
+        indices = std::move(other.indices);
+        VAO = other.VAO; VBO = other.VBO; EBO = other.EBO;
+        materialIndex = other.materialIndex;
+        glInitialized = other.glInitialized;
+        other.VAO = other.VBO = other.EBO = 0;
+        other.glInitialized = false;
+    }
+    return *this;
 }
 
 bool Mesh::initGLResources()

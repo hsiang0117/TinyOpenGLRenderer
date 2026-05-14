@@ -181,13 +181,18 @@ private:
 class SkeletonViewerComponent : public Component {
 public:
 	SkeletonViewerComponent(const std::vector<Node>& nodes);
+	~SkeletonViewerComponent();
+	SkeletonViewerComponent(const SkeletonViewerComponent&) = delete;
+	SkeletonViewerComponent& operator=(const SkeletonViewerComponent&) = delete;
+	SkeletonViewerComponent(SkeletonViewerComponent&& other) noexcept;
+	SkeletonViewerComponent& operator=(SkeletonViewerComponent&& other) noexcept;
 	std::vector<Node>& getNodes() { return nodes; }
 	void drawSkeleton();
 
 	bool show;
 private:
 	std::vector<Node> nodes;
-	GLuint VAO, VBO, lineVAO, lineVBO;
+	GLuint VAO = 0, VBO = 0, lineVAO = 0, lineVBO = 0;
 };
 
 #endif

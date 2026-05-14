@@ -1,6 +1,24 @@
 #include "glBuffer.hpp"
 
+GLBuffer::~GLBuffer() {
+	destroy();
+}
+
+GLBuffer::GLBuffer(GLBuffer&& other) noexcept : ID(other.ID) {
+	other.ID = 0;
+}
+
+GLBuffer& GLBuffer::operator=(GLBuffer&& other) noexcept {
+	if (this != &other) {
+		destroy();
+		ID = other.ID;
+		other.ID = 0;
+	}
+	return *this;
+}
+
 void GLBuffer::init() {
+	if (ID) destroy();
 	glGenBuffers(1, &ID);
 }
 
@@ -57,6 +75,7 @@ void ShaderStorageBuffer::bufferSubdata(GLintptr offset, GLsizeiptr size, const 
 }
 
 void FrameBuffer::init() {
+	if (ID) destroy();
 	glGenFramebuffers(1, &ID);
 }
 
@@ -70,6 +89,10 @@ void FrameBuffer::destroy() {
 		glDeleteFramebuffers(1, &ID);
 	}
 	ID = 0;
+}
+
+FrameBuffer::~FrameBuffer() {
+	destroy();
 }
 
 void FrameBuffer::bind() {

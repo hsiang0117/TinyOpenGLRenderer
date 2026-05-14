@@ -273,7 +273,7 @@ Mesh Model::processMesh(aiMesh* mesh, const aiScene* scene, glm::mat4 nodeTransf
 			material->GetTexture(aiTextureType_SHININESS, 0, &shininessPath);
 			mat = Material(mesh->mMaterialIndex, directory + albedoPath.C_Str(), directory + ambientPath.C_Str(),
 				directory + specularPath.C_Str(), directory + normalPath.C_Str(), directory + shininessPath.C_Str());
-			materials.insert({ mesh->mMaterialIndex, mat });
+			materials.insert({ mesh->mMaterialIndex, std::move(mat) });
 		}
 	}
 	return result;

@@ -1,9 +1,10 @@
 #include "meshGenerator.hpp"
 
 MeshPtr MeshGenerator::generateCube() {
-	static Mesh cube;
-	if (!cube.isReady()) {
-		cube.vertices = {
+	static MeshPtr cube;
+	if (!cube) {
+		cube = std::make_shared<Mesh>();
+		cube->vertices = {
 			{glm::vec3(-0.5f, -0.5f, -0.5f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec2(0.0f, 0.0f)},
 			{glm::vec3(0.5f, 0.5f, -0.5f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec2(1.0f, 1.0f)},
 			{glm::vec3(0.5f, -0.5f, -0.5f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec2(1.0f, 0.0f)},
@@ -46,7 +47,7 @@ MeshPtr MeshGenerator::generateCube() {
 			{glm::vec3(-0.5f, 0.5f, -0.5f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec2(0.0f, 1.0f)},
 			{glm::vec3(-0.5f, 0.5f, 0.5f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec2(0.0f, 0.0f)}
 		};
-		cube.indices = {
+		cube->indices = {
 			 0,  1,  2,
 			 3,  4,  5,
 			  6,  7,  8,
@@ -60,17 +61,18 @@ MeshPtr MeshGenerator::generateCube() {
 			  30, 31, 32,
 			  33, 34, 35
 		};
-		computeTangents(cube.vertices, cube.indices);
-		setDefaultBoneData(cube.vertices);
-		cube.initGLResources();
+		computeTangents(cube->vertices, cube->indices);
+		setDefaultBoneData(cube->vertices);
+		cube->initGLResources();
 	}
-	return std::make_shared<Mesh>(cube);
+	return cube;
 }
 
 MeshPtr MeshGenerator::generateSphere(int sectorCount, int stackCount)
 {
-	static Mesh sphere;
-	if (!sphere.isReady()) {
+	static MeshPtr sphere;
+	if (!sphere) {
+		sphere = std::make_shared<Mesh>();
 		std::vector<Vertex> vertices;
 		std::vector<GLuint> indices;
 		const float PI = 3.14159265359f;
@@ -108,34 +110,35 @@ MeshPtr MeshGenerator::generateSphere(int sectorCount, int stackCount)
 			}
 		}
 
-		sphere.vertices = vertices;
-		sphere.indices = indices;
-		computeTangents(sphere.vertices, sphere.indices);
-		setDefaultBoneData(sphere.vertices);
-		sphere.initGLResources();
+		sphere->vertices = vertices;
+		sphere->indices = indices;
+		computeTangents(sphere->vertices, sphere->indices);
+		setDefaultBoneData(sphere->vertices);
+		sphere->initGLResources();
 	}
-	return std::make_shared<Mesh>(sphere);
+	return sphere;
 }
 
 MeshPtr MeshGenerator::generatePlane()
 {
-	static Mesh plane;
-	if (!plane.isReady()) {
-		plane.vertices = {
+	static MeshPtr plane;
+	if (!plane) {
+		plane = std::make_shared<Mesh>();
+		plane->vertices = {
 			{ glm::vec3(-0.5f, 0.0f, -0.5f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec2(0.0f, 0.0f) },
 			{ glm::vec3(0.5f, 0.0f, -0.5f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec2(1.0f, 0.0f) },
 			{ glm::vec3(0.5f, 0.0f, 0.5f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec2(1.0f, 1.0f) },
 			{ glm::vec3(-0.5f, 0.0f, 0.5f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec2(0.0f, 1.0f) }
 		};
-		plane.indices = {
+		plane->indices = {
 			0, 1, 2,
 			0, 2, 3
 		};
-		computeTangents(plane.vertices, plane.indices);
-		setDefaultBoneData(plane.vertices);
-		plane.initGLResources();
+		computeTangents(plane->vertices, plane->indices);
+		setDefaultBoneData(plane->vertices);
+		plane->initGLResources();
 	}
-	return std::make_shared<Mesh>(plane);
+	return plane;
 }
 
 void MeshGenerator::computeTangents(std::vector<Vertex>& vertices, std::vector<GLuint>& indices)

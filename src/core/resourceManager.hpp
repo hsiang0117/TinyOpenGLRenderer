@@ -48,6 +48,14 @@ public:
 		}
 	}
 
+	void shutdown() {
+		if (asyncFuture.valid()) {
+			asyncFuture.wait();
+		}
+		cache.clear();
+		while (!asyncQueue.empty()) asyncQueue.pop();
+	}
+
 	void update() {
 		// �����첽��������
 		if (asyncFuture.valid() && asyncFuture.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
@@ -99,6 +107,10 @@ public:
 		if (!isLoaded(key)) {
 			cache[key] = std::make_shared<Shader>(vert, geom, frag);
 		}
+	}
+
+	void shutdown() {
+		cache.clear();
 	}
 
 private:
@@ -166,6 +178,11 @@ public:
 	size_t getObjectCount() const { return objects.size(); }
 	GameObjectPtr getObjectAt(size_t idx) const {
 		return (idx < objects.size()) ? objects[idx] : nullptr;
+	}
+
+	void shutdown() {
+		objects.clear();
+		while (!removalQueue.empty()) removalQueue.pop();
 	}
 
 private:
@@ -240,6 +257,12 @@ public:
 	template<typename T>
 	std::vector<GameObjectPtr> getSceneView() const {
 		return sceneManager.getView<T>();
+	}
+
+	void shutdown() {
+		sceneManager.shutdown();
+		modelLoader.shutdown();
+		shaderLoader.shutdown();
 	}
 private:
 	ResourceManager() = default;

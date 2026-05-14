@@ -28,6 +28,11 @@ public:
     std::vector<GLuint> indices;
     Mesh() = default;
     Mesh(std::vector<Vertex> vertices, std::vector<GLuint> indices);
+    ~Mesh();
+    Mesh(const Mesh&) = delete;
+    Mesh& operator=(const Mesh&) = delete;
+    Mesh(Mesh&& other) noexcept;
+    Mesh& operator=(Mesh&& other) noexcept;
     bool initGLResources();
     bool isReady() const { return glInitialized; }
     void draw();
@@ -35,8 +40,8 @@ public:
     unsigned int getMaterialIndex() { return materialIndex; }
     void buildAABB(glm::vec3& min, glm::vec3& max);
 private:
-    GLuint VAO, VBO, EBO;
-    unsigned int materialIndex;
+    GLuint VAO = 0, VBO = 0, EBO = 0;
+    unsigned int materialIndex = 0;
     bool glInitialized = false;
     void setupMesh();
 };

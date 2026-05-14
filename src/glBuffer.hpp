@@ -8,6 +8,13 @@
 class GLBuffer {
 public:
 	GLBuffer() : ID(0) {};
+	virtual ~GLBuffer();
+
+	GLBuffer(const GLBuffer&) = delete;
+	GLBuffer& operator=(const GLBuffer&) = delete;
+	GLBuffer(GLBuffer&& other) noexcept;
+	GLBuffer& operator=(GLBuffer&& other) noexcept;
+
 	GLuint ID;
 	virtual void init();
 	virtual void reset();
@@ -18,7 +25,7 @@ public:
 
 class UniformBuffer : public GLBuffer {
 public:
-	UniformBuffer() {};
+	UniformBuffer() = default;
 	virtual void bind() override;
 	virtual void unbind() override;
 
@@ -29,7 +36,7 @@ public:
 
 class ShaderStorageBuffer : public GLBuffer {
 public:
-	ShaderStorageBuffer() {};
+	ShaderStorageBuffer() = default;
 	virtual void bind() override;
 	virtual void unbind() override;
 
@@ -40,8 +47,11 @@ public:
 
 class FrameBuffer : public GLBuffer {
 public:
-	GLuint ID;
-	FrameBuffer() {};
+	FrameBuffer() = default;
+	~FrameBuffer() override;
+	FrameBuffer(FrameBuffer&&) = default;
+	FrameBuffer& operator=(FrameBuffer&&) = default;
+
 	virtual void init() override;
 	virtual void reset() override;
 	virtual void destroy() override;

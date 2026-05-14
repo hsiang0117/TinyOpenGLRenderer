@@ -13,7 +13,7 @@ Material::Material(unsigned int index, std::string albedoPath, std::string ambie
 
 void Material::initGLResources()
 {
-	deleteTextures();
+	textures.clear();
 	if (std::filesystem::is_regular_file(albedoPath))
 	{
 		textures.push_back(Texture2D(albedoPath.c_str(), Texture2D::Type::ALBEDO, GL_REPEAT, GL_LINEAR));
@@ -69,14 +69,4 @@ void Material::bind(ShaderPtr shader)
 				break;
 		}
 	}
-}
-
-void Material::deleteTextures()
-{
-	for (int i = 0; i < textures.size(); i++)
-	{
-		glDeleteTextures(1, &textures[i].ID);
-		textures[i].ID = 0;
-	}
-	textures.clear();
 }
