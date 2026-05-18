@@ -274,14 +274,18 @@ void RenderSystem::init() {
 	ssboSpotLights.unbind();
 
 	directionLightDepthFBO.init();
+	directionLightDepthFBO.bind();
 	directionLightDepthFBO.drawBuffers({ GL_NONE });
 	directionLightDepthFBO.readBuffer(GL_NONE);
+	directionLightDepthFBO.unbind();
 	directionLightDepthTexture = Texture2D(1024, 1024, GL_CLAMP_TO_BORDER, GL_NEAREST, GL_DEPTH_COMPONENT, GL_DEPTH_COMPONENT, GL_FLOAT);
 	directionLightDepthTexture.setBorderColor(1.0, 1.0, 1.0, 1.0);
 
 	pointLightDepthFBO.init();
+	pointLightDepthFBO.bind();
 	pointLightDepthFBO.drawBuffers({ GL_NONE });
 	pointLightDepthFBO.readBuffer(GL_NONE);
+	pointLightDepthFBO.unbind();
 	pointLightDepthTexture = CubeMapArray(1024, 1024, 10, GL_CLAMP_TO_BORDER, GL_NEAREST, GL_DEPTH_COMPONENT, GL_DEPTH_COMPONENT);
 
 	hdrFBO.init();
