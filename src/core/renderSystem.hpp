@@ -9,7 +9,10 @@
 #include "../gameObject.hpp"
 #include "../shader.hpp"
 #include "../utils.hpp"
+#include "renderPass.hpp"
 #include <future>
+#include <memory>
+#include <vector>
 
 class RenderSystem {
 public:
@@ -18,6 +21,10 @@ public:
 	void init();
 	void update(double deltaTime);
 	void render(Camera& camera);
+
+	// Public so render passes (which receive RenderSystem* via RenderContext::owner)
+	// can trigger lazy volume-noise generation.
+	void ensureVolumeNoise(bool sceneHasVolume);
 private:
 	float x, y, width, height;
 	UniformBuffer uboMatrices;
@@ -34,32 +41,10 @@ private:
 	bool noiseRequested = false;   // 是否已发起生成
 	bool noiseReady = false;       // GL 纹理是否已就绪
 	std::future<NoiseVolumeData> worleyFuture, perlinFuture, weatherFuture;
-	void ensureVolumeNoise(bool sceneHasVolume);
 
-	void drawScreenQuad();
-
-	static glm::mat4 buildModelMatrix(const std::shared_ptr<Transform>& transform);
-	static glm::vec3 directionFromTransform(const std::shared_ptr<Transform>& transform);
-	static bool aabbInFrustum(const glm::vec3& minAABB, const glm::vec3& maxAABB, const glm::mat4& model, Frustum& frustum);
-	static bool isRenderableInFrustum(const GameObjectPtr& obj, Frustum& frustum);
-	static bool isPointLightInFrustum(const GameObjectPtr& obj, Frustum& frustum);
-
-	static bool isRenderable(const GameObjectPtr& obj);
-	static void drawRenderable(const GameObjectPtr& obj, ShaderPtr shader);
-
-	static void drawLightCube(const GameObjectPtr& obj, ShaderPtr shader);
-
-	static void drawSkybox(const GameObjectPtr& obj, ShaderPtr shader);
-	static void bindSkyboxCubeMap(const GameObjectPtr& obj, ShaderPtr shader);
-
-	static void drawSkeleton(const GameObjectPtr& obj, ShaderPtr shader);
-
-	static void uploadPointLight(const GameObjectPtr& obj, int index, ShaderStorageBuffer& ssbo);
-	static void uploadDirectionLight(const GameObjectPtr& obj, ShaderStorageBuffer& ssbo);
-	static void uploadSpotLight(const GameObjectPtr& obj, int index, ShaderStorageBuffer& ssbo);
-
-	static glm::mat4 directionLightMatrices(const GameObjectPtr& obj);
-	static std::vector<glm::mat4> pointLightMatricesCube(const GameObjectPtr& obj);
+	// Ordered render passes, populated once in init() and iterated each frame.
+	std::vector<std::unique_ptr<RenderPass>> passes;
+	RenderContext buildContext(Camera& camera);
 };
 
 #endif // !RENDERSYSTEM_HPP

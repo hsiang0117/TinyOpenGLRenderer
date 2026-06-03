@@ -45,6 +45,7 @@ private:
 	void showLeftSideBar();
 	void showRightSideBar(double deltaTime);
 	void showBottomSideBar();
+	void drawConsoleTab();
 	void registComponents();
 
 	float clamp(float value, float min, float max) { return std::max(min, std::min(value, max)); }

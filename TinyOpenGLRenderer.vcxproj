@@ -78,7 +78,8 @@
       <ConformanceMode>true</ConformanceMode>
     </ClCompile>
     <Link>
-      <SubSystem>Console</SubSystem>
+      <SubSystem>Windows</SubSystem>
+      <EntryPointSymbol>mainCRTStartup</EntryPointSymbol>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
   </ItemDefinitionGroup>
@@ -92,7 +93,8 @@
       <ConformanceMode>true</ConformanceMode>
     </ClCompile>
     <Link>
-      <SubSystem>Console</SubSystem>
+      <SubSystem>Windows</SubSystem>
+      <EntryPointSymbol>mainCRTStartup</EntryPointSymbol>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -108,7 +110,8 @@
       <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
-      <SubSystem>Console</SubSystem>
+      <SubSystem>Windows</SubSystem>
+      <EntryPointSymbol>mainCRTStartup</EntryPointSymbol>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>.\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>glfw3.lib;opengl32.lib;assimp-vc143-mtd.lib;%(AdditionalDependencies)</AdditionalDependencies>
@@ -125,7 +128,8 @@
       <ConformanceMode>true</ConformanceMode>
     </ClCompile>
     <Link>
-      <SubSystem>Console</SubSystem>
+      <SubSystem>Windows</SubSystem>
+      <EntryPointSymbol>mainCRTStartup</EntryPointSymbol>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -146,7 +150,10 @@
     <ClCompile Include="src\component.cpp" />
     <ClCompile Include="src\core\windowSystem.cpp" />
     <ClCompile Include="src\core\guiSystem.cpp" />
+    <ClCompile Include="src\core\logger.cpp" />
     <ClCompile Include="src\core\renderSystem.cpp" />
+    <ClCompile Include="src\core\renderUtils.cpp" />
+    <ClCompile Include="src\core\renderPasses.cpp" />
     <ClCompile Include="src\engine.cpp" />
     <ClCompile Include="src\gameObjectFactory.cpp" />
     <ClCompile Include="src\sceneFactory.cpp" />
@@ -179,7 +186,11 @@
     <ClInclude Include="src\camera.hpp" />
     <ClInclude Include="src\component.hpp" />
     <ClInclude Include="src\core\guiSystem.hpp" />
+    <ClInclude Include="src\core\logger.hpp" />
     <ClInclude Include="src\core\renderSystem.hpp" />
+    <ClInclude Include="src\core\renderPass.hpp" />
+    <ClInclude Include="src\core\renderPasses.hpp" />
+    <ClInclude Include="src\core\renderUtils.hpp" />
     <ClInclude Include="src\core\resourceManager.hpp" />
     <ClInclude Include="src\core\windowSystem.hpp" />
     <ClInclude Include="src\engine.hpp" />

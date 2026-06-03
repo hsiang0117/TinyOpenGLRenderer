@@ -1,4 +1,5 @@
 #include "ply.hpp"
+#include "core/logger.hpp"
 #include <fstream>
 #include <sstream>
 #include <iostream>
@@ -25,7 +26,7 @@ bool Ply::loadFromFile(const char* path) {
 bool Ply::loadFromFileImpl(const char* path) {
 	std::ifstream file(path, std::ios::binary);
 	if (!file.is_open()) {
-		std::cerr << "Failed to open PLY file: " << path << std::endl;
+		LOG_ERROR("Failed to open PLY file: " << path);
 		return false;
 	}
 
@@ -61,7 +62,7 @@ bool Ply::loadFromFileImpl(const char* path) {
 	}
 
 	if (vertexCount == 0) {
-		std::cerr << "No vertices found in PLY file" << std::endl;
+		LOG_ERROR("No vertices found in PLY file");
 		return false;
 	}
 
@@ -184,6 +185,6 @@ bool Ply::loadFromFileImpl(const char* path) {
 
 	file.close();
 	loadProgress.store(1.0f);
-	std::cout << "Loaded " << points.size() << " Gaussian points from " << path << std::endl;
+	LOG_INFO("Loaded " << points.size() << " Gaussian points from " << path);
 	return true;
 }

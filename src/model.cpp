@@ -1,5 +1,6 @@
 #include "model.hpp"
 #include "utils.hpp"
+#include "core/logger.hpp"
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
@@ -23,7 +24,7 @@ bool Model::initGLResources()
 
 	for (auto& mesh : meshes) {
 		if (!mesh->initGLResources()) {
-			std::cerr << "Failed to initialize mesh GL resources\n";
+			LOG_ERROR("Failed to initialize mesh GL resources");
 			return false;
 		}
 	}
@@ -71,7 +72,7 @@ void Model::loadModel(std::string path)
 	const aiScene* scene = importer.ReadFile(path, aiProcess_Triangulate | aiProcess_CalcTangentSpace);
 	if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
 	{
-		std::cerr << "ERROR::ASSIMP::" << importer.GetErrorString() << std::endl;
+		LOG_ERROR("ERROR::ASSIMP::" << importer.GetErrorString());
 		return;
 	}
 	this->path = path;

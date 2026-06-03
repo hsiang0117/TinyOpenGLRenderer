@@ -2,6 +2,7 @@
 #include "stb_image.h"
 
 #include "texture.hpp"
+#include "core/logger.hpp"
 #include <iostream>
 #include <vector>
 #include <string>
@@ -47,7 +48,7 @@ Texture2D::Texture2D(const char* path, Type type, GLenum wrap, GLenum filter) {
 	int width, height, nrChannels;
 	unsigned char* data = stbi_load(path, &width, &height, &nrChannels, 0);
 	if (!data) {
-		std::cerr << "Failed to load texture" << std::endl;
+		LOG_ERROR("Failed to load texture");
 	}
 	else {
 		GLenum internalFormat, format;

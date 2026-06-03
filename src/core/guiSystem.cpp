@@ -4,6 +4,7 @@
 #include "../gameObjectFactory.hpp"
 #include "resourceManager.hpp"
 #include "windowSystem.hpp"
+#include "logger.hpp"
 #include "imgui/imgui_impl_glfw.h"
 #include "imgui/imgui_impl_opengl3.h"
 #include "imgui/ImGuiFileDialog.h"
@@ -45,6 +46,17 @@ void GuiSystem::render(double deltaTime) {
 	showRightSideBar(deltaTime);
 	showBottomSideBar();
 	ImGui::End();
+
+	// Display the file dialog as a top-level (modal) window, after MainViewport's
+	// End() so it is layered above the fullscreen panel and receives input.
+	if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey")) {
+		if (ImGuiFileDialog::Instance()->IsOk()) {
+			std::string filePath = ImGuiFileDialog::Instance()->GetFilePathName();
+			ResourceManager::getInstance().queueModelLoad(filePath);
+		}
+		ImGuiFileDialog::Instance()->Close();
+	}
+
 	ImGui::Render();
 	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }
@@ -294,42 +306,52 @@ void GuiSystem::showBottomSideBar()
 	ImGuiViewport* viewport = ImGui::GetMainViewport();
 
 	ImGui::SetCursorScreenPos({ 0, viewport->Size.y - bottomSideBarHeight});
-	ImGui::BeginChild("BottomSidebar", ImVec2(viewport->Size.x, bottomSideBarHeight), true, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_MenuBar);
+	ImGui::BeginChild("BottomSidebar", ImVec2(viewport->Size.x, bottomSideBarHeight), true, ImGuiWindowFlags_NoMove);
 
-	if (ImGui::BeginMenuBar()) {
-		if (ImGui::BeginMenu("File")) {
-			if (ImGui::MenuItem("Open")) {
-				ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".obj,.fbx,.ply");
+	if (ImGui::BeginTabBar("BottomTabs")) {
+		if (ImGui::BeginTabItem("Models")) {
+			// Per-tab toolbar: importing a model belongs to the Models tab, not a
+			// panel-level File menu shared with the Console tab.
+			if (ImGui::Button("Open...") && !ImGuiFileDialog::Instance()->IsOpened("ChooseFileDlgKey")) {
+				IGFD::FileDialogConfig config;
+				config.path = ".";
+				config.flags = ImGuiFileDialogFlags_Modal;
+				ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".obj,.fbx,.ply", config);
 			}
-			ImGui::EndMenu();
-		}
-		ImGui::EndMenuBar();
-	}
+			ImGui::Separator();
 
-	static int itemsPerRow = 4;
-	const float itemWidth = 80.0f;
-	const float itemHeight = 80.0f;
-	const float padding = 10.0f;
+			static int itemsPerRow = 4;
+			const float itemWidth = 80.0f;
+			const float itemHeight = 80.0f;
+			const float padding = 10.0f;
 
-	auto models = ResourceManager::getInstance().getAllModels();
-	for (size_t i = 0; i < models.size(); i++) {
-		auto& model = models[i];
-		ImGui::PushID(static_cast<int>(i));
-		ImGui::Button(model->getName().c_str(), ImVec2(itemWidth, itemHeight));
-		if (ImGui::BeginPopupContextItem("ModelButtonContext"))
-		{
-			if (ImGui::MenuItem("Add to Scene"))
-			{
-				ResourceManager::getInstance().addGameObject(GameObjectFactory::createFromModel(model));
+			auto models = ResourceManager::getInstance().getAllModels();
+			for (size_t i = 0; i < models.size(); i++) {
+				auto& model = models[i];
+				ImGui::PushID(static_cast<int>(i));
+				ImGui::Button(model->getName().c_str(), ImVec2(itemWidth, itemHeight));
+				if (ImGui::BeginPopupContextItem("ModelButtonContext"))
+				{
+					if (ImGui::MenuItem("Add to Scene"))
+					{
+						ResourceManager::getInstance().addGameObject(GameObjectFactory::createFromModel(model));
+					}
+					ImGui::EndPopup();
+				}
+				ImGui::PopID();
+
+				if ((i + 1) % itemsPerRow != 0)
+				{
+					ImGui::SameLine(0.0f, padding);
+				}
 			}
-			ImGui::EndPopup();
+			ImGui::EndTabItem();
 		}
-		ImGui::PopID();
-
-		if ((i + 1) % itemsPerRow != 0)
-		{
-			ImGui::SameLine(0.0f, padding);
+		if (ImGui::BeginTabItem("Console")) {
+			drawConsoleTab();
+			ImGui::EndTabItem();
 		}
+		ImGui::EndTabBar();
 	}
 
 	ImGui::EndChild();
@@ -348,16 +370,53 @@ void GuiSystem::showBottomSideBar()
 	float y0 = viewport->Size.y - bottomSideBarHeight - SPLITTER_THICKNESS;
 	float y1 = y0 + SPLITTER_THICKNESS;
 	draw->AddRectFilled(ImVec2(0, y0), ImVec2(viewport->Size.x, y1), IM_COL32(200, 200, 200, 180));
+}
 
-	if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey"))
-	{
-		if (ImGuiFileDialog::Instance()->IsOk())
-		{
-			std::string filePath = ImGuiFileDialog::Instance()->GetFilePathName();
-			ResourceManager::getInstance().queueModelLoad(filePath);
+void GuiSystem::drawConsoleTab()
+{
+	static bool showInfo = true, showWarn = true, showErr = true;
+	static bool autoScroll = true;
+	static ImGuiTextFilter textFilter;
+	static unsigned long long lastSeenRev = 0;
+
+	if (ImGui::Button("Clear")) Logger::getInstance().clear();
+	ImGui::SameLine(); ImGui::Checkbox("Info", &showInfo);
+	ImGui::SameLine(); ImGui::Checkbox("Warn", &showWarn);
+	ImGui::SameLine(); ImGui::Checkbox("Error", &showErr);
+	ImGui::SameLine(); ImGui::Checkbox("Auto-scroll", &autoScroll);
+	ImGui::SameLine(); textFilter.Draw("Filter", 160.0f);
+	ImGui::Separator();
+
+	std::vector<LogEntry> entries = Logger::getInstance().snapshot();
+	unsigned long long rev = Logger::getInstance().revision();
+
+	ImGui::BeginChild("ConsoleScroll", ImVec2(0, 0), false, ImGuiWindowFlags_HorizontalScrollbar);
+	for (const auto& e : entries) {
+		if (e.level == LogLevel::Info && !showInfo) continue;
+		if (e.level == LogLevel::Warning && !showWarn) continue;
+		if (e.level == LogLevel::Error && !showErr) continue;
+
+		std::string line = "[" + e.time + "] " + e.text;
+		if (!textFilter.PassFilter(line.c_str())) continue;
+
+		ImVec4 col;
+		switch (e.level) {
+			case LogLevel::Error:   col = ImVec4(1.0f, 0.40f, 0.40f, 1.0f); break;
+			case LogLevel::Warning: col = ImVec4(1.0f, 0.85f, 0.30f, 1.0f); break;
+			default:                col = ImGui::GetStyleColorVec4(ImGuiCol_Text); break;
 		}
-		ImGuiFileDialog::Instance()->Close();
+		ImGui::PushStyleColor(ImGuiCol_Text, col);
+		ImGui::TextUnformatted(line.c_str());
+		ImGui::PopStyleColor();
 	}
+
+	// Auto-scroll to bottom when new entries arrived this frame.
+	if (autoScroll && rev != lastSeenRev) {
+		ImGui::SetScrollHereY(1.0f);
+	}
+	lastSeenRev = rev;
+
+	ImGui::EndChild();
 }
 
 void GuiSystem::registComponents()

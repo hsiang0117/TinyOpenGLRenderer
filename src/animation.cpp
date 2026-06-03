@@ -1,4 +1,5 @@
 #include "animation.hpp"
+#include "core/logger.hpp"
 #include <iostream>
 #include <cmath>
 
@@ -38,7 +39,7 @@ void Animation::readMissingBones(const aiAnimation* animation, std::vector<Node>
 		if (node != nullptr) {
 			int id = node->id;
 			if (id == -1) {
-				std::cout << "Error: Bone node not found in model nodes: " << boneName << std::endl;
+				LOG_WARN("Bone node not found in model nodes: " << boneName);
 				continue;
 			}
 			boneInfoMap[node->name] = Bone(id, channel);

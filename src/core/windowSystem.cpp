@@ -1,8 +1,9 @@
 #include "windowSystem.hpp"
+#include "logger.hpp"
 
 void WindowSystem::init(int width, int height) {
 	if (!glfwInit()) {
-		std::cerr << "Failed to initialize GLFW" << std::endl;
+		LOG_ERROR("Failed to initialize GLFW");
 		exit(EXIT_FAILURE);
 	}
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
