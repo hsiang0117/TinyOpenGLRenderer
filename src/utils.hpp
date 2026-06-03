@@ -8,6 +8,7 @@
 #include<glm/glm.hpp>
 #include<glm/gtc/quaternion.hpp>
 #include "texture.hpp"
+#include <vector>
 
 class AssimpGLMHelpers
 {
@@ -34,12 +35,31 @@ public:
 	}
 };
 
+// CPU-side noise volume data, independent of GL; can be produced on a worker thread.
+// depth == 1 means a 2D map.
+struct NoiseVolumeData {
+	int width = 0, height = 0, depth = 0;
+	std::vector<unsigned char> data;
+};
+
 class NoiseTextureGenerator3D
 {
 public:
+	// Convenience: compute and upload synchronously (build-time / main thread).
 	static Texture3D generateWorleyNoiseTexture3D(int width, int height, int depth);
 	static Texture3D generatePerlinNoiseTexture3D(int width, int height, int depth);
 	static Texture2D generateWeatherMapTexture2D(int width, int height);
+
+	// Pure CPU compute (no GL calls, thread-safe); safe to run on a worker thread.
+	// Internally parallelized across CPU cores. Backed by a disk cache
+	// (data/cache/*.noise): on a hit the data is read directly instead of recomputed.
+	static NoiseVolumeData computeWorleyNoise(int width, int height, int depth);
+	static NoiseVolumeData computePerlinNoise(int width, int height, int depth);
+	static NoiseVolumeData computeWeatherMap(int width, int height);
+
+	// Upload a computed result as a GL texture (must run on the GL-context thread).
+	static Texture3D uploadVolume3D(const NoiseVolumeData& v);
+	static Texture2D uploadVolume2D(const NoiseVolumeData& v);
 };
 
 #endif

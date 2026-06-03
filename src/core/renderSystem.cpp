@@ -1,4 +1,4 @@
-#include "renderSystem.hpp"
+﻿#include "renderSystem.hpp"
 #include "guiSystem.hpp"
 #include "resourceManager.hpp"
 #include "../utils.hpp"
@@ -8,6 +8,53 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <GLFW/glfw3.h>
 #include <iostream>
+#include <algorithm>
+
+// 视口尺寸 = 窗口尺寸 - 侧边栏；窗口最小化时会得到负值，钳到至少 1 避免
+// 用负的 width/height 去 glViewport / resetSize 触发 GL_INVALID_VALUE。
+static float viewportWidth() {
+	float w = Input::getInstance().getWindowWidth() - GuiSystem::leftSideBarWidth - GuiSystem::rightSideBarWidth;
+	return std::max(w, 1.0f);
+}
+
+static float viewportHeight() {
+	float h = Input::getInstance().getWindowHeight() - GuiSystem::bottomSideBarHeight;
+	return std::max(h, 1.0f);
+}
+
+static void APIENTRY glDebugOutput(GLenum source, GLenum type, unsigned int id, GLenum severity,
+	GLsizei length, const char* message, const void* userParam) {
+	// 过滤无关紧要的通知（如缓冲区详细信息）
+	if (severity == GL_DEBUG_SEVERITY_NOTIFICATION) return;
+
+	const char* sourceStr = "Other";
+	switch (source) {
+		case GL_DEBUG_SOURCE_API:             sourceStr = "API"; break;
+		case GL_DEBUG_SOURCE_WINDOW_SYSTEM:   sourceStr = "Window System"; break;
+		case GL_DEBUG_SOURCE_SHADER_COMPILER: sourceStr = "Shader Compiler"; break;
+		case GL_DEBUG_SOURCE_THIRD_PARTY:     sourceStr = "Third Party"; break;
+		case GL_DEBUG_SOURCE_APPLICATION:     sourceStr = "Application"; break;
+	}
+
+	const char* typeStr = "Other";
+	switch (type) {
+		case GL_DEBUG_TYPE_ERROR:               typeStr = "Error"; break;
+		case GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR: typeStr = "Deprecated"; break;
+		case GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR:  typeStr = "Undefined Behavior"; break;
+		case GL_DEBUG_TYPE_PORTABILITY:         typeStr = "Portability"; break;
+		case GL_DEBUG_TYPE_PERFORMANCE:         typeStr = "Performance"; break;
+		case GL_DEBUG_TYPE_MARKER:              typeStr = "Marker"; break;
+	}
+
+	const char* severityStr = "Low";
+	switch (severity) {
+		case GL_DEBUG_SEVERITY_HIGH:   severityStr = "High"; break;
+		case GL_DEBUG_SEVERITY_MEDIUM: severityStr = "Medium"; break;
+	}
+
+	std::cerr << "[GL][" << severityStr << "][" << sourceStr << "][" << typeStr
+		<< "] (" << id << ") " << message << std::endl;
+}
 
 glm::mat4 RenderSystem::buildModelMatrix(const std::shared_ptr<Transform>& transform) {
 	glm::mat4 model = glm::mat4(1.0f);
@@ -112,6 +159,8 @@ void RenderSystem::drawRenderable(const GameObjectPtr& obj, ShaderPtr shader) {
 		if (auto dynamicMaterialComponent = obj->getComponent<DynamicMaterialComponent>()) {
 			dynamicMaterialComponent->material.bind(shader);
 		}
+		// 静态网格无骨骼动画，unit 8 没有骨骼矩阵纹理，绑占位纹理消除警告
+		bindDummyTexture2D(GL_TEXTURE8);
 		for (int i = 0; i < 100; i++) {
 			shader->setMat4(("finalBoneMatrices[" + std::to_string(i) + "]").c_str(), glm::mat4(1.0f));
 		}
@@ -240,10 +289,22 @@ void RenderSystem::init() {
 		std::cout << "Failed to initialize GLAD" << std::endl;
 		exit(EXIT_FAILURE);
 	}
+#ifdef _DEBUG
+	{
+		GLint flags = 0;
+		glGetIntegerv(GL_CONTEXT_FLAGS, &flags);
+		if (flags & GL_CONTEXT_FLAG_DEBUG_BIT) {
+			glEnable(GL_DEBUG_OUTPUT);
+			glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+			glDebugMessageCallback(glDebugOutput, nullptr);
+			glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, nullptr, GL_TRUE);
+		}
+	}
+#endif
 	x = GuiSystem::leftSideBarWidth;
 	y = GuiSystem::bottomSideBarHeight;
-	width = Input::getInstance().getWindowWidth() - GuiSystem::leftSideBarWidth - GuiSystem::rightSideBarWidth;
-	height = Input::getInstance().getWindowHeight() - GuiSystem::bottomSideBarHeight;
+	width = viewportWidth();
+	height = viewportHeight();
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_PROGRAM_POINT_SIZE);
 	glDepthFunc(GL_LEQUAL);
@@ -316,15 +377,47 @@ void RenderSystem::init() {
 	afterEffectFBO.attachTexture2D(afterEffectTexture, GL_COLOR_ATTACHMENT0);
 	afterEffectFBO.unbind();
 
-	worleyNoiseTexture3D = NoiseTextureGenerator3D::generateWorleyNoiseTexture3D(128, 128, 128);
-	perlinNoiseTexture3D = NoiseTextureGenerator3D::generatePerlinNoiseTexture3D(128, 128, 128);
-	weatherMapTexture = NoiseTextureGenerator3D::generateWeatherMapTexture2D(512, 512);
+	// 体积云噪声不在此生成，改为场景首次出现体积云时后台并行生成（见 ensureVolumeNoise）
+}
+
+// 体积云噪声纹理的延迟生成与上传。每帧调用：
+//  - 场景出现体积云且尚未发起 → 启动后台 worker 并行计算（带磁盘缓存）
+//  - 后台计算完成 → 在主线程（持有 GL context）上传为纹理，标记就绪
+void RenderSystem::ensureVolumeNoise(bool sceneHasVolume) {
+	if (noiseReady) return;
+	if (!sceneHasVolume) return;
+
+	if (!noiseRequested) {
+		noiseRequested = true;
+		worleyFuture = std::async(std::launch::async, []() {
+			return NoiseTextureGenerator3D::computeWorleyNoise(128, 128, 128);
+			});
+		perlinFuture = std::async(std::launch::async, []() {
+			return NoiseTextureGenerator3D::computePerlinNoise(128, 128, 128);
+			});
+		weatherFuture = std::async(std::launch::async, []() {
+			return NoiseTextureGenerator3D::computeWeatherMap(512, 512);
+			});
+		return;
+	}
+
+	using namespace std::chrono;
+	bool allDone =
+		worleyFuture.valid() && worleyFuture.wait_for(seconds(0)) == std::future_status::ready &&
+		perlinFuture.valid() && perlinFuture.wait_for(seconds(0)) == std::future_status::ready &&
+		weatherFuture.valid() && weatherFuture.wait_for(seconds(0)) == std::future_status::ready;
+	if (!allDone) return;
+
+	worleyNoiseTexture3D = NoiseTextureGenerator3D::uploadVolume3D(worleyFuture.get());
+	perlinNoiseTexture3D = NoiseTextureGenerator3D::uploadVolume3D(perlinFuture.get());
+	weatherMapTexture = NoiseTextureGenerator3D::uploadVolume2D(weatherFuture.get());
+	noiseReady = true;
 }
 
 void RenderSystem::update(double deltaTime) {
 	if (Input::getInstance().isWindowResized()) {
-		width = Input::getInstance().getWindowWidth() - GuiSystem::leftSideBarWidth - GuiSystem::rightSideBarWidth;
-		height = Input::getInstance().getWindowHeight() - GuiSystem::bottomSideBarHeight;
+		width = viewportWidth();
+		height = viewportHeight();
 		hdrTexture.resetSize(width, height);
 		brightTexture.resetSize(width, height);
 		hdrDepthTexture.resetSize(width, height);
@@ -335,8 +428,8 @@ void RenderSystem::update(double deltaTime) {
 	if (Input::getInstance().isUiResized()) {
 		x = GuiSystem::leftSideBarWidth;
 		y = GuiSystem::bottomSideBarHeight;
-		width = Input::getInstance().getWindowWidth() - GuiSystem::leftSideBarWidth - GuiSystem::rightSideBarWidth;
-		height = Input::getInstance().getWindowHeight() - GuiSystem::bottomSideBarHeight;
+		width = viewportWidth();
+		height = viewportHeight();
 		hdrTexture.resetSize(width, height);
 		brightTexture.resetSize(width, height);
 		hdrDepthTexture.resetSize(width, height);
@@ -358,6 +451,8 @@ void RenderSystem::render(Camera& camera) {
 
 	Frustum frustum = camera.getFrustum((float)width, (float)height);
 
+	// 清屏前解绑 program，避免驱动校验上一帧残留 active program 的 sampler 完整性
+	glUseProgram(0);
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -480,6 +575,9 @@ void RenderSystem::render(Camera& camera) {
 	glViewport(0, 0, width, height);
 
 	hdrFBO.bind();
+	// 清屏前解绑 program：避免驱动在 glClear 时校验上一个 active program 的
+	// sampler 完整性，对未绑定的 normalMap/boneMatrix 单元报无害的占位警告
+	glUseProgram(0);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	defaultShader->use();
 	defaultShader->setVec3("cameraPos", camera.getPos());
@@ -504,48 +602,55 @@ void RenderSystem::render(Camera& camera) {
 	glViewport(0, 0, width, height);
 	afterEffectFBO.bind();
 	glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+	// 同上：清屏前解绑 program，避免 volume shader 的 depthMap 单元未绑警告
+	glUseProgram(0);
 	glClear(GL_COLOR_BUFFER_BIT);
-	volumeShader->use();
-	volumeShader->setVec3("cameraPos", camera.getPos());
-	volumeShader->setInt("depthMap", 0);
-	volumeShader->setInt("worleyNoiseTexture", 1);
-	volumeShader->setInt("weatherMap", 2);
-	volumeShader->setInt("perlinNoiseTexture", 3);
-	volumeShader->setVec2("resolution", glm::vec2(width, height));
-	volumeShader->setFloat("time", (float)glfwGetTime());
-	glm::mat4 invVP = glm::inverse(camera.getProjectionMat((float)width, (float)height) * camera.getViewMat());
-	volumeShader->setMat4("invVP", invVP);
 
-	bool foundDirLight = false;
-	for (auto& obj : directionLights) {
-		auto transform = obj->getComponent<Transform>();
-		auto dirLight = obj->getComponent<DirectionLightComponent>();
-		glm::vec3 direction = directionFromTransform(transform);
-		volumeShader->setVec3("lightDir", -direction);
-		volumeShader->setVec3("lightColor", dirLight->color * dirLight->brightness);
-		foundDirLight = true;
-		break;
-	}
-	if (!foundDirLight) {
-		volumeShader->setVec3("lightDir", glm::vec3(0.0, 1.0, 0.0));
-		volumeShader->setVec3("lightColor", glm::vec3(1.0));
-	}
-	hdrDepthTexture.use(GL_TEXTURE0);
-	worleyNoiseTexture3D.use(GL_TEXTURE1);
-	weatherMapTexture.use(GL_TEXTURE2);
-	perlinNoiseTexture3D.use(GL_TEXTURE3);
-	for (auto& obj : volumes) {
-		auto staticMesh = obj->getComponent<StaticMeshComponent>();
-		auto transform = obj->getComponent<Transform>();
-		if (staticMesh && transform) {
-			glm::mat4 model = glm::mat4(1.0f);
-			model = glm::translate(model, transform->translate);
-			model = glm::scale(model, transform->scale);
-			glm::vec3 minAABB = glm::vec3(model * glm::vec4(staticMesh->aabb.min, 1.0f));
-			glm::vec3 maxAABB = glm::vec3(model * glm::vec4(staticMesh->aabb.max, 1.0f));
-			volumeShader->setVec3("aabbMin", minAABB);
-			volumeShader->setVec3("aabbMax", maxAABB);
-			drawScreenQuad();
+	// 体积云噪声延迟生成：有体积云才在后台并行算，算好前跳过 volume 绘制
+	ensureVolumeNoise(!volumes.empty());
+	if (noiseReady && !volumes.empty()) {
+		volumeShader->use();
+		volumeShader->setVec3("cameraPos", camera.getPos());
+		volumeShader->setInt("depthMap", 0);
+		volumeShader->setInt("worleyNoiseTexture", 1);
+		volumeShader->setInt("weatherMap", 2);
+		volumeShader->setInt("perlinNoiseTexture", 3);
+		volumeShader->setVec2("resolution", glm::vec2(width, height));
+		volumeShader->setFloat("time", (float)glfwGetTime());
+		glm::mat4 invVP = glm::inverse(camera.getProjectionMat((float)width, (float)height) * camera.getViewMat());
+		volumeShader->setMat4("invVP", invVP);
+
+		bool foundDirLight = false;
+		for (auto& obj : directionLights) {
+			auto transform = obj->getComponent<Transform>();
+			auto dirLight = obj->getComponent<DirectionLightComponent>();
+			glm::vec3 direction = directionFromTransform(transform);
+			volumeShader->setVec3("lightDir", -direction);
+			volumeShader->setVec3("lightColor", dirLight->color * dirLight->brightness);
+			foundDirLight = true;
+			break;
+		}
+		if (!foundDirLight) {
+			volumeShader->setVec3("lightDir", glm::vec3(0.0, 1.0, 0.0));
+			volumeShader->setVec3("lightColor", glm::vec3(1.0));
+		}
+		hdrDepthTexture.use(GL_TEXTURE0);
+		worleyNoiseTexture3D.use(GL_TEXTURE1);
+		weatherMapTexture.use(GL_TEXTURE2);
+		perlinNoiseTexture3D.use(GL_TEXTURE3);
+		for (auto& obj : volumes) {
+			auto staticMesh = obj->getComponent<StaticMeshComponent>();
+			auto transform = obj->getComponent<Transform>();
+			if (staticMesh && transform) {
+				glm::mat4 model = glm::mat4(1.0f);
+				model = glm::translate(model, transform->translate);
+				model = glm::scale(model, transform->scale);
+				glm::vec3 minAABB = glm::vec3(model * glm::vec4(staticMesh->aabb.min, 1.0f));
+				glm::vec3 maxAABB = glm::vec3(model * glm::vec4(staticMesh->aabb.max, 1.0f));
+				volumeShader->setVec3("aabbMin", minAABB);
+				volumeShader->setVec3("aabbMax", maxAABB);
+				drawScreenQuad();
+			}
 		}
 	}
 
@@ -560,10 +665,11 @@ void RenderSystem::render(Camera& camera) {
 	gaussianBlurShader->use();
 	for (int i = 0; i < 10; i++) {
 		pingpongFBO[i % 2].bind();
-		glClear(GL_COLOR_BUFFER_BIT);
 		gaussianBlurShader->setBool("horizontal", i % 2 == 0);
+		// 先绑采样纹理再清屏：让 clear 时当前 program 的 sampler 单元已完整
 		if (i == 0) brightTexture.use(GL_TEXTURE0);
 		else pingpongTexture[(i + 1) % 2].use(GL_TEXTURE0);
+		glClear(GL_COLOR_BUFFER_BIT);
 		drawScreenQuad();
 		pingpongFBO[i % 2].unbind();
 	}

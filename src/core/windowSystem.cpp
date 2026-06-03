@@ -7,6 +7,9 @@ void WindowSystem::init(int width, int height) {
 	}
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
+#ifdef _DEBUG
+	glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
+#endif
 	window = glfwCreateWindow(width, height, "TinyOpenglRenderer", NULL, NULL);
 	if (!window) {
 		glfwTerminate();

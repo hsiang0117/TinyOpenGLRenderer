@@ -363,5 +363,6 @@ MigrationBackup/
 FodyWeavers.xsd
 
 data/model
+/data/cache/
 /data/shader/settings.glsl
 /imgui.ini

@@ -250,3 +250,18 @@ void Texture3D::use(GLenum textureUnit) {
 	glActiveTexture(textureUnit);
 	glBindTexture(GL_TEXTURE_3D, ID);
 }
+
+void bindDummyTexture2D(GLenum textureUnit) {
+	static GLuint dummy = 0;
+	if (!dummy) {
+		const unsigned char white[4] = { 255, 255, 255, 255 };
+		glGenTextures(1, &dummy);
+		glBindTexture(GL_TEXTURE_2D, dummy);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, white);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glBindTexture(GL_TEXTURE_2D, 0);
+	}
+	glActiveTexture(textureUnit);
+	glBindTexture(GL_TEXTURE_2D, dummy);
+}

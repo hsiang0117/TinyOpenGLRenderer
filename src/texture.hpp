@@ -1,4 +1,4 @@
-#ifndef TEXTURE_HPP
+﻿#ifndef TEXTURE_HPP
 #define TEXTURE_HPP
 #pragma once
 
@@ -85,5 +85,10 @@ public:
 	void subImage3D(int xOffset, int yOffset, int zOffset, int width, int height, int depth, const void* data);
 	virtual void use(GLenum textureUnit) override;
 };
+
+// 1x1 白色占位纹理：绑到 shader 声明了 sampler2D 但本次绘制无实际纹理的单元，
+// 避免驱动报 “texture object (0) ... does not have a defined base level” 警告。
+// 故意泄漏（裸 GLuint，永不删除），规避 RAII 在 GL context 销毁后析构。
+void bindDummyTexture2D(GLenum textureUnit);
 
 #endif // !TEXTURE_HPP

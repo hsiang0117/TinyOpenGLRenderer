@@ -1,4 +1,4 @@
-#include "material.hpp"
+﻿#include "material.hpp"
 #include <filesystem>
 
 Material::Material(unsigned int index, std::string albedoPath, std::string ambientPath, std::string specularPath, std::string normalPath, std::string shininessPath)
@@ -38,9 +38,10 @@ void Material::initGLResources()
 
 void Material::bind(ShaderPtr shader)
 {
+	// 默认绑占位纹理（而非纹理 0），避免无贴图材质时 shader 声明的
+	// sampler2D 对应单元不完整触发驱动警告
 	for (auto i = GL_TEXTURE0; i <= GL_TEXTURE4; i++) {
-		glActiveTexture(i);
-		glBindTexture(GL_TEXTURE_2D, 0);
+		bindDummyTexture2D(i);
 	}
 	shader->setInt("useDefaultMaterial", 0);
 	if (textures.size() == 0) {
