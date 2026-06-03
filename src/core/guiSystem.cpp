@@ -212,13 +212,12 @@ void GuiSystem::showRightSideBar(double deltaTime)
 		frameCount = 0;
 	}
 
-	std::string str = u8"FPS: " + std::to_string((int)fps);
 	static bool vsyncChecked = true;
 	if (ImGui::Checkbox("VSync", &vsyncChecked)) {
 		WindowSystem::setVsync(vsyncChecked);
 	}
 	ImGui::SameLine();
-	ImGui::Text(str.c_str());
+	ImGui::Text("FPS: %d", (int)fps);
 	ImGui::Separator();
 
 	static bool softShadowChecked = true;
@@ -312,9 +311,10 @@ void GuiSystem::showBottomSideBar()
 	const float itemHeight = 80.0f;
 	const float padding = 10.0f;
 
-	int i = 0;
-	for (auto model : ResourceManager::getInstance().getAllModels()) {
-		ImGui::PushID(i);
+	auto models = ResourceManager::getInstance().getAllModels();
+	for (size_t i = 0; i < models.size(); i++) {
+		auto& model = models[i];
+		ImGui::PushID(static_cast<int>(i));
 		ImGui::Button(model->getName().c_str(), ImVec2(itemWidth, itemHeight));
 		if (ImGui::BeginPopupContextItem("ModelButtonContext"))
 		{
@@ -330,7 +330,6 @@ void GuiSystem::showBottomSideBar()
 		{
 			ImGui::SameLine(0.0f, padding);
 		}
-
 	}
 
 	ImGui::EndChild();
@@ -363,7 +362,7 @@ void GuiSystem::showBottomSideBar()
 
 void GuiSystem::registComponents()
 {
-	registerComponentWidget<Transform>("Transform", [](std::shared_ptr<Transform> transform) {
+	registerComponentWidget<Transform>([](std::shared_ptr<Transform> transform) {
 		ImGui::Text(u8"Transform");
 		ImGui::Separator();
 		ImGui::DragFloat3(u8"Translate", glm::value_ptr(transform->translate));
@@ -372,52 +371,51 @@ void GuiSystem::registComponents()
 		ImGui::Separator();
 		});
 
-	registerComponentWidget<RenderComponent>("RenderComponent", [](std::shared_ptr<RenderComponent> renderComponent) {
+	registerComponentWidget<RenderComponent>([](std::shared_ptr<RenderComponent> renderComponent) {
 		});
 
-	registerComponentWidget<PointLightComponent>("PointLightComponent", [](std::shared_ptr<PointLightComponent> pointLightComponent) {
+	registerComponentWidget<PointLightComponent>([](std::shared_ptr<PointLightComponent> pointLightComponent) {
 		ImGui::Text(u8"PointLight");
 		ImGui::Separator();
-		ImGui::ColorPicker3(u8"Color", glm::value_ptr(pointLightComponent->color));
-		ImGui::DragFloat(u8"Brightness", &pointLightComponent->brightness);
-		ImGui::DragFloat(u8"Constant", &pointLightComponent->constant);
-		ImGui::DragFloat(u8"Linear", &pointLightComponent->linear);
-		ImGui::DragFloat(u8"Quadratic", &pointLightComponent->quadratic);
+		ImGui::ColorEdit3(u8"Color", glm::value_ptr(pointLightComponent->color));
+		ImGui::DragFloat(u8"Brightness", &pointLightComponent->brightness, 0.1f, 0.0f, 100.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+		ImGui::DragFloat(u8"Constant", &pointLightComponent->constant, 0.01f, 0.0f, 10.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+		ImGui::DragFloat(u8"Linear", &pointLightComponent->linear, 0.001f, 0.0f, 1.0f, "%.4f", ImGuiSliderFlags_AlwaysClamp);
+		ImGui::DragFloat(u8"Quadratic", &pointLightComponent->quadratic, 0.0005f, 0.0f, 1.0f, "%.5f", ImGuiSliderFlags_AlwaysClamp);
 		ImGui::Separator();
 		});
 
-	registerComponentWidget<DirectionLightComponent>("DirectionLightComponent", [](std::shared_ptr<DirectionLightComponent> directionLightComponent) {
+	registerComponentWidget<DirectionLightComponent>([](std::shared_ptr<DirectionLightComponent> directionLightComponent) {
 		ImGui::Text(u8"DirectionLight");
 		ImGui::Separator();
-		ImGui::ColorPicker3(u8"Color", glm::value_ptr(directionLightComponent->color));
-		ImGui::DragFloat(u8"Brightness", &directionLightComponent->brightness);
+		ImGui::ColorEdit3(u8"Color", glm::value_ptr(directionLightComponent->color));
+		ImGui::DragFloat(u8"Brightness", &directionLightComponent->brightness, 0.1f, 0.0f, 100.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
 		ImGui::Separator();
 		});
 
-	registerComponentWidget<SpotLightComponent>("SpotLightComponent", [](std::shared_ptr<SpotLightComponent> spotLightComponent) {
+	registerComponentWidget<SpotLightComponent>([](std::shared_ptr<SpotLightComponent> spotLightComponent) {
 		ImGui::Text(u8"SpotLight");
 		ImGui::Separator();
-		ImGui::ColorPicker3(u8"Color", glm::value_ptr(spotLightComponent->color));
-		ImGui::DragFloat(u8"Brightness", &spotLightComponent->brightness);
-		ImGui::DragFloat(u8"CutOff", &spotLightComponent->cutOff);
-		ImGui::DragFloat(u8"OuterCutOff", &spotLightComponent->outerCutOff);
+		ImGui::ColorEdit3(u8"Color", glm::value_ptr(spotLightComponent->color));
+		ImGui::DragFloat(u8"Brightness", &spotLightComponent->brightness, 0.1f, 0.0f, 100.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+		ImGui::DragFloat(u8"CutOff", &spotLightComponent->cutOff, 0.5f, 0.0f, 89.0f, "%.1f", ImGuiSliderFlags_AlwaysClamp);
+		ImGui::DragFloat(u8"OuterCutOff", &spotLightComponent->outerCutOff, 0.5f, 0.0f, 90.0f, "%.1f", ImGuiSliderFlags_AlwaysClamp);
 		ImGui::Separator();
 		});
 
-	registerComponentWidget<SkyBoxComponent>("SkyBoxComponent", [](std::shared_ptr<SkyBoxComponent> skyboxComponent) {
+	registerComponentWidget<SkyBoxComponent>([](std::shared_ptr<SkyBoxComponent> skyboxComponent) {
 		ImGui::Text(u8"SkyBox");
 		ImGui::Separator();
-		static char buf[255];
-		ImGui::InputText("Path", buf, sizeof(buf)); ImGui::SameLine();
+		ImGui::InputText("Path", skyboxComponent->folderPath, sizeof(skyboxComponent->folderPath)); ImGui::SameLine();
 		if (ImGui::Button("OK")) {
-			skyboxComponent->setSkyBox(std::string(buf));
+			skyboxComponent->setSkyBox(std::string(skyboxComponent->folderPath));
 		}
 		});
 
-	registerComponentWidget<StaticMeshComponent>("StaticMeshComponent", [](std::shared_ptr<StaticMeshComponent> staticMeshComponent) {
+	registerComponentWidget<StaticMeshComponent>([](std::shared_ptr<StaticMeshComponent> staticMeshComponent) {
 		});
 
-	registerComponentWidget<DynamicMaterialComponent>("DynamicMaterialComponent", [](std::shared_ptr<DynamicMaterialComponent> dynamicMaterialComponent) {
+	registerComponentWidget<DynamicMaterialComponent>([](std::shared_ptr<DynamicMaterialComponent> dynamicMaterialComponent) {
 		ImGui::Text(u8"Material");
 		ImGui::Separator();
 		ImGui::InputText(u8"albedo", dynamicMaterialComponent->albedoPath, 255);
@@ -428,20 +426,20 @@ void GuiSystem::registComponents()
 		}
 		});
 
-	registerComponentWidget<ShadowCaster2D>("ShadowCaster2D", [](std::shared_ptr<ShadowCaster2D> shadowCaster2D) {
+	registerComponentWidget<ShadowCaster2D>([](std::shared_ptr<ShadowCaster2D> shadowCaster2D) {
 		ImGui::Text(u8"ShadowCaster");
 		ImGui::Separator();
 		ImGui::Checkbox(u8"Enabled", &shadowCaster2D->enabled);
 		});
 
-	registerComponentWidget<ShadowCasterCube>("ShadowCasterCube", [](std::shared_ptr<ShadowCasterCube> shadowCasterCube) {
+	registerComponentWidget<ShadowCasterCube>([](std::shared_ptr<ShadowCasterCube> shadowCasterCube) {
 		ImGui::Text(u8"ShadowCaster");
 		ImGui::Separator();
 		ImGui::Checkbox(u8"Enabled", &shadowCasterCube->enabled);
-		ImGui::DragFloat(u8"FarPlane", &shadowCasterCube->farPlane);
+		ImGui::DragFloat(u8"FarPlane", &shadowCasterCube->farPlane, 0.5f, 0.1f, 10000.0f, "%.1f", ImGuiSliderFlags_AlwaysClamp);
 		});
 
-	registerComponentWidget<AnimatorComponent>("AnimatorComponent", [](std::shared_ptr<AnimatorComponent> animatorComponent) {
+	registerComponentWidget<AnimatorComponent>([](std::shared_ptr<AnimatorComponent> animatorComponent) {
 		ImGui::Text(u8"Animator");
 		ImGui::Separator();
 		if(ImGui::BeginCombo(u8"##AnimatorCombo", animatorComponent->getCurrentAnimation().c_str())) {
@@ -469,7 +467,7 @@ void GuiSystem::registComponents()
 		}
 		});
 
-	registerComponentWidget<SkeletonViewerComponent>("SkeletonViewerComponent", [](std::shared_ptr<SkeletonViewerComponent> skeletonViewerComponent) {
+	registerComponentWidget<SkeletonViewerComponent>([](std::shared_ptr<SkeletonViewerComponent> skeletonViewerComponent) {
 		ImGui::Text(u8"SkeletonViewer");
 		ImGui::Separator();
 		ImGui::Checkbox(u8"Show", &skeletonViewerComponent->show);
@@ -478,12 +476,12 @@ void GuiSystem::registComponents()
 }
 
 void GuiSystem::showComponentWidget(std::shared_ptr<Component> comp) {
-	std::string key = comp->getName();
 	auto& registry = getWidgetRegistry();
-	if (registry.find(key) != registry.end()) {
-		registry[key](comp);
+	auto it = registry.find(std::type_index(typeid(*comp)));
+	if (it != registry.end()) {
+		it->second(comp);
 	}
 	else {
-		ImGui::Text("No editor registered for %s", key.c_str());
+		ImGui::Text("No editor registered for %s", comp->getName().c_str());
 	}
 }

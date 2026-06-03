@@ -1,4 +1,5 @@
 #include "component.hpp"
+#include <algorithm>
 
 std::string Component::getName() const {
 	return name;
@@ -7,6 +8,10 @@ std::string Component::getName() const {
 void SkyBoxComponent::setSkyBox(std::string folderPath) {
 	skybox = std::make_shared<SkyBox>(folderPath);
 	skybox->initGLResources();
+	// keep the edit buffer in sync so the inspector shows the applied path
+	size_t n = std::min(folderPath.size(), sizeof(this->folderPath) - 1);
+	folderPath.copy(this->folderPath, n);
+	this->folderPath[n] = '\0';
 }
 
 void DynamicMaterialComponent::setMaterial() {

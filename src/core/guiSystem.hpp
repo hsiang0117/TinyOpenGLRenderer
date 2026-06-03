@@ -8,6 +8,8 @@
 #include <functional>
 #include <string>
 #include <unordered_map>
+#include <typeindex>
+#include <typeinfo>
 
 #define SPLITTER_THICKNESS 4
 
@@ -22,8 +24,9 @@ public:
 	void render(double deltaTime);
 	void shutDown();
 
+	// Register a detail-panel widget for a component type (keyed by type, no string name).
 	template<typename T>
-	void registerComponentWidget(const std::string& componentName, std::function<void(std::shared_ptr<T>)> func);
+	void registerComponentWidget(std::function<void(std::shared_ptr<T>)> func);
 
 	void showComponentWidget(std::shared_ptr<Component> comp);
 
@@ -31,8 +34,11 @@ public:
 	static float rightSideBarWidth;
 	static float bottomSideBarHeight;
 private:
-	static std::unordered_map<std::string, ComponentWidgetFunc>& getWidgetRegistry() {
-		static std::unordered_map<std::string, ComponentWidgetFunc> registry;
+	// component type -> detail-panel widget. Keyed by type_index (decided at compile time
+	// from the template parameter), removing the old "registration string must match
+	// getName() exactly" footgun.
+	static std::unordered_map<std::type_index, ComponentWidgetFunc>& getWidgetRegistry() {
+		static std::unordered_map<std::type_index, ComponentWidgetFunc> registry;
 		return registry;
 	}
 
@@ -45,8 +51,8 @@ private:
 };
 
 template<typename T>
-void GuiSystem::registerComponentWidget(const std::string& componentName, std::function<void(std::shared_ptr<T>)> func) {
-	getWidgetRegistry()[componentName] = [func](ComponentPtr comp) {
+void GuiSystem::registerComponentWidget(std::function<void(std::shared_ptr<T>)> func) {
+	getWidgetRegistry()[std::type_index(typeid(T))] = [func](ComponentPtr comp) {
 		std::shared_ptr<T> specificComp = std::dynamic_pointer_cast<T>(comp);
 		if (specificComp) {
 			func(specificComp);

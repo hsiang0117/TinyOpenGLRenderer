@@ -112,6 +112,7 @@ public:
 	SkyBoxComponent() : Component("SkyBoxComponent") {}
 
 	SkyBoxPtr skybox;
+	char folderPath[255] = {};   // edit buffer; seeded by setSkyBox so the field reflects the current path
 	void setSkyBox(std::string folderPath);
 };
 
