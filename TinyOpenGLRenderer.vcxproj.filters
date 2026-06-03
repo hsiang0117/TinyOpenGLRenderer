@@ -78,6 +78,9 @@
     <ClCompile Include="src\gameObjectFactory.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="src\sceneFactory.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
     <ClCompile Include="src\utils.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
@@ -183,6 +186,9 @@
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="src\gameObjectFactory.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="src\sceneFactory.hpp">
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="include\imgui\ImGuiFileDialogConfig.h">

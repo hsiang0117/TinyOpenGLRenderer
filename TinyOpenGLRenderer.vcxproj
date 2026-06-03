@@ -149,6 +149,7 @@
     <ClCompile Include="src\core\renderSystem.cpp" />
     <ClCompile Include="src\engine.cpp" />
     <ClCompile Include="src\gameObjectFactory.cpp" />
+    <ClCompile Include="src\sceneFactory.cpp" />
     <ClCompile Include="src\glBuffer.cpp" />
     <ClCompile Include="src\input.cpp" />
     <ClCompile Include="src\main.cpp" />
@@ -186,6 +187,7 @@
     <ClInclude Include="src\input.hpp" />
     <ClInclude Include="src\gameObject.hpp" />
     <ClInclude Include="src\gameObjectFactory.hpp" />
+    <ClInclude Include="src\sceneFactory.hpp" />
     <ClInclude Include="src\material.hpp" />
     <ClInclude Include="src\mesh.hpp" />
     <ClInclude Include="src\meshGenerator.hpp" />

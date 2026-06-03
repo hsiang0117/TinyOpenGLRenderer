@@ -1,5 +1,6 @@
 #include "engine.hpp"
 #include "input.hpp"
+#include "sceneFactory.hpp"
 #include <GLFW/glfw3.h>
 
 Engine& Engine::getInstance() {
@@ -13,6 +14,7 @@ void Engine::init() {
 	renderSystem.init();
 	ResourceManager::getInstance().init();
 	guiSystem.init(windowSystem.getWindow());
+	ResourceManager::getInstance().setCurrentScene(SceneFactory::createDefaultScene());
 }
 
 void Engine::run() {

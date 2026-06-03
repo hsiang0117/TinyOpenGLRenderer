@@ -43,7 +43,8 @@ void UniformBuffer::unbind() {
 }
 
 void UniformBuffer::bufferData(GLsizeiptr size, const GLvoid* data) {
-	glBufferData(GL_UNIFORM_BUFFER, size, data, GL_STATIC_DRAW);
+	// 每帧用 bufferSubdata 更新（view/proj 矩阵），用 DYNAMIC_DRAW 匹配实际访问模式
+	glBufferData(GL_UNIFORM_BUFFER, size, data, GL_DYNAMIC_DRAW);
 }
 
 void UniformBuffer::bufferBase(GLuint index) {
@@ -63,7 +64,8 @@ void ShaderStorageBuffer::unbind() {
 }
 
 void ShaderStorageBuffer::bufferData(GLsizeiptr size, const GLvoid* data) {
-	glBufferData(GL_SHADER_STORAGE_BUFFER, size, data, GL_STATIC_DRAW);
+	// 每帧重新上传灯光数据，用 DYNAMIC_DRAW 匹配实际访问模式
+	glBufferData(GL_SHADER_STORAGE_BUFFER, size, data, GL_DYNAMIC_DRAW);
 }
 
 void ShaderStorageBuffer::bufferBase(GLuint index) {

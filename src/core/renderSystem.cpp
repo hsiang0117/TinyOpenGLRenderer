@@ -159,8 +159,7 @@ void RenderSystem::drawRenderable(const GameObjectPtr& obj, ShaderPtr shader) {
 		if (auto dynamicMaterialComponent = obj->getComponent<DynamicMaterialComponent>()) {
 			dynamicMaterialComponent->material.bind(shader);
 		}
-		// 静态网格无骨骼动画，unit 8 没有骨骼矩阵纹理，绑占位纹理消除警告
-		bindDummyTexture2D(GL_TEXTURE8);
+		// unit 8（骨骼矩阵纹理）由 render() 帧首全局兜底绑定，静态网格无需再处理
 		for (int i = 0; i < 100; i++) {
 			shader->setMat4(("finalBoneMatrices[" + std::to_string(i) + "]").c_str(), glm::mat4(1.0f));
 		}
@@ -455,6 +454,11 @@ void RenderSystem::render(Camera& camera) {
 	glUseProgram(0);
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	// 全局兜底：unit 8 是骨骼矩阵纹理，depth/depthCube/default 着色器都声明了它。
+	// 静态网格顶点 boneIds 全为 -1，着色器跳过 texelFetch，不会真正采样，只需保证
+	// 该单元有完整纹理以通过驱动的完整性校验。动画模型绘制时会用真实骨骼纹理覆盖 unit 8。
+	bindDummyTexture2D(GL_TEXTURE8);
 
 	auto& rm = ResourceManager::getInstance();
 	ShaderPtr defaultShader = rm.getShader("default");

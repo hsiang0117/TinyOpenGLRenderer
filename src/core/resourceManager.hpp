@@ -117,9 +117,12 @@ private:
 	std::unordered_map<std::string, ShaderPtr> cache;
 };
 
-class SceneManager {
+class Scene {
 public:
 	using ObjectFilter = std::function<bool(const GameObjectPtr&)>;
+
+	const std::string& getName() const { return name; }
+	void setName(std::string n) { name = std::move(n); }
 
 	void addObject(GameObjectPtr obj) {
 		if (!obj) return;
@@ -186,9 +189,12 @@ public:
 	}
 
 private:
+	std::string name = "Untitled";
 	std::vector<GameObjectPtr> objects;
 	std::queue<size_t> removalQueue;
 };
+
+using ScenePtr = std::shared_ptr<Scene>;
 
 class ResourceManager {
 public:
@@ -211,7 +217,7 @@ public:
 
 	void update() {
 		modelLoader.update();
-		sceneManager.processRemovals();
+		currentScene->processRemovals();
 	}
 
 	void queueModelLoad(const std::string& path) {
@@ -231,46 +237,51 @@ public:
 	}
 
 	void addGameObject(GameObjectPtr obj) {
-		sceneManager.addObject(obj);
+		currentScene->addObject(obj);
 	}
 
 	void removeGameObject(size_t idx) {
-		sceneManager.queueRemoval(idx);
+		currentScene->queueRemoval(idx);
 	}
 
 	std::vector<GameObjectPtr> getGameObjects() const {
-		return sceneManager.getObjects();
+		return currentScene->getObjects();
 	}
 
 	GameObjectPtr getGameObjectAt(size_t idx) const {
-		return sceneManager.getObjectAt(idx);
+		return currentScene->getObjectAt(idx);
 	}
 
 	size_t getGameObjectCount() const {
-		return sceneManager.getObjectCount();
+		return currentScene->getObjectCount();
 	}
 
-	int getPointLightCount() const { return (int)sceneManager.getView<PointLightComponent>().size(); }
-	int getDirectionLightCount() const { return (int)sceneManager.getView<DirectionLightComponent>().size(); }
-	int getSpotLightCount() const { return (int)sceneManager.getView<SpotLightComponent>().size(); }
+	int getPointLightCount() const { return (int)currentScene->getView<PointLightComponent>().size(); }
+	int getDirectionLightCount() const { return (int)currentScene->getView<DirectionLightComponent>().size(); }
+	int getSpotLightCount() const { return (int)currentScene->getView<SpotLightComponent>().size(); }
 
 	template<typename T>
 	std::vector<GameObjectPtr> getSceneView() const {
-		return sceneManager.getView<T>();
+		return currentScene->getView<T>();
+	}
+
+	ScenePtr getCurrentScene() const { return currentScene; }
+	void setCurrentScene(ScenePtr s) {
+		currentScene = s ? s : std::make_shared<Scene>();
 	}
 
 	void shutdown() {
-		sceneManager.shutdown();
+		currentScene->shutdown();
 		modelLoader.shutdown();
 		shaderLoader.shutdown();
 	}
 private:
-	ResourceManager() = default;
+	ResourceManager() { currentScene = std::make_shared<Scene>(); }
 	~ResourceManager() = default;
 	ResourceManager(const ResourceManager&) = delete;
 	ResourceManager& operator=(const ResourceManager&) = delete;
 	ModelLoader modelLoader;
 	ShaderLoader shaderLoader;
-	SceneManager sceneManager;
+	ScenePtr currentScene;
 };
 #endif // !RESOURCEMANAGER_HPP
