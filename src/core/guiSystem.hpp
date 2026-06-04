@@ -3,6 +3,7 @@
 #pragma once
 
 #include "../component.hpp"
+#include "../gameObject.hpp"
 #include "imgui/imgui.h"
 #include <GLFW/glfw3.h>
 #include <functional>
@@ -10,8 +11,11 @@
 #include <unordered_map>
 #include <typeindex>
 #include <typeinfo>
+#include <memory>
 
 #define SPLITTER_THICKNESS 4
+
+enum class SplitterAxis { Vertical, Horizontal };
 
 using ComponentWidgetFunc = std::function<void(ComponentPtr)>;
 
@@ -43,10 +47,24 @@ private:
 	}
 
 	void showLeftSideBar();
+	void drawAddMenu();
+	void drawSceneTree();
+	void drawInspector();
 	void showRightSideBar(double deltaTime);
 	void showBottomSideBar();
 	void drawConsoleTab();
 	void registComponents();
+
+	// Current selection, shared by the scene tree (writes) and inspector (reads).
+	// Still two fields (index + identity) as before; unifying them is a later step.
+	std::weak_ptr<GameObject> objectSelected_;
+	int selectedIndex_ = -1;
+
+	// Shared draggable splitter. pos = top-left in screen space, length = the
+	// extent along the bar, sizeRef = the panel dimension it resizes, sign = +1/-1
+	// for which side the drag grows, clamped to [minSize, maxSize].
+	void drawSplitter(const char* id, SplitterAxis axis, ImVec2 pos, float length,
+	                  float& sizeRef, float sign, float minSize, float maxSize);
 
 	float clamp(float value, float min, float max) { return std::max(min, std::min(value, max)); }
 };

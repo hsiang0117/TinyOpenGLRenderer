@@ -9,10 +9,51 @@
 #include "imgui/imgui_impl_opengl3.h"
 #include "imgui/ImGuiFileDialog.h"
 #include <glm/gtc/type_ptr.hpp>
+#include <vector>
+#include <cstring>
 
 float GuiSystem::leftSideBarWidth = 300.0f;
 float GuiSystem::rightSideBarWidth = 300.0f;
 float GuiSystem::bottomSideBarHeight = 200.0f;
+
+namespace {
+	// Scene-tree classification predicates (extracted from the former inline lambdas).
+	bool isLightObject(const GameObjectPtr& object) {
+		return object->has<PointLightComponent>() ||
+			object->has<DirectionLightComponent>() ||
+			object->has<SpotLightComponent>();
+	}
+
+	bool isSceneObject(const GameObjectPtr& object) {
+		return object->has<RenderComponent>() ||
+			(object->has<StaticMeshComponent>() && !object->has<PointLightComponent>() && !object->has<SkyBoxComponent>());
+	}
+
+	bool isSkyBoxObject(const GameObjectPtr& object) {
+		return object->has<SkyBoxComponent>();
+	}
+
+	// Data-driven Add menu catalog. Adding a creatable object = one row here; no
+	// hand-written menu code. canAdd (optional) gates + greys out the item.
+	struct SpawnEntry {
+		const char* category;
+		const char* label;
+		GameObjectPtr(*create)();
+		bool(*canAdd)();   // nullptr => always allowed
+	};
+
+	const SpawnEntry kSpawnCatalog[] = {
+		{ "Light", "Point Light", &GameObjectFactory::createPointLight, nullptr },
+		{ "Light", "Direction Light", &GameObjectFactory::createDirectionLight,
+			[] { return ResourceManager::getInstance().getDirectionLightCount() == 0; } },
+		{ "Light", "Spot Light", &GameObjectFactory::createSpotLight, nullptr },
+		{ "Static Mesh", "Cube", &GameObjectFactory::createCube, nullptr },
+		{ "Static Mesh", "Plane", &GameObjectFactory::createPlane, nullptr },
+		{ "Static Mesh", "Sphere", &GameObjectFactory::createSphere, nullptr },
+		{ "Other", "SkyBox", &GameObjectFactory::createSkyBox, nullptr },
+		{ "Other", "Volume Cloud", &GameObjectFactory::createVolumeCloud, nullptr },
+	};
+}
 
 void GuiSystem::init(GLFWwindow* window) {
 	IMGUI_CHECKVERSION();
@@ -67,10 +108,27 @@ void GuiSystem::shutDown() {
 	ImGui::DestroyContext();
 }
 
+void GuiSystem::drawSplitter(const char* id, SplitterAxis axis, ImVec2 pos, float length,
+	float& sizeRef, float sign, float minSize, float maxSize)
+{
+	ImGui::SetCursorScreenPos(pos);
+	ImVec2 size = (axis == SplitterAxis::Vertical)
+		? ImVec2(SPLITTER_THICKNESS, length) : ImVec2(length, SPLITTER_THICKNESS);
+	if (length > 0) {
+		ImGui::InvisibleButton(id, size);
+	}
+	if (ImGui::IsItemActive()) {
+		float delta = (axis == SplitterAxis::Vertical)
+			? ImGui::GetIO().MouseDelta.x : ImGui::GetIO().MouseDelta.y;
+		sizeRef = clamp(sizeRef + sign * delta, minSize, maxSize);
+		Input::getInstance().onUiResized();
+	}
+	ImGui::GetWindowDrawList()->AddRectFilled(
+		pos, ImVec2(pos.x + size.x, pos.y + size.y), IM_COL32(200, 200, 200, 180));
+}
+
 void GuiSystem::showLeftSideBar()
 {
-	static std::weak_ptr<GameObject> objectSelected;
-
 	ImGuiViewport* viewport = ImGui::GetMainViewport();
 
 	ImGui::SetCursorPos({ 0, 0 });
@@ -78,53 +136,61 @@ void GuiSystem::showLeftSideBar()
 
 	ImVec2 avalableSize = ImGui::GetContentRegionAvail();
 	ImGui::BeginChild(u8"scenePanel", ImVec2(0, avalableSize.y/2), false, ImGuiWindowFlags_MenuBar);
-
 	if (ImGui::BeginMenuBar()) {
 		ImGui::Text("Scene");
-		if (ImGui::BeginMenu("Add")) {
-			if (ImGui::BeginMenu("Light")) {
-				if (ImGui::MenuItem("Point Light")) {
-					ResourceManager::getInstance().addGameObject(GameObjectFactory::createPointLight());
-				}
-				if (ImGui::MenuItem("Direction Light")) {
-					if (ResourceManager::getInstance().getDirectionLightCount() == 0) {
-						ResourceManager::getInstance().addGameObject(GameObjectFactory::createDirectionLight());
-					}
-				}
-				if (ImGui::MenuItem("Spot Light")) {
-					ResourceManager::getInstance().addGameObject(GameObjectFactory::createSpotLight());
-				}
-				ImGui::EndMenu();
-			}
-			if (ImGui::BeginMenu("Static Mesh")) {
-				if (ImGui::MenuItem("Cube")) {
-					ResourceManager::getInstance().addGameObject(GameObjectFactory::createCube());
-				}
-				if (ImGui::MenuItem("Plane")) {
-					ResourceManager::getInstance().addGameObject(GameObjectFactory::createPlane());
-				}
-				if (ImGui::MenuItem("Sphere")) {
-					ResourceManager::getInstance().addGameObject(GameObjectFactory::createSphere());
-				}
-				ImGui::EndMenu();
-			}
-			if (ImGui::BeginMenu("Other")) {
-				if (ImGui::MenuItem("SkyBox")) {
-					ResourceManager::getInstance().addGameObject(GameObjectFactory::createSkyBox());
-				}
-				if (ImGui::MenuItem("Volume Cloud")) {
-					ResourceManager::getInstance().addGameObject(GameObjectFactory::createVolumeCloud());
-				}
-				ImGui::EndMenu();
-			}
-			ImGui::EndMenu();
-		}
+		drawAddMenu();
 		ImGui::EndMenuBar();
 	}
-
 	ImGui::BeginChild(u8"sceneRegion", ImVec2(0, 0), true);
-	static int selected = -1;
+	drawSceneTree();
+	ImGui::EndChild();
+	ImGui::EndChild();
 
+	ImGui::BeginChild(u8"detailPanel", ImVec2(0, 0), false, ImGuiWindowFlags_MenuBar);
+	if (ImGui::BeginMenuBar()) {
+		ImGui::Text("Detail");
+		ImGui::EndMenuBar();
+	}
+	ImGui::BeginChild(u8"detailRegion", ImVec2(0, 0), true);
+	drawInspector();
+	ImGui::EndChild();
+	ImGui::EndChild();
+
+	ImGui::EndChild();
+
+	float leftSplitterHeight = viewport->Size.y - bottomSideBarHeight - SPLITTER_THICKNESS;
+	drawSplitter("##SplitterLeft", SplitterAxis::Vertical, ImVec2(leftSideBarWidth, 0),
+		leftSplitterHeight, leftSideBarWidth, +1.0f, 100.0f, viewport->Size.x / 3);
+}
+
+void GuiSystem::drawAddMenu()
+{
+	if (ImGui::BeginMenu("Add")) {
+		// Distinct categories in first-seen order.
+		std::vector<const char*> categories;
+		for (const auto& e : kSpawnCatalog) {
+			bool seen = false;
+			for (const char* c : categories) if (strcmp(c, e.category) == 0) { seen = true; break; }
+			if (!seen) categories.push_back(e.category);
+		}
+		for (const char* cat : categories) {
+			if (ImGui::BeginMenu(cat)) {
+				for (const auto& e : kSpawnCatalog) {
+					if (strcmp(e.category, cat) != 0) continue;
+					bool ok = !e.canAdd || e.canAdd();
+					if (ImGui::MenuItem(e.label, nullptr, false, ok)) {
+						ResourceManager::getInstance().addGameObject(e.create());
+					}
+				}
+				ImGui::EndMenu();
+			}
+		}
+		ImGui::EndMenu();
+	}
+}
+
+void GuiSystem::drawSceneTree()
+{
 	auto renderObjectTreeNode = [&](const char* label, std::function<bool(GameObjectPtr)> predicate) {
 		if (ImGui::TreeNode(label)) {
 			auto gameObjects = ResourceManager::getInstance().getGameObjects();
@@ -132,14 +198,14 @@ void GuiSystem::showLeftSideBar()
 				GameObjectPtr object = gameObjects[i];
 				if (predicate(object)) {
 					ImGui::PushID(i);
-					if (ImGui::Selectable(object->getName().c_str(), selected == i)) {
-						selected = i;
-						objectSelected = object;
+					if (ImGui::Selectable(object->getName().c_str(), selectedIndex_ == i)) {
+						selectedIndex_ = i;
+						objectSelected_ = object;
 					}
 					if (ImGui::BeginPopupContextItem("ObjectButtonContext")) {
 						if (ImGui::MenuItem(u8"remove")) {
 							ResourceManager::getInstance().removeGameObject(i);
-							selected = -1;
+							selectedIndex_ = -1;
 						}
 						ImGui::EndPopup();
 					}
@@ -150,53 +216,18 @@ void GuiSystem::showLeftSideBar()
 		}
 		};
 
-	renderObjectTreeNode(u8"Light", [](GameObjectPtr object) {
-		return object->has<PointLightComponent>() ||
-			object->has<DirectionLightComponent>() ||
-			object->has<SpotLightComponent>();
-		});
+	renderObjectTreeNode(u8"Light", isLightObject);
+	renderObjectTreeNode(u8"Object", isSceneObject);
+	renderObjectTreeNode(u8"SkyBox", isSkyBoxObject);
+}
 
-	renderObjectTreeNode(u8"Object", [](GameObjectPtr object) {
-		return object->has<RenderComponent>() ||
-			(object->has<StaticMeshComponent>() && !object->has<PointLightComponent>() && !object->has<SkyBoxComponent>());
-		});
-
-	renderObjectTreeNode(u8"SkyBox", [](GameObjectPtr object) {
-		return object->has<SkyBoxComponent>();
-		});
-	ImGui::EndChild();
-	ImGui::EndChild();
-
-	ImGui::BeginChild(u8"detailPanel", ImVec2(0, 0), false, ImGuiWindowFlags_MenuBar);
-	if (ImGui::BeginMenuBar()) {
-		ImGui::Text("Detail");
-		ImGui::EndMenuBar();
-	}
-	ImGui::BeginChild(u8"detailRegion", ImVec2(0, 0), true);
-	if (objectSelected.lock()) {
-		for (auto& component : objectSelected.lock()->getAllComponents()) {
+void GuiSystem::drawInspector()
+{
+	if (objectSelected_.lock()) {
+		for (auto& component : objectSelected_.lock()->getAllComponents()) {
 			showComponentWidget(component);
 		}
 	}
-	ImGui::EndChild();
-	ImGui::EndChild();
-
-	ImGui::EndChild();
-
-	ImGui::SetCursorScreenPos({ leftSideBarWidth, 0 });
-	float height = viewport->Size.y - bottomSideBarHeight - SPLITTER_THICKNESS;
-	if (height > 0) {
-		ImGui::InvisibleButton("##SplitterLeft", ImVec2(SPLITTER_THICKNESS, height));
-	}
-	if (ImGui::IsItemActive()) {
-		leftSideBarWidth = leftSideBarWidth + ImGui::GetIO().MouseDelta.x;
-		leftSideBarWidth = clamp(leftSideBarWidth, 100, viewport->Size.x / 3);
-		Input::getInstance().onUiResized();
-	}
-	ImDrawList* draw = ImGui::GetWindowDrawList();
-	float x0 = leftSideBarWidth;
-	float x1 = x0 + SPLITTER_THICKNESS;
-	draw->AddRectFilled(ImVec2(x0, 0), ImVec2(x1, viewport->Size.y - bottomSideBarHeight - SPLITTER_THICKNESS), IM_COL32(200, 200, 200, 180));
 }
 
 void GuiSystem::showRightSideBar(double deltaTime)
@@ -285,20 +316,10 @@ void GuiSystem::showRightSideBar(double deltaTime)
 	ImGui::EndChild();
 	ImGui::EndChild();
 
-	ImGui::SetCursorScreenPos({ viewport->Size.x - rightSideBarWidth - SPLITTER_THICKNESS, 0 });
-	float height = viewport->Size.y - bottomSideBarHeight - SPLITTER_THICKNESS;
-	if (height > 0) {
-		ImGui::InvisibleButton("##SplitterRight", ImVec2(SPLITTER_THICKNESS, height));
-	}
-	if (ImGui::IsItemActive()) {
-		rightSideBarWidth = rightSideBarWidth - ImGui::GetIO().MouseDelta.x;
-		rightSideBarWidth = clamp(rightSideBarWidth, 100, viewport->Size.x / 3);
-		Input::getInstance().onUiResized();
-	}
-	ImDrawList* draw = ImGui::GetWindowDrawList();
-	float x0 = viewport->Size.x - rightSideBarWidth - SPLITTER_THICKNESS;
-	float x1 = x0 + SPLITTER_THICKNESS;
-	draw->AddRectFilled(ImVec2(x0, 0), ImVec2(x1, viewport->Size.y - bottomSideBarHeight - SPLITTER_THICKNESS), IM_COL32(200, 200, 200, 180));
+	float rightSplitterHeight = viewport->Size.y - bottomSideBarHeight - SPLITTER_THICKNESS;
+	drawSplitter("##SplitterRight", SplitterAxis::Vertical,
+		ImVec2(viewport->Size.x - rightSideBarWidth - SPLITTER_THICKNESS, 0),
+		rightSplitterHeight, rightSideBarWidth, -1.0f, 100.0f, viewport->Size.x / 3);
 }
 
 void GuiSystem::showBottomSideBar()
@@ -356,20 +377,9 @@ void GuiSystem::showBottomSideBar()
 
 	ImGui::EndChild();
 
-	ImGui::SetCursorScreenPos({ 0, viewport->Size.y - bottomSideBarHeight - SPLITTER_THICKNESS });
-	float width = viewport->Size.x;
-	if(width > 0) {
-		ImGui::InvisibleButton("##SplitterBottom", ImVec2(width, SPLITTER_THICKNESS));
-	}
-	if (ImGui::IsItemActive()) {
-		bottomSideBarHeight = bottomSideBarHeight - ImGui::GetIO().MouseDelta.y;
-		bottomSideBarHeight = clamp(bottomSideBarHeight, 100, viewport->Size.y / 2);
-		Input::getInstance().onUiResized();
-	}
-	ImDrawList* draw = ImGui::GetWindowDrawList();
-	float y0 = viewport->Size.y - bottomSideBarHeight - SPLITTER_THICKNESS;
-	float y1 = y0 + SPLITTER_THICKNESS;
-	draw->AddRectFilled(ImVec2(0, y0), ImVec2(viewport->Size.x, y1), IM_COL32(200, 200, 200, 180));
+	drawSplitter("##SplitterBottom", SplitterAxis::Horizontal,
+		ImVec2(0, viewport->Size.y - bottomSideBarHeight - SPLITTER_THICKNESS),
+		viewport->Size.x, bottomSideBarHeight, -1.0f, 100.0f, viewport->Size.y / 2);
 }
 
 void GuiSystem::drawConsoleTab()
