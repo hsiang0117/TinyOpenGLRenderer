@@ -191,6 +191,9 @@ void GuiSystem::drawAddMenu()
 
 void GuiSystem::drawSceneTree()
 {
+	// Snapshot the current selection once; highlight is decided by identity.
+	GameObjectPtr selected = objectSelected_.lock();
+
 	auto renderObjectTreeNode = [&](const char* label, std::function<bool(GameObjectPtr)> predicate) {
 		if (ImGui::TreeNode(label)) {
 			auto gameObjects = ResourceManager::getInstance().getGameObjects();
@@ -198,14 +201,19 @@ void GuiSystem::drawSceneTree()
 				GameObjectPtr object = gameObjects[i];
 				if (predicate(object)) {
 					ImGui::PushID(i);
-					if (ImGui::Selectable(object->getName().c_str(), selectedIndex_ == i)) {
-						selectedIndex_ = i;
+					if (ImGui::Selectable(object->getName().c_str(), object == selected)) {
 						objectSelected_ = object;
+						selected = object;
 					}
 					if (ImGui::BeginPopupContextItem("ObjectButtonContext")) {
 						if (ImGui::MenuItem(u8"remove")) {
 							ResourceManager::getInstance().removeGameObject(i);
-							selectedIndex_ = -1;
+							// Only clear selection if the removed object was selected;
+							// removing a different object leaves the highlight intact.
+							if (object == selected) {
+								objectSelected_.reset();
+								selected = nullptr;
+							}
 						}
 						ImGui::EndPopup();
 					}
@@ -223,8 +231,8 @@ void GuiSystem::drawSceneTree()
 
 void GuiSystem::drawInspector()
 {
-	if (objectSelected_.lock()) {
-		for (auto& component : objectSelected_.lock()->getAllComponents()) {
+	if (auto selected = objectSelected_.lock()) {
+		for (auto& component : selected->getAllComponents()) {
 			showComponentWidget(component);
 		}
 	}

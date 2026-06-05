@@ -55,10 +55,11 @@ private:
 	void drawConsoleTab();
 	void registComponents();
 
-	// Current selection, shared by the scene tree (writes) and inspector (reads).
-	// Still two fields (index + identity) as before; unifying them is a later step.
+	// Current selection: a single identity-based source of truth shared by the
+	// scene tree (highlight + writes) and the inspector (reads). Highlight is by
+	// object identity, so removing a different object never disturbs it, and the
+	// weak_ptr auto-expires if the selected object is destroyed elsewhere.
 	std::weak_ptr<GameObject> objectSelected_;
-	int selectedIndex_ = -1;
 
 	// Shared draggable splitter. pos = top-left in screen space, length = the
 	// extent along the bar, sizeRef = the panel dimension it resizes, sign = +1/-1
