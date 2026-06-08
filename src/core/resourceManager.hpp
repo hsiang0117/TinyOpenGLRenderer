@@ -198,10 +198,7 @@ using ScenePtr = std::shared_ptr<Scene>;
 
 class ResourceManager {
 public:
-	static ResourceManager& getInstance() {
-		static ResourceManager instance;
-		return instance;
-	}
+	ResourceManager() { currentScene = std::make_shared<Scene>(); }
 
 	void init() {
 		shaderLoader.registerShader("default", "data/shader/test.vert", "data/shader/test.frag");
@@ -275,11 +272,9 @@ public:
 		modelLoader.shutdown();
 		shaderLoader.shutdown();
 	}
-private:
-	ResourceManager() { currentScene = std::make_shared<Scene>(); }
-	~ResourceManager() = default;
 	ResourceManager(const ResourceManager&) = delete;
 	ResourceManager& operator=(const ResourceManager&) = delete;
+private:
 	ModelLoader modelLoader;
 	ShaderLoader shaderLoader;
 	ScenePtr currentScene;

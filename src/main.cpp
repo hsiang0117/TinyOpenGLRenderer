@@ -1,7 +1,9 @@
 #include "engine.hpp"
+#include <memory>
 
 int main() {
-    Engine::getInstance().init();
-    Engine::getInstance().run();
+    auto engine = std::make_unique<Engine>();
+    engine->init();
+    engine->run();
     return 0;
 }

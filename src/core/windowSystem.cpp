@@ -1,7 +1,8 @@
 #include "windowSystem.hpp"
 #include "logger.hpp"
 
-void WindowSystem::init(int width, int height) {
+void WindowSystem::init(int width, int height, Input* input) {
+	input_ = input;
 	if (!glfwInit()) {
 		LOG_ERROR("Failed to initialize GLFW");
 		exit(EXIT_FAILURE);
@@ -18,6 +19,10 @@ void WindowSystem::init(int width, int height) {
 	}
 	glfwMakeContextCurrent(window);
 	glfwFocusWindow(window);
+	// Store the injected Input on the window so the C-style GLFW callbacks can reach
+	// it (they are capture-less function pointers). ImGui's GLFW backend deliberately
+	// does NOT use the window user pointer, so this slot is free.
+	glfwSetWindowUserPointer(window, input_);
 	setCursor(true);
 	setVsync(true);
 	connectInputToWindow(window);
@@ -30,10 +35,10 @@ void WindowSystem::swapBuffers() {
 void WindowSystem::update() {
 	glfwPollEvents();
 
-	if (Input::getInstance().isKeyPressed(GLFW_KEY_ESCAPE)) {
+	if (input_->isKeyPressed(GLFW_KEY_ESCAPE)) {
 		setShouldClose(true);
 	}
-	if (Input::getInstance().isKeyPressed(GLFW_KEY_LEFT_ALT)) {
+	if (input_->isKeyPressed(GLFW_KEY_LEFT_ALT)) {
 		setCursor(!getCursor());
 	}
 }
@@ -81,28 +86,35 @@ void WindowSystem::shutDown(){
 
 void WindowSystem::connectInputToWindow(GLFWwindow* window)
 {
+	// Callbacks are C-style function pointers (capture-less). They retrieve the
+	// injected Input via the window user pointer set in init().
 	const auto keyboardCallback = [](GLFWwindow* window, int key, int scancode, int action, int mods) {
+		Input* input = static_cast<Input*>(glfwGetWindowUserPointer(window));
+		if (!input) return;
 		if (action == GLFW_PRESS) {
-			Input::getInstance().onKeyPressed(key);
+			input->onKeyPressed(key);
 		}
 		else if (action == GLFW_RELEASE) {
-			Input::getInstance().onKeyReleased(key);
+			input->onKeyReleased(key);
 		}
 	};
 	glfwSetKeyCallback(window, keyboardCallback);
 
 	const auto mouseCallback = [](GLFWwindow* window, double xpos, double ypos) {
-		Input::getInstance().onMouseMoved(xpos, ypos);
+		Input* input = static_cast<Input*>(glfwGetWindowUserPointer(window));
+		if (input) input->onMouseMoved(xpos, ypos);
 	};
 	glfwSetCursorPosCallback(window, mouseCallback);
 
 	const auto scrollCallback = [](GLFWwindow* window, double xoffset, double yoffset) {
-		Input::getInstance().onScrollMoved(xoffset, yoffset);
+		Input* input = static_cast<Input*>(glfwGetWindowUserPointer(window));
+		if (input) input->onScrollMoved(xoffset, yoffset);
 	};
 	glfwSetScrollCallback(window, scrollCallback);
 
 	const auto windowResizeCallback = [](GLFWwindow* window, int width, int height) {
-		Input::getInstance().onWindowResized(width, height);
+		Input* input = static_cast<Input*>(glfwGetWindowUserPointer(window));
+		if (input) input->onWindowResized(width, height);
 	};
 	glfwSetFramebufferSizeCallback(window, windowResizeCallback);
 }

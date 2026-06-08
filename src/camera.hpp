@@ -43,7 +43,7 @@ public:
 	void processKeyboard(Direction d, double deltaTime);
 	void processMouseMovement(const float xPos, const float yPos);
 	void processMouseScroll(const float yOffset);
-	void update(double deltaTime);
+	void update(double deltaTime, Input& input);
 private:
 	glm::vec3 pos;
 	glm::vec3 front;

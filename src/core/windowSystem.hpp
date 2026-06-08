@@ -10,7 +10,7 @@ class WindowSystem {
 public:
 	WindowSystem() = default;
 	~WindowSystem() = default;
-	void init(int width, int height);
+	void init(int width, int height, Input* input);
 	void swapBuffers();
 	void update();
 	GLFWwindow* getWindow();
@@ -23,6 +23,7 @@ public:
 private:
 	void connectInputToWindow(GLFWwindow* window);
 	GLFWwindow* window;
+	Input* input_ = nullptr;   // non-owning; injected via init()
 };
 
 #endif // !WINDOWSYSTEM_HPP

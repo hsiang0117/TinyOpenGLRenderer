@@ -3,28 +3,25 @@
 #include "sceneFactory.hpp"
 #include <GLFW/glfw3.h>
 
-Engine& Engine::getInstance() {
-	static Engine instance;
-	return instance;
-}
-
 void Engine::init() {
-	Input::getInstance().init();
-	windowSystem.init(1280, 720);
+	input.init();
+	windowSystem.init(1280, 720, &input);
 	renderSystem.init();
-	ResourceManager::getInstance().init();
+	renderSystem.setResourceManager(&resourceManager);
+	resourceManager.init();
 	guiSystem.init(windowSystem.getWindow());
 	guiSystem.setRenderSystem(&renderSystem);
-	ResourceManager::getInstance().setCurrentScene(SceneFactory::createDefaultScene());
+	guiSystem.setResourceManager(&resourceManager);
+	resourceManager.setCurrentScene(SceneFactory::createDefaultScene());
 }
 
 void Engine::run() {
 	while (!windowSystem.getShouldClose()) {
 		double deltaTime = getDeltaTime();
-		Input::getInstance().update();
+		input.update();
 		windowSystem.update();
-		ResourceManager::getInstance().update();
-		camera.update(deltaTime);
+		resourceManager.update();
+		camera.update(deltaTime, input);
 		renderSystem.update(deltaTime);
 		guiSystem.beginFrame();
 		renderSystem.render(camera);
@@ -32,7 +29,7 @@ void Engine::run() {
 		windowSystem.swapBuffers();
 	}
 	guiSystem.shutDown();
-	ResourceManager::getInstance().shutdown();
+	resourceManager.shutdown();
 	windowSystem.shutDown();
 }
 

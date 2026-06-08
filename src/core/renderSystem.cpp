@@ -218,7 +218,7 @@ void RenderSystem::update(double deltaTime) {
 		afterEffectTexture.resetSize(viewportW_, viewportH_);
 		sceneColorTexture.resetSize(viewportW_, viewportH_);
 	}
-	for (auto& obj : ResourceManager::getInstance().getSceneView<AnimatorComponent>()) {
+	for (auto& obj : rm_->getSceneView<AnimatorComponent>()) {
 		auto animator = obj->getComponent<AnimatorComponent>();
 		if (animator->playing) animator->update((float)deltaTime);
 	}
@@ -234,7 +234,7 @@ unsigned int RenderSystem::getSceneColorTextureID() const {
 }
 
 RenderContext RenderSystem::buildContext(Camera& camera) {
-	auto& rm = ResourceManager::getInstance();
+	auto& rm = *rm_;
 
 	// Per-frame context: snapshots + non-owning pointers to GL targets.
 	RenderContext ctx;

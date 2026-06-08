@@ -36,13 +36,13 @@ namespace {
 		const char* category;
 		const char* label;
 		GameObjectPtr(*create)();
-		bool(*canAdd)();   // nullptr => always allowed
+		bool(*canAdd)(ResourceManager&);   // nullptr => always allowed
 	};
 
 	const SpawnEntry kSpawnCatalog[] = {
 		{ "Light", "Point Light", &GameObjectFactory::createPointLight, nullptr },
 		{ "Light", "Direction Light", &GameObjectFactory::createDirectionLight,
-			[] { return ResourceManager::getInstance().getDirectionLightCount() == 0; } },
+			[](ResourceManager& rm) { return rm.getDirectionLightCount() == 0; } },
 		{ "Light", "Spot Light", &GameObjectFactory::createSpotLight, nullptr },
 		{ "Static Mesh", "Cube", &GameObjectFactory::createCube, nullptr },
 		{ "Static Mesh", "Plane", &GameObjectFactory::createPlane, nullptr },
@@ -128,7 +128,7 @@ void GuiSystem::render(double deltaTime) {
 	if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey")) {
 		if (ImGuiFileDialog::Instance()->IsOk()) {
 			std::string filePath = ImGuiFileDialog::Instance()->GetFilePathName();
-			ResourceManager::getInstance().queueModelLoad(filePath);
+			rm_->queueModelLoad(filePath);
 		}
 		ImGuiFileDialog::Instance()->Close();
 	}
@@ -193,9 +193,9 @@ void GuiSystem::drawAddMenu()
 			if (ImGui::BeginMenu(cat)) {
 				for (const auto& e : kSpawnCatalog) {
 					if (strcmp(e.category, cat) != 0) continue;
-					bool ok = !e.canAdd || e.canAdd();
+					bool ok = !e.canAdd || e.canAdd(*rm_);
 					if (ImGui::MenuItem(e.label, nullptr, false, ok)) {
-						ResourceManager::getInstance().addGameObject(e.create());
+						rm_->addGameObject(e.create());
 					}
 				}
 				ImGui::EndMenu();
@@ -212,7 +212,7 @@ void GuiSystem::drawSceneTree()
 
 	auto renderObjectTreeNode = [&](const char* label, std::function<bool(GameObjectPtr)> predicate) {
 		if (ImGui::TreeNode(label)) {
-			auto gameObjects = ResourceManager::getInstance().getGameObjects();
+			auto gameObjects = rm_->getGameObjects();
 			for (int i = 0; i < gameObjects.size(); i++) {
 				GameObjectPtr object = gameObjects[i];
 				if (predicate(object)) {
@@ -223,7 +223,7 @@ void GuiSystem::drawSceneTree()
 					}
 					if (ImGui::BeginPopupContextItem("ObjectButtonContext")) {
 						if (ImGui::MenuItem(u8"remove")) {
-							ResourceManager::getInstance().removeGameObject(i);
+							rm_->removeGameObject(i);
 							// Only clear selection if the removed object was selected;
 							// removing a different object leaves the highlight intact.
 							if (object == selected) {
@@ -287,7 +287,7 @@ void GuiSystem::showRenderSettingsPanel(double deltaTime)
 		else {
 			Shader::changeSettings("PCF_SHADOW", false);
 		}
-		ResourceManager::getInstance().getShader("default")->reCompile();
+		rm_->getShader("default")->reCompile();
 	}
 	ImGui::Separator();
 
@@ -301,10 +301,10 @@ void GuiSystem::showRenderSettingsPanel(double deltaTime)
 		else {
 			Shader::changeSettings("USE_HDR", false);
 		}
-		ResourceManager::getInstance().getShader("screenQuad")->reCompile();
+		rm_->getShader("screenQuad")->reCompile();
 	}
 	if (ImGui::SliderFloat("Exposure", &exposure, 0.1f, 10.0f)) {
-		ResourceManager::getInstance().getShader("screenQuad")->setFloat("exposure", exposure);
+		rm_->getShader("screenQuad")->setFloat("exposure", exposure);
 	}
 	if (ImGui::Checkbox(u8"Bloom", &bloomChecked)) {
 		if (bloomChecked) {
@@ -313,7 +313,7 @@ void GuiSystem::showRenderSettingsPanel(double deltaTime)
 		else {
 			Shader::changeSettings("USE_BLOOM", false);
 		}
-		ResourceManager::getInstance().getShader("screenQuad")->reCompile();
+		rm_->getShader("screenQuad")->reCompile();
 	}
 	ImGui::Separator();
 
@@ -325,7 +325,7 @@ void GuiSystem::showRenderSettingsPanel(double deltaTime)
 		else {
 			Shader::changeSettings("USE_ENVIRONMENT_MAPPING", false);
 		}
-		ResourceManager::getInstance().getShader("default")->reCompile();
+		rm_->getShader("default")->reCompile();
 	}
 	ImGui::Separator();
 
@@ -353,7 +353,7 @@ void GuiSystem::showAssetsPanel()
 			const float itemHeight = 80.0f;
 			const float padding = 10.0f;
 
-			auto models = ResourceManager::getInstance().getAllModels();
+			auto models = rm_->getAllModels();
 			for (size_t i = 0; i < models.size(); i++) {
 				auto& model = models[i];
 				ImGui::PushID(static_cast<int>(i));
@@ -362,7 +362,7 @@ void GuiSystem::showAssetsPanel()
 				{
 					if (ImGui::MenuItem("Add to Scene"))
 					{
-						ResourceManager::getInstance().addGameObject(GameObjectFactory::createFromModel(model));
+						rm_->addGameObject(GameObjectFactory::createFromModel(model));
 					}
 					ImGui::EndPopup();
 				}

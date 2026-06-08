@@ -14,6 +14,8 @@
 #include <memory>
 #include <vector>
 
+class ResourceManager;
+
 class RenderSystem {
 public:
 	RenderSystem() = default;
@@ -21,6 +23,8 @@ public:
 	void init();
 	void update(double deltaTime);
 	void render(Camera& camera);
+
+	void setResourceManager(ResourceManager* rm) { rm_ = rm; }
 
 	// Public so render passes (which receive RenderSystem* via RenderContext::owner)
 	// can trigger lazy volume-noise generation.
@@ -52,6 +56,9 @@ private:
 	bool noiseRequested = false;   // 是否已发起生成
 	bool noiseReady = false;       // GL 纹理是否已就绪
 	std::future<NoiseVolumeData> worleyFuture, perlinFuture, weatherFuture;
+
+	// Non-owning; injected by Engine. Source of scene views + shaders.
+	ResourceManager* rm_ = nullptr;
 
 	// Ordered render passes, populated once in init() and iterated each frame.
 	std::vector<std::unique_ptr<RenderPass>> passes;

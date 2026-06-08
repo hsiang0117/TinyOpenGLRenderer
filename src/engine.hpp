@@ -3,6 +3,7 @@
 #pragma once
 
 #include "camera.hpp"
+#include "input.hpp"
 #include "core/windowSystem.hpp"
 #include "core/guiSystem.hpp"
 #include "core/resourceManager.hpp"
@@ -10,14 +11,15 @@
 
 class Engine {
 public:
-	static Engine& getInstance();
+	Engine() = default;
+	~Engine() = default;
 	void init();
 	void run();
 private:
-	Engine() = default;
-	~Engine() = default;
+	Input input;
 	Camera camera;
 	WindowSystem windowSystem;
+	ResourceManager resourceManager;
 	RenderSystem renderSystem;
 	GuiSystem guiSystem;
 	double getDeltaTime();

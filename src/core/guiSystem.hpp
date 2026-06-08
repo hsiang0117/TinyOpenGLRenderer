@@ -16,6 +16,7 @@
 using ComponentWidgetFunc = std::function<void(ComponentPtr)>;
 
 class RenderSystem;
+class ResourceManager;
 
 class GuiSystem {
 public:
@@ -23,6 +24,7 @@ public:
 	~GuiSystem() = default;
 	void init(GLFWwindow* window);
 	void setRenderSystem(RenderSystem* rs) { renderSystem_ = rs; }
+	void setResourceManager(ResourceManager* rm) { rm_ = rm; }
 	void beginFrame();
 	void render(double deltaTime);
 	void shutDown();
@@ -65,6 +67,9 @@ private:
 	// Non-owning; set by Engine. The Viewport panel reports its size here and reads
 	// the scene color texture to display.
 	RenderSystem* renderSystem_ = nullptr;
+
+	// Non-owning; injected by Engine. Scene mutation + shader/model access.
+	ResourceManager* rm_ = nullptr;
 };
 
 template<typename T>

@@ -6,7 +6,6 @@ class Input {
 public:
 	Input() = default;
 	~Input() = default;
-	static Input& getInstance();
 	void init();
 	void update();
 	bool isKeyPressed(int key);

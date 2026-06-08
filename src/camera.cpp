@@ -153,10 +153,10 @@ void Camera::processMouseScroll(float yOffset) {
 		fov = 70.0f;
 }
 
-void Camera::update(double deltaTime)
+void Camera::update(double deltaTime, Input& input)
 {
 	static bool movable = false;
-	if (Input::getInstance().isKeyPressed(GLFW_KEY_LEFT_ALT)) {
+	if (input.isKeyPressed(GLFW_KEY_LEFT_ALT)) {
 		movable = !movable;
 		if (!movable) {
 			firstMouse = true;
@@ -167,33 +167,33 @@ void Camera::update(double deltaTime)
 		return;
 	}
 
-	if (Input::getInstance().isKeyHeld(GLFW_KEY_W)) {
+	if (input.isKeyHeld(GLFW_KEY_W)) {
 		processKeyboard(FRONT, deltaTime);
 	}
-	if (Input::getInstance().isKeyHeld(GLFW_KEY_S)) {
+	if (input.isKeyHeld(GLFW_KEY_S)) {
 		processKeyboard(BACK, deltaTime);
 	}
-	if (Input::getInstance().isKeyHeld(GLFW_KEY_A)) {
+	if (input.isKeyHeld(GLFW_KEY_A)) {
 		processKeyboard(LEFT, deltaTime);
 	}
-	if (Input::getInstance().isKeyHeld(GLFW_KEY_D)) {
+	if (input.isKeyHeld(GLFW_KEY_D)) {
 		processKeyboard(RIGHT, deltaTime);
 	}
-	if (Input::getInstance().isKeyHeld(GLFW_KEY_SPACE)) {
+	if (input.isKeyHeld(GLFW_KEY_SPACE)) {
 		processKeyboard(UP, deltaTime);
 	}
-	if (Input::getInstance().isKeyHeld(GLFW_KEY_LEFT_CONTROL)) {
+	if (input.isKeyHeld(GLFW_KEY_LEFT_CONTROL)) {
 		processKeyboard(DOWN, deltaTime);
 	}
 
-	if (Input::getInstance().isMouseMoved()) {
-		double xPos = Input::getInstance().getMouseX();
-		double yPos = Input::getInstance().getMouseY();
+	if (input.isMouseMoved()) {
+		double xPos = input.getMouseX();
+		double yPos = input.getMouseY();
 		processMouseMovement((float)xPos, (float)yPos);
 	}
 
-	if (Input::getInstance().isScrollMoved()) {
-		double yOffset = Input::getInstance().getScrollY();
+	if (input.isScrollMoved()) {
+		double yOffset = input.getScrollY();
 		processMouseScroll((float)yOffset);
 	}
 }
