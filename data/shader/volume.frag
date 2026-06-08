@@ -76,17 +76,20 @@ float getHeightGradient(float heightFraction, float cloudType) {
 	return mix(a, cumulus, clamp(cloudType * 2.0 - 1.0, 0.0, 1.0));
 }
 
-float getCloudDensity(vec3 p) {
-	// --- Cheap empty-space rejection first (output-identical reorder). --------
-	// heightGradient is analytic (0 texture fetches); coverage costs 1 weather
-	// fetch. The base shape below is a 4-octave Worley FBM whose maximum possible
-	// value is the sum of the octave amplitudes (0.5+0.25+0.125+0.0625 = 0.9375).
-	// If even that maximum cannot clear the coverage remap floor (1 - coverage),
-	// the post-remap density is provably 0 regardless of the noise, so the 6
-	// expensive warp + FBM fetches can be skipped. Most steps in a cloud box are
-	// empty, so this turns their ~7-fetch cost into 0-1 fetches with no change in
-	// output.
-	float heightFraction = clamp((p.y - aabbMin.y) / (aabbMax.y - aabbMin.y), 0.0, 1.0);
+// Shared cloud silhouette field: domain warp + 4-octave Worley FBM, shaped by the
+// analytic height gradient and weather coverage. This is the base density field
+// common to BOTH the view march and the light (shadow) march, so self-shadowing is
+// sampled from the same medium that is rendered. Returns the post-coverage density
+// in [0,1] (0 in empty space, via the same provably-safe early-outs as before).
+// Outputs heightFraction so callers reuse it without a recompute.
+//
+// Cheap empty-space rejection runs first: heightGradient is analytic (0 fetches),
+// coverage costs 1 weather fetch. The FBM below has maximum value equal to the sum
+// of its octave amplitudes (0.5+0.25+0.125+0.0625 = 0.9375); if even that maximum
+// cannot clear the coverage remap floor (1 - coverage), the result is provably 0 for
+// all noise, so the 6 warp + FBM fetches are skipped with no change in output.
+float cloudBaseDensity(vec3 p, out float heightFraction) {
+	heightFraction = clamp((p.y - aabbMin.y) / (aabbMax.y - aabbMin.y), 0.0, 1.0);
 	float heightGradient = getHeightGradient(heightFraction, 0.1);
 	if (heightGradient <= 0.0) return 0.0;
 
@@ -98,7 +101,6 @@ float getCloudDensity(vec3 p) {
 	const float NOISE_MAX = 0.9375;
 	if (NOISE_MAX * heightGradient <= 1.0 - coverage) return 0.0;
 
-	// --- Expensive base shape: domain warp (2 fetches) + 4-octave FBM (4). ----
 	vec3 warp = vec3(
 		texture(perlinNoiseTexture, p * 0.003).r,
 		0.0,
@@ -118,9 +120,15 @@ float getCloudDensity(vec3 p) {
 	}
 
 	float baseDensity = baseNoise * heightGradient;
-	baseDensity = clamp(remap(baseDensity, 1.0 - coverage, 1.0, 0.0, 1.0), 0.0, 1.0);
+	return clamp(remap(baseDensity, 1.0 - coverage, 1.0, 0.0, 1.0), 0.0, 1.0);
+}
+
+float getCloudDensity(vec3 p) {
+	float heightFraction;
+	float baseDensity = cloudBaseDensity(p, heightFraction);
 	if (baseDensity <= 0.0) return 0.0;
 
+	// View-only high-frequency detail erosion (carves the visible cloud edges).
 	vec3 detailPos = p + vec3(time, 0.0, time);
 	float detailNoise = texture(perlinNoiseTexture, detailPos * 0.01).r;
 	float detailModifier = mix(detailNoise, 1.0 - detailNoise, clamp(heightFraction * 5.0, 0.0, 1.0));
@@ -132,20 +140,15 @@ float getCloudDensity(vec3 p) {
 }
 
 float getCloudDensityLight(vec3 p) {
-	float density = sampleNoise(p);
-
-	vec2 weatherUv = vec2((p.x - aabbMin.x) / (aabbMax.x - aabbMin.x), (p.z - aabbMin.z) / (aabbMax.z - aabbMin.z));
-	weatherUv = clamp(weatherUv, 0.0, 1.0);
-	float weather = texture(weatherMap, weatherUv).r;
-	float coverage = mix(0.3, 0.85, weather);
-	float heightFraction = clamp((p.y - aabbMin.y) / (aabbMax.y - aabbMin.y), 0.0, 1.0);
-	float heightGradient = getHeightGradient(heightFraction, 0.1);
-
-	float baseDensity = density * heightGradient;
-	baseDensity = clamp(remap(baseDensity, 1.0 - coverage, 1.0, 0.0, 1.0), 0.0, 1.0);
-
+	// Shadow density is the SAME silhouette field as the view march, minus the
+	// high-frequency detail erosion (a legitimate cheap-light approximation, since
+	// shadowing is low frequency). It previously used a single raw noise tap, which —
+	// through the identical coverage remap — produced a structurally different field
+	// at a different magnitude, placing self-shadows that did not match the visible
+	// cloud. Sharing cloudBaseDensity makes the light field a true band-limited subset.
+	float heightFraction;
+	float baseDensity = cloudBaseDensity(p, heightFraction);
 	baseDensity *= getEdgeFade(p, 10.0);
-
 	return baseDensity;
 }
 
@@ -229,7 +232,7 @@ vec4 cloudRayMarching(vec3 rayOrigin, vec3 rayDirection, float maxDst, mat4 invV
 		vec3 ambientLight = mix(ambientBottom, ambientTop, heightFraction);
 		ambientLight *= length(lightColor) * 0.25;
 
-		vec3 currentLight = (totalScattering + ambientLight) * 5.0;
+		vec3 currentLight = (totalScattering + ambientLight) * 2.5;
 		lightEnergy += density * currentStepLen * transmittance * currentLight;
 
 		float viewAttenuation = 2.0;
