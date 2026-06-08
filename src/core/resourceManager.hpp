@@ -9,6 +9,7 @@
 #include <iostream>
 #include <queue>
 #include <unordered_map>
+#include <typeindex>
 
 
 class ModelLoader{
@@ -127,18 +128,21 @@ public:
 	void addObject(GameObjectPtr obj) {
 		if (!obj) return;
 		objects.push_back(obj);
+		viewCache_.clear();
 	}
 
 	void removeObject(GameObjectPtr obj) {
 		auto it = std::find(objects.begin(), objects.end(), obj);
 		if (it != objects.end()) {
 			objects.erase(it);
+			viewCache_.clear();
 		}
 	}
 
 	void removeObjectByIndex(size_t idx) {
 		if (idx < objects.size()) {
 			objects.erase(objects.begin() + idx);
+			viewCache_.clear();
 		}
 	}
 
@@ -169,13 +173,21 @@ public:
 		return filtered;
 	}
 
+	// Cached component view. Built lazily on first request per type, returned by
+	// const-ref thereafter. Cache is cleared whenever objects are added/removed.
+	// CONTRACT: components must not be added to an object already in the scene
+	// (today all addComponent happens in GameObjectFactory before addObject). If
+	// that ever changes, call viewCache_.clear() after mutating an in-scene object.
 	template<typename T>
-	std::vector<GameObjectPtr> getView() const {
+	const std::vector<GameObjectPtr>& getView() const {
+		std::type_index key(typeid(T));
+		auto it = viewCache_.find(key);
+		if (it != viewCache_.end()) return it->second;
 		std::vector<GameObjectPtr> filtered;
 		for (auto& obj : objects) {
 			if (obj && obj->has<T>()) filtered.push_back(obj);
 		}
-		return filtered;
+		return viewCache_.emplace(key, std::move(filtered)).first->second;
 	}
 
 	size_t getObjectCount() const { return objects.size(); }
@@ -186,12 +198,14 @@ public:
 	void shutdown() {
 		objects.clear();
 		while (!removalQueue.empty()) removalQueue.pop();
+		viewCache_.clear();
 	}
 
 private:
 	std::string name = "Untitled";
 	std::vector<GameObjectPtr> objects;
 	std::queue<size_t> removalQueue;
+	mutable std::unordered_map<std::type_index, std::vector<GameObjectPtr>> viewCache_;
 };
 
 using ScenePtr = std::shared_ptr<Scene>;
@@ -258,7 +272,7 @@ public:
 	int getSpotLightCount() const { return (int)currentScene->getView<SpotLightComponent>().size(); }
 
 	template<typename T>
-	std::vector<GameObjectPtr> getSceneView() const {
+	const std::vector<GameObjectPtr>& getSceneView() const {
 		return currentScene->getView<T>();
 	}
 
