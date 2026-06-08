@@ -25,6 +25,11 @@ public:
 	// Public so render passes (which receive RenderSystem* via RenderContext::owner)
 	// can trigger lazy volume-noise generation.
 	void ensureVolumeNoise(bool sceneHasVolume);
+
+	// Viewport panel hand-off: GuiSystem reports its content size each frame; the
+	// scene is rendered into sceneColorTexture at that size and displayed via Image.
+	void setViewportSize(int w, int h);
+	unsigned int getSceneColorTextureID() const;
 private:
 	float x, y, width, height;
 	UniformBuffer uboMatrices;
@@ -35,6 +40,12 @@ private:
 	Texture3D worleyNoiseTexture3D;
 	Texture3D perlinNoiseTexture3D;
 	CubeMapArray pointLightDepthTexture;
+
+	// Offscreen scene target: the final composite lands here; the Viewport panel
+	// samples it via ImGui::Image. Sized to the Viewport panel content region.
+	FrameBuffer sceneFBO;
+	Texture2D sceneColorTexture;
+	int viewportW_ = 1280, viewportH_ = 720;   // latest size requested by the Viewport panel
 
 	// 体积云噪声纹理：延迟 + 后台生成。仅当场景出现体积云时才在 worker 线程
 	// 并行计算（带磁盘缓存），算完在主线程上传 GL。避免启动时白屏。

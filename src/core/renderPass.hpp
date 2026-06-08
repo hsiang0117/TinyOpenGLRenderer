@@ -46,6 +46,7 @@ struct RenderContext {
 	FrameBuffer* hdrFBO = nullptr;
 	FrameBuffer* pingpongFBO[2] = { nullptr, nullptr };
 	FrameBuffer* afterEffectFBO = nullptr;
+	FrameBuffer* sceneFBO = nullptr;            // offscreen target for the Viewport panel
 
 	Texture2D* directionLightDepthTexture = nullptr;
 	CubeMapArray* pointLightDepthTexture = nullptr;
@@ -54,6 +55,7 @@ struct RenderContext {
 	Texture2D* hdrDepthTexture = nullptr;
 	Texture2D* pingpongTexture[2] = { nullptr, nullptr };
 	Texture2D* afterEffectTexture = nullptr;
+	Texture2D* sceneColorTexture = nullptr;     // composite lands here (Viewport panel)
 
 	// volume-cloud noise: owned by RenderSystem; pass reads + triggers lazy gen
 	RenderSystem* owner = nullptr;

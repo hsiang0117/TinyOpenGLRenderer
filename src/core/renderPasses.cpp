@@ -240,10 +240,17 @@ void BloomPass::execute(RenderContext& ctx) {
 }
 
 void CompositePass::execute(RenderContext& ctx) {
-	glViewport(ctx.x, ctx.y, ctx.width, ctx.height);
+	// Composite into the offscreen scene target (the Viewport panel samples it),
+	// not the backbuffer. Color-only FBO; disable depth test so the fullscreen
+	// quad (z=0) is never rejected by the global GL_LEQUAL.
+	ctx.sceneFBO->bind();
+	glViewport(0, 0, (GLsizei)ctx.width, (GLsizei)ctx.height);
+	glDisable(GL_DEPTH_TEST);
 	ctx.screenQuadShader->use();
 	ctx.hdrTexture->use(GL_TEXTURE0);
 	ctx.pingpongTexture[1]->use(GL_TEXTURE1);
 	ctx.afterEffectTexture->use(GL_TEXTURE2);
 	RenderHelpers::drawScreenQuad();
+	glEnable(GL_DEPTH_TEST);
+	ctx.sceneFBO->unbind();
 }

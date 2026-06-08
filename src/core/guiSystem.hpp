@@ -13,17 +13,16 @@
 #include <typeinfo>
 #include <memory>
 
-#define SPLITTER_THICKNESS 4
-
-enum class SplitterAxis { Vertical, Horizontal };
-
 using ComponentWidgetFunc = std::function<void(ComponentPtr)>;
+
+class RenderSystem;
 
 class GuiSystem {
 public:
 	GuiSystem() = default;
 	~GuiSystem() = default;
 	void init(GLFWwindow* window);
+	void setRenderSystem(RenderSystem* rs) { renderSystem_ = rs; }
 	void beginFrame();
 	void render(double deltaTime);
 	void shutDown();
@@ -33,10 +32,6 @@ public:
 	void registerComponentWidget(std::function<void(std::shared_ptr<T>)> func);
 
 	void showComponentWidget(std::shared_ptr<Component> comp);
-
-	static float leftSideBarWidth;
-	static float rightSideBarWidth;
-	static float bottomSideBarHeight;
 private:
 	// component type -> detail-panel widget. Keyed by type_index (decided at compile time
 	// from the template parameter), removing the old "registration string must match
@@ -46,14 +41,20 @@ private:
 		return registry;
 	}
 
-	void showLeftSideBar();
+	// Dockable panels (each a top-level ImGui window).
+	void showScenePanel();
+	void showInspectorPanel();
+	void showRenderSettingsPanel(double deltaTime);
+	void showAssetsPanel();
+	void showViewportPanel();
 	void drawAddMenu();
 	void drawSceneTree();
 	void drawInspector();
-	void showRightSideBar(double deltaTime);
-	void showBottomSideBar();
 	void drawConsoleTab();
 	void registComponents();
+
+	// Build the default dock layout once, on first run when no imgui.ini exists.
+	void buildDefaultLayoutOnce(ImGuiID dockspaceId);
 
 	// Current selection: a single identity-based source of truth shared by the
 	// scene tree (highlight + writes) and the inspector (reads). Highlight is by
@@ -61,13 +62,9 @@ private:
 	// weak_ptr auto-expires if the selected object is destroyed elsewhere.
 	std::weak_ptr<GameObject> objectSelected_;
 
-	// Shared draggable splitter. pos = top-left in screen space, length = the
-	// extent along the bar, sizeRef = the panel dimension it resizes, sign = +1/-1
-	// for which side the drag grows, clamped to [minSize, maxSize].
-	void drawSplitter(const char* id, SplitterAxis axis, ImVec2 pos, float length,
-	                  float& sizeRef, float sign, float minSize, float maxSize);
-
-	float clamp(float value, float min, float max) { return std::max(min, std::min(value, max)); }
+	// Non-owning; set by Engine. The Viewport panel reports its size here and reads
+	// the scene color texture to display.
+	RenderSystem* renderSystem_ = nullptr;
 };
 
 template<typename T>

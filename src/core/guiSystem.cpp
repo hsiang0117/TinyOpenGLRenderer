@@ -4,17 +4,15 @@
 #include "../gameObjectFactory.hpp"
 #include "resourceManager.hpp"
 #include "windowSystem.hpp"
+#include "renderSystem.hpp"
 #include "logger.hpp"
 #include "imgui/imgui_impl_glfw.h"
 #include "imgui/imgui_impl_opengl3.h"
+#include "imgui/imgui_internal.h"
 #include "imgui/ImGuiFileDialog.h"
 #include <glm/gtc/type_ptr.hpp>
 #include <vector>
 #include <cstring>
-
-float GuiSystem::leftSideBarWidth = 300.0f;
-float GuiSystem::rightSideBarWidth = 300.0f;
-float GuiSystem::bottomSideBarHeight = 200.0f;
 
 namespace {
 	// Scene-tree classification predicates (extracted from the former inline lambdas).
@@ -64,6 +62,7 @@ void GuiSystem::init(GLFWwindow* window) {
 		io.FontDefault = font;
 	}
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+	io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 	ImGui_ImplGlfw_InitForOpenGL(window, true);
 	ImGui_ImplOpenGL3_Init("#version 450");
 	ImGui::StyleColorsDark();
@@ -76,20 +75,57 @@ void GuiSystem::beginFrame() {
 	ImGui::NewFrame();
 }
 
+void GuiSystem::buildDefaultLayoutOnce(ImGuiID dockspaceId)
+{
+	// Runs once on first launch (no imgui.ini). If a node already exists (ini
+	// restored or built last frame), leave the user's layout alone.
+	if (ImGui::DockBuilderGetNode(dockspaceId) != nullptr) return;
+
+	ImGui::DockBuilderRemoveNode(dockspaceId);
+	ImGui::DockBuilderAddNode(dockspaceId, ImGuiDockNodeFlags_DockSpace);
+	ImGui::DockBuilderSetNodeSize(dockspaceId, ImGui::GetMainViewport()->WorkSize);
+
+	ImGuiID center = dockspaceId;
+	ImGuiID left = ImGui::DockBuilderSplitNode(center, ImGuiDir_Left, 0.20f, nullptr, &center);
+	ImGuiID right = ImGui::DockBuilderSplitNode(center, ImGuiDir_Right, 0.25f, nullptr, &center);
+	ImGuiID bottom = ImGui::DockBuilderSplitNode(center, ImGuiDir_Down, 0.28f, nullptr, &center);
+
+	ImGui::DockBuilderDockWindow("Scene", left);
+	ImGui::DockBuilderDockWindow("Inspector", left);          // stacked tab under Scene
+	ImGui::DockBuilderDockWindow("Render Settings", right);
+	ImGui::DockBuilderDockWindow("Assets", bottom);
+	ImGui::DockBuilderDockWindow("Viewport", center);         // central node
+	ImGui::DockBuilderFinish(dockspaceId);
+}
+
 void GuiSystem::render(double deltaTime) {
-	ImGuiViewport* viewport = ImGui::GetMainViewport();
-	ImGui::SetNextWindowPos(viewport->Pos);
-	ImGui::SetNextWindowSize(viewport->Size);
-	ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoBackground |
-		ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse;
-	ImGui::Begin("MainViewport", nullptr, windowFlags);
-	showLeftSideBar();
-	showRightSideBar(deltaTime);
-	showBottomSideBar();
+	// Fullscreen, non-dockable host window that owns the dockspace.
+	ImGuiViewport* vp = ImGui::GetMainViewport();
+	ImGui::SetNextWindowPos(vp->WorkPos);
+	ImGui::SetNextWindowSize(vp->WorkSize);
+	ImGui::SetNextWindowViewport(vp->ID);
+	ImGuiWindowFlags hostFlags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse |
+		ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBringToFrontOnFocus |
+		ImGuiWindowFlags_NoNavFocus | ImGuiWindowFlags_NoDocking;
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+	ImGui::Begin("DockHost", nullptr, hostFlags);
+	ImGui::PopStyleVar(3);
+
+	ImGuiID dockspaceId = ImGui::GetID("MainDockSpace");
+	buildDefaultLayoutOnce(dockspaceId);
+	ImGui::DockSpace(dockspaceId, ImVec2(0.0f, 0.0f));
 	ImGui::End();
 
-	// Display the file dialog as a top-level (modal) window, after MainViewport's
-	// End() so it is layered above the fullscreen panel and receives input.
+	showScenePanel();
+	showInspectorPanel();
+	showRenderSettingsPanel(deltaTime);
+	showAssetsPanel();
+	showViewportPanel();
+
+	// Display the file dialog as a top-level (modal) window, after the panels so it
+	// layers above them and receives input.
 	if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey")) {
 		if (ImGuiFileDialog::Instance()->IsOk()) {
 			std::string filePath = ImGuiFileDialog::Instance()->GetFilePathName();
@@ -108,59 +144,40 @@ void GuiSystem::shutDown() {
 	ImGui::DestroyContext();
 }
 
-void GuiSystem::drawSplitter(const char* id, SplitterAxis axis, ImVec2 pos, float length,
-	float& sizeRef, float sign, float minSize, float maxSize)
+void GuiSystem::showScenePanel()
 {
-	ImGui::SetCursorScreenPos(pos);
-	ImVec2 size = (axis == SplitterAxis::Vertical)
-		? ImVec2(SPLITTER_THICKNESS, length) : ImVec2(length, SPLITTER_THICKNESS);
-	if (length > 0) {
-		ImGui::InvisibleButton(id, size);
-	}
-	if (ImGui::IsItemActive()) {
-		float delta = (axis == SplitterAxis::Vertical)
-			? ImGui::GetIO().MouseDelta.x : ImGui::GetIO().MouseDelta.y;
-		sizeRef = clamp(sizeRef + sign * delta, minSize, maxSize);
-		Input::getInstance().onUiResized();
-	}
-	ImGui::GetWindowDrawList()->AddRectFilled(
-		pos, ImVec2(pos.x + size.x, pos.y + size.y), IM_COL32(200, 200, 200, 180));
-}
-
-void GuiSystem::showLeftSideBar()
-{
-	ImGuiViewport* viewport = ImGui::GetMainViewport();
-
-	ImGui::SetCursorPos({ 0, 0 });
-	ImGui::BeginChild("LeftSidebar", ImVec2(leftSideBarWidth, viewport->Size.y - bottomSideBarHeight - SPLITTER_THICKNESS), true, ImGuiWindowFlags_NoMove);
-
-	ImVec2 avalableSize = ImGui::GetContentRegionAvail();
-	ImGui::BeginChild(u8"scenePanel", ImVec2(0, avalableSize.y/2), false, ImGuiWindowFlags_MenuBar);
+	ImGui::Begin("Scene", nullptr, ImGuiWindowFlags_MenuBar);
 	if (ImGui::BeginMenuBar()) {
-		ImGui::Text("Scene");
 		drawAddMenu();
 		ImGui::EndMenuBar();
 	}
-	ImGui::BeginChild(u8"sceneRegion", ImVec2(0, 0), true);
 	drawSceneTree();
-	ImGui::EndChild();
-	ImGui::EndChild();
+	ImGui::End();
+}
 
-	ImGui::BeginChild(u8"detailPanel", ImVec2(0, 0), false, ImGuiWindowFlags_MenuBar);
-	if (ImGui::BeginMenuBar()) {
-		ImGui::Text("Detail");
-		ImGui::EndMenuBar();
-	}
-	ImGui::BeginChild(u8"detailRegion", ImVec2(0, 0), true);
+void GuiSystem::showInspectorPanel()
+{
+	ImGui::Begin("Inspector");
 	drawInspector();
-	ImGui::EndChild();
-	ImGui::EndChild();
+	ImGui::End();
+}
 
-	ImGui::EndChild();
-
-	float leftSplitterHeight = viewport->Size.y - bottomSideBarHeight - SPLITTER_THICKNESS;
-	drawSplitter("##SplitterLeft", SplitterAxis::Vertical, ImVec2(leftSideBarWidth, 0),
-		leftSplitterHeight, leftSideBarWidth, +1.0f, 100.0f, viewport->Size.x / 3);
+void GuiSystem::showViewportPanel()
+{
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+	ImGui::Begin("Viewport");
+	ImVec2 avail = ImGui::GetContentRegionAvail();
+	int w = (int)avail.x; if (w < 1) w = 1;
+	int h = (int)avail.y; if (h < 1) h = 1;
+	if (renderSystem_) {
+		// Report panel size (drives the scene FBO size on the next frame) and show
+		// the rendered scene. UV flipped vertically: GL textures are bottom-up.
+		renderSystem_->setViewportSize(w, h);
+		ImTextureID texId = (ImTextureID)(intptr_t)renderSystem_->getSceneColorTextureID();
+		ImGui::Image(texId, avail, ImVec2(0, 1), ImVec2(1, 0));
+	}
+	ImGui::End();
+	ImGui::PopStyleVar();
 }
 
 void GuiSystem::drawAddMenu()
@@ -238,17 +255,9 @@ void GuiSystem::drawInspector()
 	}
 }
 
-void GuiSystem::showRightSideBar(double deltaTime)
+void GuiSystem::showRenderSettingsPanel(double deltaTime)
 {
-	ImGuiViewport* viewport = ImGui::GetMainViewport();
-
-	ImGui::SetCursorScreenPos({ viewport->Size.x - rightSideBarWidth, 0 });
-	ImGui::BeginChild("RightSidebar", ImVec2(rightSideBarWidth, viewport->Size.y - bottomSideBarHeight - SPLITTER_THICKNESS), true, ImGuiWindowFlags_NoMove);
-	ImGui::BeginChild(u8"renderSettingsPanel", ImVec2(0, 0), false, ImGuiWindowFlags_MenuBar);
-	if (ImGui::BeginMenuBar()) {
-		ImGui::Text("Render Settings");
-		ImGui::EndMenuBar();
-	}
+	ImGui::Begin("Render Settings");
 
 	static double fpsTimer = 0.0;
 	static int frameCount = 0;
@@ -321,21 +330,12 @@ void GuiSystem::showRightSideBar(double deltaTime)
 	}
 	ImGui::Separator();
 
-	ImGui::EndChild();
-	ImGui::EndChild();
-
-	float rightSplitterHeight = viewport->Size.y - bottomSideBarHeight - SPLITTER_THICKNESS;
-	drawSplitter("##SplitterRight", SplitterAxis::Vertical,
-		ImVec2(viewport->Size.x - rightSideBarWidth - SPLITTER_THICKNESS, 0),
-		rightSplitterHeight, rightSideBarWidth, -1.0f, 100.0f, viewport->Size.x / 3);
+	ImGui::End();
 }
 
-void GuiSystem::showBottomSideBar()
+void GuiSystem::showAssetsPanel()
 {
-	ImGuiViewport* viewport = ImGui::GetMainViewport();
-
-	ImGui::SetCursorScreenPos({ 0, viewport->Size.y - bottomSideBarHeight});
-	ImGui::BeginChild("BottomSidebar", ImVec2(viewport->Size.x, bottomSideBarHeight), true, ImGuiWindowFlags_NoMove);
+	ImGui::Begin("Assets");
 
 	if (ImGui::BeginTabBar("BottomTabs")) {
 		if (ImGui::BeginTabItem("Models")) {
@@ -383,11 +383,7 @@ void GuiSystem::showBottomSideBar()
 		ImGui::EndTabBar();
 	}
 
-	ImGui::EndChild();
-
-	drawSplitter("##SplitterBottom", SplitterAxis::Horizontal,
-		ImVec2(0, viewport->Size.y - bottomSideBarHeight - SPLITTER_THICKNESS),
-		viewport->Size.x, bottomSideBarHeight, -1.0f, 100.0f, viewport->Size.y / 2);
+	ImGui::End();
 }
 
 void GuiSystem::drawConsoleTab()

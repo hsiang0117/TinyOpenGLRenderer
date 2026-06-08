@@ -14,6 +14,7 @@ void Engine::init() {
 	renderSystem.init();
 	ResourceManager::getInstance().init();
 	guiSystem.init(windowSystem.getWindow());
+	guiSystem.setRenderSystem(&renderSystem);
 	ResourceManager::getInstance().setCurrentScene(SceneFactory::createDefaultScene());
 }
 

@@ -63,7 +63,7 @@ public:
 	const char* name() const override { return "Bloom"; }
 };
 
-// Final composite (hdr + bloom + after-effect) -> backbuffer.
+// Final composite (hdr + bloom + after-effect) -> sceneColorTexture (Viewport panel).
 class CompositePass : public RenderPass {
 public:
 	void execute(RenderContext& ctx) override;

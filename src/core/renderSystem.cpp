@@ -14,19 +14,6 @@
 #include <iostream>
 #include <algorithm>
 
-// Viewport size = window size - sidebars. When the window is minimized this can
-// go negative; clamp to at least 1 so glViewport / resetSize never get a negative
-// width/height (which triggers GL_INVALID_VALUE).
-static float viewportWidth() {
-	float w = Input::getInstance().getWindowWidth() - GuiSystem::leftSideBarWidth - GuiSystem::rightSideBarWidth;
-	return std::max(w, 1.0f);
-}
-
-static float viewportHeight() {
-	float h = Input::getInstance().getWindowHeight() - GuiSystem::bottomSideBarHeight;
-	return std::max(h, 1.0f);
-}
-
 static void APIENTRY glDebugOutput(GLenum source, GLenum type, unsigned int id, GLenum severity,
 	GLsizei length, const char* message, const void* userParam) {
 	// Skip low-value notifications (e.g. buffer detail messages)
@@ -79,10 +66,12 @@ void RenderSystem::init() {
 		}
 	}
 #endif
-	x = GuiSystem::leftSideBarWidth;
-	y = GuiSystem::bottomSideBarHeight;
-	width = viewportWidth();
-	height = viewportHeight();
+	x = 0;
+	y = 0;
+	// Size-dependent targets follow the Viewport panel, not the window. Seed from
+	// the initial viewport guess; update() resizes once the panel reports its size.
+	width = (float)viewportW_;
+	height = (float)viewportH_;
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_PROGRAM_POINT_SIZE);
 	glDepthFunc(GL_LEQUAL);
@@ -155,6 +144,15 @@ void RenderSystem::init() {
 	afterEffectFBO.attachTexture2D(afterEffectTexture, GL_COLOR_ATTACHMENT0);
 	afterEffectFBO.unbind();
 
+	// Offscreen scene target for the Viewport panel. Color-only (no depth needed for
+	// the composite fullscreen quad), CLAMP_TO_EDGE + LINEAR so ImGui samples it clean.
+	sceneFBO.init();
+	sceneColorTexture = Texture2D(width, height, GL_CLAMP_TO_EDGE, GL_LINEAR, GL_RGBA16F, GL_RGBA, GL_FLOAT);
+	sceneFBO.bind();
+	sceneFBO.attachTexture2D(sceneColorTexture, GL_COLOR_ATTACHMENT0);
+	sceneFBO.drawBuffers({ GL_COLOR_ATTACHMENT0 });
+	sceneFBO.unbind();
+
 	// Volume-cloud noise is not generated here; it is built in the background the
 	// first time the scene contains a volume (see ensureVolumeNoise).
 
@@ -207,32 +205,32 @@ void RenderSystem::ensureVolumeNoise(bool sceneHasVolume) {
 }
 
 void RenderSystem::update(double deltaTime) {
-	if (Input::getInstance().isWindowResized()) {
-		width = viewportWidth();
-		height = viewportHeight();
+	// FBO sizing follows the Viewport panel content size (set via setViewportSize),
+	// not the OS window. Resize all size-dependent targets when it changes.
+	if ((int)width != viewportW_ || (int)height != viewportH_) {
+		width = (float)viewportW_;
+		height = (float)viewportH_;
 		hdrTexture.resetSize(width, height);
 		brightTexture.resetSize(width, height);
 		hdrDepthTexture.resetSize(width, height);
 		pingpongTexture[0].resetSize(width, height);
 		pingpongTexture[1].resetSize(width, height);
 		afterEffectTexture.resetSize(width, height);
-	}
-	if (Input::getInstance().isUiResized()) {
-		x = GuiSystem::leftSideBarWidth;
-		y = GuiSystem::bottomSideBarHeight;
-		width = viewportWidth();
-		height = viewportHeight();
-		hdrTexture.resetSize(width, height);
-		brightTexture.resetSize(width, height);
-		hdrDepthTexture.resetSize(width, height);
-		pingpongTexture[0].resetSize(width, height);
-		pingpongTexture[1].resetSize(width, height);
-		afterEffectTexture.resetSize(width, height);
+		sceneColorTexture.resetSize(width, height);
 	}
 	for (auto& obj : ResourceManager::getInstance().getSceneView<AnimatorComponent>()) {
 		auto animator = obj->getComponent<AnimatorComponent>();
 		if (animator->playing) animator->update(deltaTime);
 	}
+}
+
+void RenderSystem::setViewportSize(int w, int h) {
+	viewportW_ = std::max(w, 1);
+	viewportH_ = std::max(h, 1);
+}
+
+unsigned int RenderSystem::getSceneColorTextureID() const {
+	return sceneColorTexture.ID;
 }
 
 RenderContext RenderSystem::buildContext(Camera& camera) {
@@ -272,6 +270,7 @@ RenderContext RenderSystem::buildContext(Camera& camera) {
 	ctx.pingpongFBO[0] = &pingpongFBO[0];
 	ctx.pingpongFBO[1] = &pingpongFBO[1];
 	ctx.afterEffectFBO = &afterEffectFBO;
+	ctx.sceneFBO = &sceneFBO;
 	ctx.directionLightDepthTexture = &directionLightDepthTexture;
 	ctx.pointLightDepthTexture = &pointLightDepthTexture;
 	ctx.hdrTexture = &hdrTexture;
@@ -280,6 +279,7 @@ RenderContext RenderSystem::buildContext(Camera& camera) {
 	ctx.pingpongTexture[0] = &pingpongTexture[0];
 	ctx.pingpongTexture[1] = &pingpongTexture[1];
 	ctx.afterEffectTexture = &afterEffectTexture;
+	ctx.sceneColorTexture = &sceneColorTexture;
 	ctx.owner = this;
 	ctx.worleyNoiseTexture3D = &worleyNoiseTexture3D;
 	ctx.perlinNoiseTexture3D = &perlinNoiseTexture3D;
