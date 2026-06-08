@@ -77,6 +77,28 @@ float getHeightGradient(float heightFraction, float cloudType) {
 }
 
 float getCloudDensity(vec3 p) {
+	// --- Cheap empty-space rejection first (output-identical reorder). --------
+	// heightGradient is analytic (0 texture fetches); coverage costs 1 weather
+	// fetch. The base shape below is a 4-octave Worley FBM whose maximum possible
+	// value is the sum of the octave amplitudes (0.5+0.25+0.125+0.0625 = 0.9375).
+	// If even that maximum cannot clear the coverage remap floor (1 - coverage),
+	// the post-remap density is provably 0 regardless of the noise, so the 6
+	// expensive warp + FBM fetches can be skipped. Most steps in a cloud box are
+	// empty, so this turns their ~7-fetch cost into 0-1 fetches with no change in
+	// output.
+	float heightFraction = clamp((p.y - aabbMin.y) / (aabbMax.y - aabbMin.y), 0.0, 1.0);
+	float heightGradient = getHeightGradient(heightFraction, 0.1);
+	if (heightGradient <= 0.0) return 0.0;
+
+	vec2 weatherUv = vec2((p.x - aabbMin.x) / (aabbMax.x - aabbMin.x), (p.z - aabbMin.z) / (aabbMax.z - aabbMin.z));
+	weatherUv = clamp(weatherUv, 0.0, 1.0);
+	float weather = texture(weatherMap, weatherUv).r;
+	float coverage = mix(0.3, 0.85, weather);
+
+	const float NOISE_MAX = 0.9375;
+	if (NOISE_MAX * heightGradient <= 1.0 - coverage) return 0.0;
+
+	// --- Expensive base shape: domain warp (2 fetches) + 4-octave FBM (4). ----
 	vec3 warp = vec3(
 		texture(perlinNoiseTexture, p * 0.003).r,
 		0.0,
@@ -94,14 +116,6 @@ float getCloudDensity(vec3 p) {
 		frequency *= 2.0;
 		offset += vec3(31.416, -47.853, 12.679);
 	}
-
-	vec2 weatherUv = vec2((p.x - aabbMin.x) / (aabbMax.x - aabbMin.x), (p.z - aabbMin.z) / (aabbMax.z - aabbMin.z));
-	weatherUv = clamp(weatherUv, 0.0, 1.0);
-	float weather = texture(weatherMap, weatherUv).r;
-	float coverage = mix(0.3, 0.85, weather);
-
-	float heightFraction = clamp((p.y - aabbMin.y) / (aabbMax.y - aabbMin.y), 0.0, 1.0);
-	float heightGradient = getHeightGradient(heightFraction, 0.1);
 
 	float baseDensity = baseNoise * heightGradient;
 	baseDensity = clamp(remap(baseDensity, 1.0 - coverage, 1.0, 0.0, 1.0), 0.0, 1.0);
@@ -151,7 +165,16 @@ float lightMarch(vec3 startPos, vec3 lightDir){
 }
 
 vec4 cloudRayMarching(vec3 rayOrigin, vec3 rayDirection, float maxDst, mat4 invVP){
-	float stepLen = maxDst / 64.0;
+	// World-space step count: keep the sample spacing roughly constant (~2 world
+	// units, which resolves the finest significant noise octave) instead of always
+	// 64 steps regardless of box size. A ~128-unit traversal still yields 64 steps;
+	// thinner boxes spend fewer steps at the same spacing, very large boxes get more
+	// (up to 96) instead of undersampling. Clamped to [32, 96]; the constant 96
+	// upper loop bound below keeps the GLSL loop portable/unrollable. Changing the
+	// count is a quadrature-resolution change only (Beer-Lambert integrates the same),
+	// so it affects banding, not overall brightness.
+	int numSteps = int(clamp(maxDst / 2.0, 32.0, 96.0));
+	float stepLen = maxDst / float(numSteps);
 	vec2 uv = gl_FragCoord.xy / resolution;
 	float jitter = interleavedGradientNoise(gl_FragCoord.xy) * stepLen;
 	vec3 testPoint = rayOrigin + rayDirection * jitter;
@@ -173,7 +196,8 @@ vec4 cloudRayMarching(vec3 rayOrigin, vec3 rayDirection, float maxDst, mat4 invV
 	float cosAngle = dot(rayDirection, lightDir);
 	float phaseVal = phase(cosAngle);
 
-	for(int i = 0; i < 64; i++){
+	for(int i = 0; i < 96; i++){
+		if (i >= numSteps) break;
 		if (marchingDst >= maxDst) break;
 
 		float currentStepLen = min(stepLen, maxDst - marchingDst);

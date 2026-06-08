@@ -224,6 +224,7 @@ public:
 		shaderLoader.registerShader("gaussianBlur", "data/shader/gaussianBlur.vert", "data/shader/gaussianBlur.frag");
 		shaderLoader.registerShader("bone", "data/shader/bone.vert", "data/shader/bone.frag");
 		shaderLoader.registerShader("volume", "data/shader/volume.vert", "data/shader/volume.frag");
+		shaderLoader.registerShader("cloudUpsample", "data/shader/screenQuad.vert", "data/shader/cloudUpsample.frag");
 	}
 
 	void update() {

@@ -38,8 +38,8 @@ private:
 	float x, y, width, height;
 	UniformBuffer uboMatrices;
 	ShaderStorageBuffer ssboPointLights, ssboDirectionLight, ssboSpotLights;
-	FrameBuffer directionLightDepthFBO, pointLightDepthFBO, hdrFBO, pingpongFBO[2], afterEffectFBO;
-	Texture2D directionLightDepthTexture, hdrTexture, brightTexture, pingpongTexture[2], afterEffectTexture, hdrDepthTexture;
+	FrameBuffer directionLightDepthFBO, pointLightDepthFBO, hdrFBO, pingpongFBO[2], afterEffectFBO, cloudFBO;
+	Texture2D directionLightDepthTexture, hdrTexture, brightTexture, pingpongTexture[2], afterEffectTexture, hdrDepthTexture, cloudTexture;
 	Texture2D weatherMapTexture;
 	Texture3D worleyNoiseTexture3D;
 	Texture3D perlinNoiseTexture3D;

@@ -33,7 +33,7 @@ struct RenderContext {
 	// shaders (shared_ptr by value, fetched once per frame)
 	ShaderPtr defaultShader, skyboxShader, depthShader, screenQuadShader,
 	          depthCubeShader, lightCubeShader, gaussianBlurShader,
-	          boneShader, volumeShader;
+	          boneShader, volumeShader, cloudUpsampleShader;
 
 	// shared GL targets: references into RenderSystem (NOT owned)
 	UniformBuffer* uboMatrices = nullptr;
@@ -46,6 +46,7 @@ struct RenderContext {
 	FrameBuffer* hdrFBO = nullptr;
 	FrameBuffer* pingpongFBO[2] = { nullptr, nullptr };
 	FrameBuffer* afterEffectFBO = nullptr;
+	FrameBuffer* cloudFBO = nullptr;            // half-res cloud raymarch target
 	FrameBuffer* sceneFBO = nullptr;            // offscreen target for the Viewport panel
 
 	Texture2D* directionLightDepthTexture = nullptr;
@@ -55,7 +56,11 @@ struct RenderContext {
 	Texture2D* hdrDepthTexture = nullptr;
 	Texture2D* pingpongTexture[2] = { nullptr, nullptr };
 	Texture2D* afterEffectTexture = nullptr;
+	Texture2D* cloudTexture = nullptr;          // half-res cloud raymarch result
 	Texture2D* sceneColorTexture = nullptr;     // composite lands here (Viewport panel)
+
+	// Half-res cloud target dimensions (afterEffect/scene are full-res width/height).
+	int cloudWidth = 0, cloudHeight = 0;
 
 	// volume-cloud noise: owned by RenderSystem; pass reads + triggers lazy gen
 	RenderSystem* owner = nullptr;

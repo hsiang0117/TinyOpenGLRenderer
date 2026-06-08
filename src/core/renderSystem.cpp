@@ -120,6 +120,9 @@ void RenderSystem::init() {
 	hdrTexture = Texture2D(viewportW_, viewportH_, GL_CLAMP_TO_BORDER, GL_LINEAR, GL_RGBA16F, GL_RGBA, GL_FLOAT);
 	brightTexture = Texture2D(viewportW_, viewportH_, GL_CLAMP_TO_BORDER, GL_LINEAR, GL_RGBA16F, GL_RGBA, GL_FLOAT);
 	hdrDepthTexture = Texture2D(viewportW_, viewportH_, GL_CLAMP_TO_BORDER, GL_NEAREST, GL_DEPTH_COMPONENT, GL_DEPTH_COMPONENT, GL_FLOAT);
+	// Border = far plane (1.0): if anything ever samples depth outside [0,1] (e.g. a
+	// future temporal-reprojection tap), it reads "no geometry" rather than near 0.0.
+	hdrDepthTexture.setBorderColor(1.0, 1.0, 1.0, 1.0);
 	hdrFBO.bind();
 	hdrFBO.attachTexture2D(hdrTexture, GL_COLOR_ATTACHMENT0);
 	hdrFBO.attachTexture2D(brightTexture, GL_COLOR_ATTACHMENT1);
@@ -143,6 +146,18 @@ void RenderSystem::init() {
 	afterEffectFBO.bind();
 	afterEffectFBO.attachTexture2D(afterEffectTexture, GL_COLOR_ATTACHMENT0);
 	afterEffectFBO.unbind();
+
+	// Half-resolution cloud raymarch target. Clouds are low frequency, so the
+	// expensive march runs at half the viewport size (~4x fewer fragments); the
+	// VolumeSkeletonPass then depth-aware-upsamples it into afterEffectFBO.
+	// CLAMP_TO_EDGE + LINEAR: the upsample samples it bilinearly and must not pull
+	// border texels at the edges.
+	cloudFBO.init();
+	cloudTexture = Texture2D((viewportW_ + 1) / 2, (viewportH_ + 1) / 2, GL_CLAMP_TO_EDGE, GL_LINEAR, GL_RGBA16F, GL_RGBA, GL_FLOAT);
+	cloudFBO.bind();
+	cloudFBO.attachTexture2D(cloudTexture, GL_COLOR_ATTACHMENT0);
+	cloudFBO.drawBuffers({ GL_COLOR_ATTACHMENT0 });
+	cloudFBO.unbind();
 
 	// Offscreen scene target for the Viewport panel. Color-only (no depth needed for
 	// the composite fullscreen quad), CLAMP_TO_EDGE + LINEAR so ImGui samples it clean.
@@ -216,6 +231,7 @@ void RenderSystem::update(double deltaTime) {
 		pingpongTexture[0].resetSize(viewportW_, viewportH_);
 		pingpongTexture[1].resetSize(viewportW_, viewportH_);
 		afterEffectTexture.resetSize(viewportW_, viewportH_);
+		cloudTexture.resetSize((viewportW_ + 1) / 2, (viewportH_ + 1) / 2);
 		sceneColorTexture.resetSize(viewportW_, viewportH_);
 	}
 	for (auto& obj : rm_->getSceneView<AnimatorComponent>()) {
@@ -250,6 +266,7 @@ RenderContext RenderSystem::buildContext(Camera& camera) {
 	ctx.gaussianBlurShader = rm.getShader("gaussianBlur");
 	ctx.boneShader = rm.getShader("bone");
 	ctx.volumeShader = rm.getShader("volume");
+	ctx.cloudUpsampleShader = rm.getShader("cloudUpsample");
 
 	ctx.renderables = rm.getSceneView<RenderComponent>();
 	ctx.staticMeshes = rm.getSceneView<DynamicMaterialComponent>();
@@ -270,6 +287,7 @@ RenderContext RenderSystem::buildContext(Camera& camera) {
 	ctx.pingpongFBO[0] = &pingpongFBO[0];
 	ctx.pingpongFBO[1] = &pingpongFBO[1];
 	ctx.afterEffectFBO = &afterEffectFBO;
+	ctx.cloudFBO = &cloudFBO;
 	ctx.sceneFBO = &sceneFBO;
 	ctx.directionLightDepthTexture = &directionLightDepthTexture;
 	ctx.pointLightDepthTexture = &pointLightDepthTexture;
@@ -279,6 +297,9 @@ RenderContext RenderSystem::buildContext(Camera& camera) {
 	ctx.pingpongTexture[0] = &pingpongTexture[0];
 	ctx.pingpongTexture[1] = &pingpongTexture[1];
 	ctx.afterEffectTexture = &afterEffectTexture;
+	ctx.cloudTexture = &cloudTexture;
+	ctx.cloudWidth = (viewportW_ + 1) / 2;
+	ctx.cloudHeight = (viewportH_ + 1) / 2;
 	ctx.sceneColorTexture = &sceneColorTexture;
 	ctx.owner = this;
 	ctx.worleyNoiseTexture3D = &worleyNoiseTexture3D;

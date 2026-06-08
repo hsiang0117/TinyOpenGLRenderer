@@ -232,6 +232,7 @@
     <None Include="data\shader\test.vert" />
     <None Include="data\shader\volume.vert" />
     <None Include="data\shader\volume.frag" />
+    <None Include="data\shader\cloudUpsample.frag" />
     <None Include="readme.md" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

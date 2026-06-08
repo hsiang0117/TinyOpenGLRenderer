@@ -158,25 +158,31 @@ void ForwardHdrPass::execute(RenderContext& ctx) {
 }
 
 void VolumeSkeletonPass::execute(RenderContext& ctx) {
-	glViewport(0, 0, (GLsizei)ctx.width, (GLsizei)ctx.height);
-	ctx.afterEffectFBO->bind();
-	glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-	// Same as above: unbind program before clear to avoid the volume shader's
-	// depthMap unit being flagged as incomplete.
-	glUseProgram(0);
-	glClear(GL_COLOR_BUFFER_BIT);
-
 	// Lazy volume-cloud noise: only kick off background generation when a volume
 	// exists; skip volume drawing until the noise is ready.
 	ctx.owner->ensureVolumeNoise(!ctx.volumes.empty());
-	if (*ctx.noiseReady && !ctx.volumes.empty()) {
+	bool drawClouds = *ctx.noiseReady && !ctx.volumes.empty();
+
+	// --- Pass 1: raymarch clouds into the half-res cloud target. -------------
+	// Clouds are low frequency, so the expensive march runs at half resolution
+	// (~4x fewer fragments). volume.frag derives its uv from gl_FragCoord/resolution,
+	// so it just needs the half-res viewport + resolution uniform; depthMap is the
+	// full-res scene depth, sampled in normalized uv, so depth-aware termination
+	// still works.
+	if (drawClouds) {
+		glViewport(0, 0, (GLsizei)ctx.cloudWidth, (GLsizei)ctx.cloudHeight);
+		ctx.cloudFBO->bind();
+		glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+		glUseProgram(0);
+		glClear(GL_COLOR_BUFFER_BIT);
+
 		ctx.volumeShader->use();
 		ctx.volumeShader->setVec3("cameraPos", ctx.camera->getPos());
 		ctx.volumeShader->setInt("depthMap", 0);
 		ctx.volumeShader->setInt("worleyNoiseTexture", 1);
 		ctx.volumeShader->setInt("weatherMap", 2);
 		ctx.volumeShader->setInt("perlinNoiseTexture", 3);
-		ctx.volumeShader->setVec2("resolution", glm::vec2(ctx.width, ctx.height));
+		ctx.volumeShader->setVec2("resolution", glm::vec2(ctx.cloudWidth, ctx.cloudHeight));
 		ctx.volumeShader->setFloat("time", (float)glfwGetTime());
 		glm::mat4 invVP = glm::inverse(ctx.camera->getProjectionMat(ctx.width, ctx.height) * ctx.camera->getViewMat());
 		ctx.volumeShader->setMat4("invVP", invVP);
@@ -213,6 +219,32 @@ void VolumeSkeletonPass::execute(RenderContext& ctx) {
 				RenderHelpers::drawScreenQuad();
 			}
 		}
+		ctx.cloudFBO->unbind();
+	}
+
+	// --- Pass 2: upsample clouds (+ skeleton overlay) into afterEffectFBO. ----
+	glViewport(0, 0, (GLsizei)ctx.width, (GLsizei)ctx.height);
+	ctx.afterEffectFBO->bind();
+	glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+	// Unbind program before clear (see FrameSetupPass): avoids the driver validating
+	// a leftover active program's samplers against unbound units.
+	glUseProgram(0);
+	glClear(GL_COLOR_BUFFER_BIT);
+
+	// Depth-aware bilateral upsample from the half-res cloud target. Skipped when no
+	// clouds were drawn, leaving afterEffect cleared to (0,0,0,0) (a no-op in the
+	// composite, so the scene shows through).
+	if (drawClouds) {
+		ctx.cloudUpsampleShader->use();
+		ctx.cloudUpsampleShader->setInt("cloudTexture", 0);
+		ctx.cloudUpsampleShader->setInt("depthTexture", 1);
+		ctx.cloudUpsampleShader->setVec2("cloudTexSize", glm::vec2(ctx.cloudWidth, ctx.cloudHeight));
+		// Must match Camera::getProjectionMat (near 0.1, far 100.0).
+		ctx.cloudUpsampleShader->setFloat("nearPlane", 0.1f);
+		ctx.cloudUpsampleShader->setFloat("farPlane", 100.0f);
+		ctx.cloudTexture->use(GL_TEXTURE0);
+		ctx.hdrDepthTexture->use(GL_TEXTURE1);
+		RenderHelpers::drawScreenQuad();
 	}
 
 	ctx.boneShader->use();
