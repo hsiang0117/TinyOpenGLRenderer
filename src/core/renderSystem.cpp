@@ -117,9 +117,9 @@ void RenderSystem::init() {
 	pointLightDepthTexture = CubeMapArray(1024, 1024, 10, GL_CLAMP_TO_BORDER, GL_NEAREST, GL_DEPTH_COMPONENT, GL_DEPTH_COMPONENT);
 
 	hdrFBO.init();
-	hdrTexture = Texture2D(width, height, GL_CLAMP_TO_BORDER, GL_LINEAR, GL_RGBA16F, GL_RGBA, GL_FLOAT);
-	brightTexture = Texture2D(width, height, GL_CLAMP_TO_BORDER, GL_LINEAR, GL_RGBA16F, GL_RGBA, GL_FLOAT);
-	hdrDepthTexture = Texture2D(width, height, GL_CLAMP_TO_BORDER, GL_NEAREST, GL_DEPTH_COMPONENT, GL_DEPTH_COMPONENT, GL_FLOAT);
+	hdrTexture = Texture2D(viewportW_, viewportH_, GL_CLAMP_TO_BORDER, GL_LINEAR, GL_RGBA16F, GL_RGBA, GL_FLOAT);
+	brightTexture = Texture2D(viewportW_, viewportH_, GL_CLAMP_TO_BORDER, GL_LINEAR, GL_RGBA16F, GL_RGBA, GL_FLOAT);
+	hdrDepthTexture = Texture2D(viewportW_, viewportH_, GL_CLAMP_TO_BORDER, GL_NEAREST, GL_DEPTH_COMPONENT, GL_DEPTH_COMPONENT, GL_FLOAT);
 	hdrFBO.bind();
 	hdrFBO.attachTexture2D(hdrTexture, GL_COLOR_ATTACHMENT0);
 	hdrFBO.attachTexture2D(brightTexture, GL_COLOR_ATTACHMENT1);
@@ -129,8 +129,8 @@ void RenderSystem::init() {
 
 	pingpongFBO[0].init();
 	pingpongFBO[1].init();
-	pingpongTexture[0] = Texture2D(width, height, GL_CLAMP_TO_BORDER, GL_LINEAR, GL_RGBA16F, GL_RGBA, GL_FLOAT);
-	pingpongTexture[1] = Texture2D(width, height, GL_CLAMP_TO_BORDER, GL_LINEAR, GL_RGBA16F, GL_RGBA, GL_FLOAT);
+	pingpongTexture[0] = Texture2D(viewportW_, viewportH_, GL_CLAMP_TO_BORDER, GL_LINEAR, GL_RGBA16F, GL_RGBA, GL_FLOAT);
+	pingpongTexture[1] = Texture2D(viewportW_, viewportH_, GL_CLAMP_TO_BORDER, GL_LINEAR, GL_RGBA16F, GL_RGBA, GL_FLOAT);
 	pingpongFBO[0].bind();
 	pingpongFBO[0].attachTexture2D(pingpongTexture[0], GL_COLOR_ATTACHMENT0);
 	pingpongFBO[0].unbind();
@@ -139,7 +139,7 @@ void RenderSystem::init() {
 	pingpongFBO[1].unbind();
 
 	afterEffectFBO.init();
-	afterEffectTexture = Texture2D(width, height, GL_CLAMP_TO_BORDER, GL_LINEAR, GL_RGBA16F, GL_RGBA, GL_FLOAT);
+	afterEffectTexture = Texture2D(viewportW_, viewportH_, GL_CLAMP_TO_BORDER, GL_LINEAR, GL_RGBA16F, GL_RGBA, GL_FLOAT);
 	afterEffectFBO.bind();
 	afterEffectFBO.attachTexture2D(afterEffectTexture, GL_COLOR_ATTACHMENT0);
 	afterEffectFBO.unbind();
@@ -147,7 +147,7 @@ void RenderSystem::init() {
 	// Offscreen scene target for the Viewport panel. Color-only (no depth needed for
 	// the composite fullscreen quad), CLAMP_TO_EDGE + LINEAR so ImGui samples it clean.
 	sceneFBO.init();
-	sceneColorTexture = Texture2D(width, height, GL_CLAMP_TO_EDGE, GL_LINEAR, GL_RGBA16F, GL_RGBA, GL_FLOAT);
+	sceneColorTexture = Texture2D(viewportW_, viewportH_, GL_CLAMP_TO_EDGE, GL_LINEAR, GL_RGBA16F, GL_RGBA, GL_FLOAT);
 	sceneFBO.bind();
 	sceneFBO.attachTexture2D(sceneColorTexture, GL_COLOR_ATTACHMENT0);
 	sceneFBO.drawBuffers({ GL_COLOR_ATTACHMENT0 });
@@ -210,17 +210,17 @@ void RenderSystem::update(double deltaTime) {
 	if ((int)width != viewportW_ || (int)height != viewportH_) {
 		width = (float)viewportW_;
 		height = (float)viewportH_;
-		hdrTexture.resetSize(width, height);
-		brightTexture.resetSize(width, height);
-		hdrDepthTexture.resetSize(width, height);
-		pingpongTexture[0].resetSize(width, height);
-		pingpongTexture[1].resetSize(width, height);
-		afterEffectTexture.resetSize(width, height);
-		sceneColorTexture.resetSize(width, height);
+		hdrTexture.resetSize(viewportW_, viewportH_);
+		brightTexture.resetSize(viewportW_, viewportH_);
+		hdrDepthTexture.resetSize(viewportW_, viewportH_);
+		pingpongTexture[0].resetSize(viewportW_, viewportH_);
+		pingpongTexture[1].resetSize(viewportW_, viewportH_);
+		afterEffectTexture.resetSize(viewportW_, viewportH_);
+		sceneColorTexture.resetSize(viewportW_, viewportH_);
 	}
 	for (auto& obj : ResourceManager::getInstance().getSceneView<AnimatorComponent>()) {
 		auto animator = obj->getComponent<AnimatorComponent>();
-		if (animator->playing) animator->update(deltaTime);
+		if (animator->playing) animator->update((float)deltaTime);
 	}
 }
 

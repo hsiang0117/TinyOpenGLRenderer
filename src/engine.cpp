@@ -38,7 +38,7 @@ void Engine::run() {
 
 double Engine::getDeltaTime()
 {
-	static float lastFrame = 0.0f;
+	static double lastFrame = 0.0;
 	double currentFrame = glfwGetTime();
 	double deltaTime = currentFrame - lastFrame;
 	lastFrame = currentFrame;

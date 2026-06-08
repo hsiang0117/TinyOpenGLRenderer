@@ -129,7 +129,7 @@ void LightUploadPass::execute(RenderContext& ctx) {
 }
 
 void ForwardHdrPass::execute(RenderContext& ctx) {
-	glViewport(0, 0, ctx.width, ctx.height);
+	glViewport(0, 0, (GLsizei)ctx.width, (GLsizei)ctx.height);
 
 	ctx.hdrFBO->bind();
 	// Unbind program before clear (see FrameSetupPass): avoids the driver
@@ -158,7 +158,7 @@ void ForwardHdrPass::execute(RenderContext& ctx) {
 }
 
 void VolumeSkeletonPass::execute(RenderContext& ctx) {
-	glViewport(0, 0, ctx.width, ctx.height);
+	glViewport(0, 0, (GLsizei)ctx.width, (GLsizei)ctx.height);
 	ctx.afterEffectFBO->bind();
 	glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 	// Same as above: unbind program before clear to avoid the volume shader's

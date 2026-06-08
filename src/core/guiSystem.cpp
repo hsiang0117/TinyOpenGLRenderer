@@ -1,6 +1,5 @@
 #include "guiSystem.hpp"
 #include "../Input.hpp"
-#include "../meshGenerator.hpp"
 #include "../gameObjectFactory.hpp"
 #include "resourceManager.hpp"
 #include "windowSystem.hpp"
