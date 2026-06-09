@@ -8,6 +8,9 @@
 #include <filesystem>
 #include <string>
 #include <functional>
+#include <cstdint>
+#include <cstring>
+#include <initializer_list>
 
 // Split an outer loop over [0,total) across threads; body(begin,end) handles a range.
 static void parallelFor(int total, const std::function<void(int, int)>& body) {
@@ -34,21 +37,83 @@ static std::string cachePath(const std::string& key) {
 	return "data/cache/" + key + ".noise";
 }
 
-static bool loadCache(const std::string& key, size_t expectedSize, std::vector<unsigned char>& out) {
-	std::ifstream f(cachePath(key), std::ios::binary | std::ios::ate);
-	if (!f) return false;
-	std::streamsize size = f.tellg();
-	if (size != (std::streamsize)expectedSize) return false;
-	f.seekg(0);
-	out.resize(expectedSize);
-	return (bool)f.read(reinterpret_cast<char*>(out.data()), expectedSize);
+// Self-describing cache header. The old format stored raw bytes and validated only
+// by file size, so changing a generator's seed/frequency/cell-count (without changing
+// dimensions) would silently load a stale .noise file. The header binds the body to
+// the dimensions AND a hash of the generator parameters; loadCache rejects any
+// mismatch and regenerates. Bumping kCacheVersion invalidates every cache at once.
+// (Old headerless files are rejected too: their first bytes won't match the magic.)
+namespace {
+	constexpr uint32_t kCacheMagic = 0x4E534543;   // 'CESN' little-endian tag
+	constexpr uint32_t kCacheVersion = 1;
+
+	struct NoiseCacheHeader {
+		uint32_t magic;
+		uint32_t version;
+		uint32_t width;
+		uint32_t height;
+		uint32_t depth;
+		uint32_t reserved;
+		uint64_t paramHash;
+	};
+	static_assert(sizeof(NoiseCacheHeader) == 32, "NoiseCacheHeader must be 32 bytes with no padding");
+
+	// FNV-1a over the bit patterns of the supplied params. double exactly represents
+	// the small int/float constants we feed it, so this captures seed/frequency/cells.
+	uint64_t hashParams(std::initializer_list<double> vals) {
+		uint64_t h = 1469598103934665603ull;
+		for (double v : vals) {
+			uint64_t bits = 0;
+			std::memcpy(&bits, &v, sizeof(bits));
+			h ^= bits;
+			h *= 1099511628211ull;
+		}
+		return h;
+	}
+
+	NoiseCacheHeader makeHeader(int w, int h, int d, uint64_t paramHash) {
+		NoiseCacheHeader hdr{};
+		hdr.magic = kCacheMagic;
+		hdr.version = kCacheVersion;
+		hdr.width = (uint32_t)w;
+		hdr.height = (uint32_t)h;
+		hdr.depth = (uint32_t)d;
+		hdr.reserved = 0;
+		hdr.paramHash = paramHash;
+		return hdr;
+	}
+
+	bool headerMatches(const NoiseCacheHeader& a, const NoiseCacheHeader& b) {
+		return a.magic == b.magic && a.version == b.version &&
+			a.width == b.width && a.height == b.height && a.depth == b.depth &&
+			a.paramHash == b.paramHash;
+	}
 }
 
-static void saveCache(const std::string& key, const std::vector<unsigned char>& data) {
+static bool loadCache(const std::string& key, const NoiseCacheHeader& expected, std::vector<unsigned char>& out) {
+	std::ifstream f(cachePath(key), std::ios::binary);
+	if (!f) return false;
+	NoiseCacheHeader hdr{};
+	if (!f.read(reinterpret_cast<char*>(&hdr), sizeof(hdr))) return false;
+	if (!headerMatches(hdr, expected)) return false;
+	const size_t total = (size_t)expected.width * expected.height * expected.depth;
+	out.resize(total);
+	if (!f.read(reinterpret_cast<char*>(out.data()), total)) return false;
+	// Reject a file that is larger than header+body (corrupt/stale): a successful
+	// extra read means the byte count does not match the declared dimensions.
+	char extra;
+	if (f.read(&extra, 1)) return false;
+	return true;
+}
+
+static void saveCache(const std::string& key, const NoiseCacheHeader& header, const std::vector<unsigned char>& data) {
 	std::error_code ec;
 	std::filesystem::create_directories("data/cache", ec);
 	std::ofstream f(cachePath(key), std::ios::binary);
-	if (f) f.write(reinterpret_cast<const char*>(data.data()), data.size());
+	if (f) {
+		f.write(reinterpret_cast<const char*>(&header), sizeof(header));
+		f.write(reinterpret_cast<const char*>(data.data()), data.size());
+	}
 }
 
 // ---------- CPU compute ----------
@@ -57,11 +122,14 @@ NoiseVolumeData NoiseTextureGenerator3D::computeWorleyNoise(int width, int heigh
 	result.width = width; result.height = height; result.depth = depth;
 	const std::string key = "worley_" + std::to_string(width) + "x" + std::to_string(height) + "x" + std::to_string(depth);
 	const size_t total = (size_t)width * height * depth;
-	if (loadCache(key, total, result.data)) return result;
 
-	int numCells = 4;
+	const int numCells = 4;
+	const unsigned seed = 42;
+	NoiseCacheHeader header = makeHeader(width, height, depth, hashParams({ (double)numCells, (double)seed }));
+	if (loadCache(key, header, result.data)) return result;
+
 	std::vector<glm::vec3> featurePoints(numCells * numCells * numCells);
-	std::mt19937 gen(42);
+	std::mt19937 gen(seed);
 	std::uniform_real_distribution<float> dis(0.0f, 1.0f);
 	for (int z = 0; z < numCells; z++) {
 		for (int y = 0; y < numCells; y++) {
@@ -82,9 +150,9 @@ NoiseVolumeData NoiseTextureGenerator3D::computeWorleyNoise(int width, int heigh
 			for (int y = 0; y < height; y++) {
 				for (int x = 0; x < width; x++) {
 					glm::vec3 p = glm::vec3((float)x / width, (float)y / height, (float)z / depth);
-					int cx = std::floor(p.x * numCells);
-					int cy = std::floor(p.y * numCells);
-					int cz = std::floor(p.z * numCells);
+					int cx = (int)std::floor(p.x * numCells);
+					int cy = (int)std::floor(p.y * numCells);
+					int cz = (int)std::floor(p.z * numCells);
 					float minDistance = 1.0f;
 					for (int dz = -1; dz <= 1; dz++) {
 						for (int dy = -1; dy <= 1; dy++) {
@@ -112,7 +180,7 @@ NoiseVolumeData NoiseTextureGenerator3D::computeWorleyNoise(int width, int heigh
 		}
 	});
 
-	saveCache(key, result.data);
+	saveCache(key, header, result.data);
 	return result;
 }
 
@@ -121,10 +189,17 @@ NoiseVolumeData NoiseTextureGenerator3D::computePerlinNoise(int width, int heigh
 	result.width = width; result.height = height; result.depth = depth;
 	const std::string key = "perlin_" + std::to_string(width) + "x" + std::to_string(height) + "x" + std::to_string(depth);
 	const size_t total = (size_t)width * height * depth;
-	if (loadCache(key, total, result.data)) return result;
+
+	const unsigned seed = 58;
+	const float baseFrequency = 4.0f;
+	const int octaves = 4;
+	const float contrast = 2.5f;
+	NoiseCacheHeader header = makeHeader(width, height, depth,
+		hashParams({ (double)seed, (double)baseFrequency, (double)octaves, (double)contrast }));
+	if (loadCache(key, header, result.data)) return result;
 
 	std::vector<int> p(512);
-	std::mt19937 gen(58);
+	std::mt19937 gen(seed);
 	std::vector<int> permutation(256);
 	for (int i = 0; i < 256; ++i) permutation[i] = i;
 	std::shuffle(permutation.begin(), permutation.end(), gen);
@@ -141,8 +216,6 @@ NoiseVolumeData NoiseTextureGenerator3D::computePerlinNoise(int width, int heigh
 		float v = h < 4 ? y : h == 12 || h == 14 ? x : z;
 		return ((h & 1) == 0 ? u : -u) + ((h & 2) == 0 ? v : -v);
 	};
-
-	float baseFrequency = 4.0f;
 
 	auto noise = [&](float x, float y, float z, int per) {
 		int xi = (int)std::floor(x);
@@ -190,12 +263,12 @@ NoiseVolumeData NoiseTextureGenerator3D::computePerlinNoise(int width, int heigh
 					float n = 0.0f;
 					float amplitude = 0.5f;
 					float freq = baseFrequency;
-					for (int i = 0; i < 4; i++) {
+					for (int i = 0; i < octaves; i++) {
 						n += noise(nx * freq, ny * freq, nz * freq, (int)freq) * amplitude;
 						amplitude *= 0.5f;
 						freq *= 2.0f;
 					}
-					n = (n - 0.5f) * 2.5f + 0.5f;
+					n = (n - 0.5f) * contrast + 0.5f;
 					n = std::max(0.0f, std::min(1.0f, n));
 					result.data[x + y * width + z * width * height] = (unsigned char)(n * 255.0f);
 				}
@@ -203,7 +276,7 @@ NoiseVolumeData NoiseTextureGenerator3D::computePerlinNoise(int width, int heigh
 		}
 	});
 
-	saveCache(key, result.data);
+	saveCache(key, header, result.data);
 	return result;
 }
 
@@ -212,10 +285,16 @@ NoiseVolumeData NoiseTextureGenerator3D::computeWeatherMap(int width, int height
 	result.width = width; result.height = height; result.depth = 1;
 	const std::string key = "weather_" + std::to_string(width) + "x" + std::to_string(height);
 	const size_t total = (size_t)width * height;
-	if (loadCache(key, total, result.data)) return result;
+
+	const unsigned seed = 60;
+	const float baseFrequency = 3.0f;
+	const int octaves = 4;
+	NoiseCacheHeader header = makeHeader(width, height, 1,
+		hashParams({ (double)seed, (double)baseFrequency, (double)octaves }));
+	if (loadCache(key, header, result.data)) return result;
 
 	std::vector<int> p(512);
-	std::mt19937 gen(60);
+	std::mt19937 gen(seed);
 	std::vector<int> permutation(256);
 	for (int i = 0; i < 256; ++i) permutation[i] = i;
 	std::shuffle(permutation.begin(), permutation.end(), gen);
@@ -251,8 +330,8 @@ NoiseVolumeData NoiseTextureGenerator3D::computeWeatherMap(int width, int height
 	auto fbm = [&](float x, float y) {
 		float value = 0.0f;
 		float amplitude = 0.5f;
-		float frequency = 3.0f;
-		for (int i = 0; i < 4; i++) {
+		float frequency = baseFrequency;
+		for (int i = 0; i < octaves; i++) {
 			value += noise(x * frequency, y * frequency) * amplitude;
 			amplitude *= 0.5f;
 			frequency *= 2.0f;
@@ -273,7 +352,7 @@ NoiseVolumeData NoiseTextureGenerator3D::computeWeatherMap(int width, int height
 		}
 	});
 
-	saveCache(key, result.data);
+	saveCache(key, header, result.data);
 	return result;
 }
 
