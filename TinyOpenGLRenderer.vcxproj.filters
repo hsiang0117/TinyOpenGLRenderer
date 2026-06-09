@@ -313,5 +313,14 @@
     <None Include="data\shader\volume.frag">
       <Filter>资源文件\shader</Filter>
     </None>
+    <None Include="data\shader\cloudUpsample.frag">
+      <Filter>资源文件\shader</Filter>
+    </None>
+    <None Include="data\shader\gizmo.frag">
+      <Filter>资源文件\shader</Filter>
+    </None>
+    <None Include="data\shader\gizmo.vert">
+      <Filter>资源文件\shader</Filter>
+    </None>
   </ItemGroup>
 </Project>

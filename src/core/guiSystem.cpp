@@ -475,6 +475,44 @@ void GuiSystem::registComponents()
 		ImGui::Separator();
 		});
 
+	registerComponentWidget<VolumeMarkerComponent>([](std::shared_ptr<VolumeMarkerComponent> c) {
+		ImGui::Text(u8"VolumeCloud");
+		ImGui::Separator();
+
+		ImGui::Text(u8"Shape");
+		ImGui::SliderFloat(u8"CloudType", &c->cloudType, 0.0f, 1.0f, "%.2f");
+		ImGui::Separator();
+
+		ImGui::Text(u8"Coverage");
+		ImGui::DragFloat(u8"CoverageLow", &c->coverageLow, 0.005f, 0.0f, 1.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+		ImGui::DragFloat(u8"CoverageHigh", &c->coverageHigh, 0.005f, 0.0f, 1.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+		ImGui::Separator();
+
+		ImGui::Text(u8"Noise Scales");
+		ImGui::DragFloat(u8"BaseNoiseScale", &c->baseNoiseScale, 0.0005f, 0.0001f, 0.1f, "%.4f", ImGuiSliderFlags_AlwaysClamp);
+		ImGui::DragFloat(u8"WarpScale", &c->warpScale, 0.0002f, 0.0001f, 0.05f, "%.4f", ImGuiSliderFlags_AlwaysClamp);
+		ImGui::DragFloat(u8"WarpStrength", &c->warpStrength, 0.5f, 0.0f, 200.0f, "%.1f", ImGuiSliderFlags_AlwaysClamp);
+		ImGui::DragFloat(u8"DetailScale", &c->detailScale, 0.0005f, 0.0001f, 0.1f, "%.4f", ImGuiSliderFlags_AlwaysClamp);
+		ImGui::DragFloat(u8"DetailErosion", &c->detailErosionStrength, 0.005f, 0.0f, 1.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+		ImGui::Separator();
+
+		ImGui::Text(u8"Lighting");
+		ImGui::DragFloat(u8"LightAttenuation", &c->lightAttenuation, 0.05f, 0.0f, 20.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+		ImGui::DragFloat(u8"DensityGain", &c->densityGain, 0.05f, 0.0f, 20.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+		ImGui::DragFloat(u8"ViewAttenuation", &c->viewAttenuation, 0.05f, 0.0f, 20.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+		ImGui::DragFloat(u8"PowderStrength", &c->powderStrength, 0.05f, 0.0f, 20.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+		ImGui::Separator();
+
+		ImGui::Text(u8"Animation");
+		ImGui::DragFloat3(u8"WindVelocity", glm::value_ptr(c->windVelocity), 0.05f, -10.0f, 10.0f, "%.2f");
+		ImGui::Separator();
+
+		ImGui::Text(u8"Quality");
+		ImGui::DragFloat(u8"EdgeFadeDistance", &c->edgeFadeDistance, 0.5f, 0.0f, 200.0f, "%.1f", ImGuiSliderFlags_AlwaysClamp);
+		ImGui::DragFloat(u8"ViewStepWorldSize", &c->viewStepWorldSize, 0.05f, 0.25f, 16.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+		ImGui::Separator();
+		});
+
 	registerComponentWidget<SkyBoxComponent>([](std::shared_ptr<SkyBoxComponent> skyboxComponent) {
 		ImGui::Text(u8"SkyBox");
 		ImGui::Separator();

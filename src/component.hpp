@@ -104,7 +104,46 @@ public:
 
 class VolumeMarkerComponent : public Component {
 public:
-	VolumeMarkerComponent() : Component("VolumeMarkerComponent") {}
+	VolumeMarkerComponent() : Component("VolumeMarkerComponent") {
+		// Defaults reproduce the previous hardcoded volume.frag look exactly.
+		cloudType = 0.1f;
+		coverageLow = 0.3f;
+		coverageHigh = 0.85f;
+		baseNoiseScale = 0.01f;
+		warpScale = 0.003f;
+		warpStrength = 25.0f;
+		detailScale = 0.01f;
+		detailErosionStrength = 0.35f;
+		lightAttenuation = 2.0f;
+		densityGain = 2.5f;
+		viewAttenuation = 2.0f;
+		powderStrength = 2.0f;
+		windVelocity = glm::vec3(1.0f, 0.0f, 1.0f);   // == old vec3(time,0,time)
+		edgeFadeDistance = 10.0f;
+		viewStepWorldSize = 2.0f;
+	}
+
+	// Shape
+	float cloudType;              // 0=stratus, 0.5=stratocumulus, 1=cumulus
+	// Coverage (weather-map remap range)
+	float coverageLow;
+	float coverageHigh;
+	// Noise sampling scales (UV multipliers into the pre-generated noise textures)
+	float baseNoiseScale;
+	float warpScale;
+	float warpStrength;
+	float detailScale;
+	float detailErosionStrength;
+	// Lighting
+	float lightAttenuation;       // shadow march extinction
+	float densityGain;            // global radiance gain
+	float viewAttenuation;        // view march extinction
+	float powderStrength;         // powder dark-edge falloff
+	// Animation
+	glm::vec3 windVelocity;       // world units/sec advection (base + detail)
+	// Quality / boundary
+	float edgeFadeDistance;       // soft box-edge fade width
+	float viewStepWorldSize;      // target world spacing between view march steps
 };
 
 class SkyBoxComponent : public Component {

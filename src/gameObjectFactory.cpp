@@ -58,7 +58,14 @@ GameObjectPtr GameObjectFactory::createSkyBox() {
 
 GameObjectPtr GameObjectFactory::createVolumeCloud() {
 	auto obj = std::make_shared<GameObject>("Volume");
-	obj->addComponent<Transform>();
+	// Noise is sampled in world space (~p*0.01), so a unit cube shows almost no
+	// structure. Default to a thin, very wide box lifted overhead: the cloud sits up
+	// in the sky, and its horizontal edges sit far outside the view/far-plane so the
+	// box looks edgeless (the XZ edge-fade radius scales with the box, staying off
+	// screen). Height gives the layer its soft top/bottom via the height gradient.
+	auto transform = obj->addComponent<Transform>();
+	transform->translate = glm::vec3(0.0f, 200.0f, 0.0f);
+	transform->scale = glm::vec3(5000.0f, 200.0f, 5000.0f);
 	obj->addComponent<StaticMeshComponent>()->setMesh(MeshGenerator::generateCube());
 	obj->addComponent<VolumeMarkerComponent>();
 	return obj;

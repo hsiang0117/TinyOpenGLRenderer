@@ -216,6 +216,28 @@ void VolumeSkeletonPass::execute(RenderContext& ctx) {
 				glm::vec3 maxAABB = glm::vec3(model * glm::vec4(staticMesh->aabb.max, 1.0f));
 				ctx.volumeShader->setVec3("aabbMin", minAABB);
 				ctx.volumeShader->setVec3("aabbMax", maxAABB);
+
+				// Per-instance cloud parameters. Fall back to defaults (= the previous
+				// hardcoded look) if the marker is somehow absent.
+				auto marker = obj->getComponent<VolumeMarkerComponent>();
+				VolumeMarkerComponent fallback;
+				const VolumeMarkerComponent& v = marker ? *marker : fallback;
+				ctx.volumeShader->setFloat("cloudType", v.cloudType);
+				ctx.volumeShader->setFloat("coverageLow", v.coverageLow);
+				ctx.volumeShader->setFloat("coverageHigh", v.coverageHigh);
+				ctx.volumeShader->setFloat("baseNoiseScale", v.baseNoiseScale);
+				ctx.volumeShader->setFloat("warpScale", v.warpScale);
+				ctx.volumeShader->setFloat("warpStrength", v.warpStrength);
+				ctx.volumeShader->setFloat("detailScale", v.detailScale);
+				ctx.volumeShader->setFloat("detailErosionStrength", v.detailErosionStrength);
+				ctx.volumeShader->setFloat("lightAttenuation", v.lightAttenuation);
+				ctx.volumeShader->setFloat("densityGain", v.densityGain);
+				ctx.volumeShader->setFloat("viewAttenuation", v.viewAttenuation);
+				ctx.volumeShader->setFloat("powderStrength", v.powderStrength);
+				ctx.volumeShader->setVec3("windVelocity", v.windVelocity);
+				ctx.volumeShader->setFloat("edgeFadeDistance", v.edgeFadeDistance);
+				ctx.volumeShader->setFloat("viewStepWorldSize", v.viewStepWorldSize);
+
 				RenderHelpers::drawScreenQuad();
 			}
 		}

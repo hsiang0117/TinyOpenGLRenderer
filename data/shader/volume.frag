@@ -16,6 +16,24 @@ uniform sampler2D weatherMap;
 uniform vec2 resolution;
 uniform float time;
 
+// Per-volume cloud parameters (from VolumeMarkerComponent). Defaults below reproduce
+// the previous hardcoded constants exactly.
+uniform float cloudType;
+uniform float coverageLow;
+uniform float coverageHigh;
+uniform float baseNoiseScale;
+uniform float warpScale;
+uniform float warpStrength;
+uniform float detailScale;
+uniform float detailErosionStrength;
+uniform float lightAttenuation;
+uniform float densityGain;
+uniform float viewAttenuation;
+uniform float powderStrength;
+uniform vec3 windVelocity;
+uniform float edgeFadeDistance;
+uniform float viewStepWorldSize;
+
 vec2 rayBoxDst(vec3 boundsMin, vec3 boundsMax, vec3 rayOrigin, vec3 rayDir) {
 	vec3 invRayDir = 1.0 / rayDir;
 	vec3 t0 = (boundsMin - rayOrigin) * invRayDir;
@@ -51,8 +69,8 @@ float phase(float cosAngle){
 }
 
 float sampleNoise(vec3 p){
-	p += vec3(time, 0.0, time);
-	return texture(worleyNoiseTexture, p * 0.01).r;
+	p += windVelocity * time;
+	return texture(worleyNoiseTexture, p * baseNoiseScale).r;
 }
 
 float getEdgeFade(vec3 p, float fadeDistance) {
@@ -90,23 +108,26 @@ float getHeightGradient(float heightFraction, float cloudType) {
 // all noise, so the 6 warp + FBM fetches are skipped with no change in output.
 float cloudBaseDensity(vec3 p, out float heightFraction) {
 	heightFraction = clamp((p.y - aabbMin.y) / (aabbMax.y - aabbMin.y), 0.0, 1.0);
-	float heightGradient = getHeightGradient(heightFraction, 0.1);
+	float heightGradient = getHeightGradient(heightFraction, cloudType);
 	if (heightGradient <= 0.0) return 0.0;
 
 	vec2 weatherUv = vec2((p.x - aabbMin.x) / (aabbMax.x - aabbMin.x), (p.z - aabbMin.z) / (aabbMax.z - aabbMin.z));
 	weatherUv = clamp(weatherUv, 0.0, 1.0);
 	float weather = texture(weatherMap, weatherUv).r;
-	float coverage = mix(0.3, 0.85, weather);
+	float coverage = mix(coverageLow, coverageHigh, weather);
 
+	// NOISE_MAX is the FBM's max value (sum of the 4 octave amplitudes). It stays a
+	// literal because the octave count below is fixed; the empty-space early-out is
+	// only conservative against that exact bound.
 	const float NOISE_MAX = 0.9375;
 	if (NOISE_MAX * heightGradient <= 1.0 - coverage) return 0.0;
 
 	vec3 warp = vec3(
-		texture(perlinNoiseTexture, p * 0.003).r,
+		texture(perlinNoiseTexture, p * warpScale).r,
 		0.0,
-		texture(perlinNoiseTexture, p * 0.003 + vec3(43.0, 17.0, 59.0)).r
+		texture(perlinNoiseTexture, p * warpScale + vec3(43.0, 17.0, 59.0)).r
 	);
-	vec3 warpedP = p + (warp - 0.5) * 25.0;
+	vec3 warpedP = p + (warp - 0.5) * warpStrength;
 
 	float baseNoise = 0.0;
 	float amplitude = 0.5;
@@ -129,12 +150,12 @@ float getCloudDensity(vec3 p) {
 	if (baseDensity <= 0.0) return 0.0;
 
 	// View-only high-frequency detail erosion (carves the visible cloud edges).
-	vec3 detailPos = p + vec3(time, 0.0, time);
-	float detailNoise = texture(perlinNoiseTexture, detailPos * 0.01).r;
+	vec3 detailPos = p + windVelocity * time;
+	float detailNoise = texture(perlinNoiseTexture, detailPos * detailScale).r;
 	float detailModifier = mix(detailNoise, 1.0 - detailNoise, clamp(heightFraction * 5.0, 0.0, 1.0));
-	baseDensity = clamp(remap(baseDensity, detailModifier * 0.35, 1.0, 0.0, 1.0), 0.0, 1.0);
+	baseDensity = clamp(remap(baseDensity, detailModifier * detailErosionStrength, 1.0, 0.0, 1.0), 0.0, 1.0);
 
-	baseDensity *= getEdgeFade(p, 10.0);
+	baseDensity *= getEdgeFade(p, edgeFadeDistance);
 
 	return baseDensity;
 }
@@ -148,7 +169,7 @@ float getCloudDensityLight(vec3 p) {
 	// cloud. Sharing cloudBaseDensity makes the light field a true band-limited subset.
 	float heightFraction;
 	float baseDensity = cloudBaseDensity(p, heightFraction);
-	baseDensity *= getEdgeFade(p, 10.0);
+	baseDensity *= getEdgeFade(p, edgeFadeDistance);
 	return baseDensity;
 }
 
@@ -162,7 +183,6 @@ float lightMarch(vec3 startPos, vec3 lightDir){
 		testPoint += lightDir * stepLen;
 		sumDensity += max(0.0, getCloudDensityLight(testPoint) * stepLen);
 	}
-	float lightAttenuation = 2.0;
 	float transmittance = exp(-sumDensity * lightAttenuation);
 	return transmittance;
 }
@@ -176,7 +196,7 @@ vec4 cloudRayMarching(vec3 rayOrigin, vec3 rayDirection, float maxDst, mat4 invV
 	// upper loop bound below keeps the GLSL loop portable/unrollable. Changing the
 	// count is a quadrature-resolution change only (Beer-Lambert integrates the same),
 	// so it affects banding, not overall brightness.
-	int numSteps = int(clamp(maxDst / 2.0, 32.0, 96.0));
+	int numSteps = int(clamp(maxDst / viewStepWorldSize, 32.0, 96.0));
 	float stepLen = maxDst / float(numSteps);
 	vec2 uv = gl_FragCoord.xy / resolution;
 	float jitter = interleavedGradientNoise(gl_FragCoord.xy) * stepLen;
@@ -210,7 +230,7 @@ vec4 cloudRayMarching(vec3 rayOrigin, vec3 rayDirection, float maxDst, mat4 invV
 		if (density < 0.01) continue;
 		float lightTransmittance = lightMarch(testPoint, lightDir);
 		float od = -log(max(lightTransmittance, 0.0001));
-		float powder = 1.0 - exp(-density * 2.0);
+		float powder = 1.0 - exp(-density * powderStrength);
 
 		float accA = 1.0;
 		float accB = 1.0;
@@ -232,10 +252,9 @@ vec4 cloudRayMarching(vec3 rayOrigin, vec3 rayDirection, float maxDst, mat4 invV
 		vec3 ambientLight = mix(ambientBottom, ambientTop, heightFraction);
 		ambientLight *= length(lightColor) * 0.25;
 
-		vec3 currentLight = (totalScattering + ambientLight) * 2.5;
+		vec3 currentLight = (totalScattering + ambientLight) * densityGain;
 		lightEnergy += density * currentStepLen * transmittance * currentLight;
 
-		float viewAttenuation = 2.0;
 		transmittance *= exp(-density * currentStepLen * viewAttenuation);
 		if(transmittance < 0.01) break;
 	}
