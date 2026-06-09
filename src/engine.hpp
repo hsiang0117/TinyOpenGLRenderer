@@ -20,6 +20,7 @@ private:
 	Camera camera;
 	WindowSystem windowSystem;
 	ResourceManager resourceManager;
+	SelectionModel selectionModel;
 	RenderSystem renderSystem;
 	GuiSystem guiSystem;
 	double getDeltaTime();

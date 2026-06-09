@@ -25,6 +25,7 @@ public:
 	void init(GLFWwindow* window);
 	void setRenderSystem(RenderSystem* rs) { renderSystem_ = rs; }
 	void setResourceManager(ResourceManager* rm) { rm_ = rm; }
+	void setSelectionModel(SelectionModel* s) { selection_ = s; }
 	void beginFrame();
 	void render(double deltaTime);
 	void shutDown();
@@ -58,11 +59,10 @@ private:
 	// Build the default dock layout once, on first run when no imgui.ini exists.
 	void buildDefaultLayoutOnce(ImGuiID dockspaceId);
 
-	// Current selection: a single identity-based source of truth shared by the
-	// scene tree (highlight + writes) and the inspector (reads). Highlight is by
-	// object identity, so removing a different object never disturbs it, and the
-	// weak_ptr auto-expires if the selected object is destroyed elsewhere.
-	std::weak_ptr<GameObject> objectSelected_;
+	// Current selection: shared, identity-based source of truth (scene tree highlight
+	// + writes, inspector reads, renderer gizmo). Owned by Engine, injected here; the
+	// model holds a weak_ptr so it auto-expires if the selected object is destroyed.
+	SelectionModel* selection_ = nullptr;
 
 	// Non-owning; set by Engine. The Viewport panel reports its size here and reads
 	// the scene color texture to display.

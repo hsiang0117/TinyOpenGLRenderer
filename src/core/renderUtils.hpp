@@ -37,6 +37,11 @@ namespace RenderHelpers {
 
 	// Full-screen quad for post-processing; lazily creates a process-wide VAO.
 	void drawScreenQuad();
+
+	// Selection gizmo: three cone-tipped XYZ arrows (X red, Y green, Z blue) baked
+	// into a lazily-created process-wide VAO. Drawn with GL_TRIANGLES. The caller
+	// supplies the model matrix via the shader; this just binds + draws.
+	void drawSelectionGizmo();
 }
 
 #endif // !RENDERUTILS_HPP

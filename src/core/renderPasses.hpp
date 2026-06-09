@@ -56,6 +56,14 @@ public:
 	const char* name() const override { return "VolumeSkeleton"; }
 };
 
+// Selection gizmo: XYZ arrows at the selected object's origin, drawn into
+// afterEffectFBO (no depth) so it is always on top, at constant screen size.
+class GizmoPass : public RenderPass {
+public:
+	void execute(RenderContext& ctx) override;
+	const char* name() const override { return "Gizmo"; }
+};
+
 // Gaussian bloom blur, ping-pong x10 -> pingpongTexture.
 class BloomPass : public RenderPass {
 public:

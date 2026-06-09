@@ -181,6 +181,7 @@ void RenderSystem::init() {
 	passes.push_back(std::make_unique<LightUploadPass>());
 	passes.push_back(std::make_unique<ForwardHdrPass>());
 	passes.push_back(std::make_unique<VolumeSkeletonPass>());
+	passes.push_back(std::make_unique<GizmoPass>());
 	passes.push_back(std::make_unique<BloomPass>());
 	passes.push_back(std::make_unique<CompositePass>());
 }
@@ -267,6 +268,7 @@ RenderContext RenderSystem::buildContext(Camera& camera) {
 	ctx.boneShader = rm.getShader("bone");
 	ctx.volumeShader = rm.getShader("volume");
 	ctx.cloudUpsampleShader = rm.getShader("cloudUpsample");
+	ctx.gizmoShader = rm.getShader("gizmo");
 
 	ctx.renderables = rm.getSceneView<RenderComponent>();
 	ctx.staticMeshes = rm.getSceneView<DynamicMaterialComponent>();
@@ -276,6 +278,7 @@ RenderContext RenderSystem::buildContext(Camera& camera) {
 	ctx.skyboxes = rm.getSceneView<SkyBoxComponent>();
 	ctx.volumes = rm.getSceneView<VolumeMarkerComponent>();
 	ctx.skeletons = rm.getSceneView<SkeletonViewerComponent>();
+	ctx.selectedObject = selection_ ? selection_->get() : nullptr;
 
 	ctx.uboMatrices = &uboMatrices;
 	ctx.ssboPointLights = &ssboPointLights;

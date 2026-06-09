@@ -25,6 +25,7 @@ public:
 	void render(Camera& camera);
 
 	void setResourceManager(ResourceManager* rm) { rm_ = rm; }
+	void setSelectionModel(SelectionModel* s) { selection_ = s; }
 
 	// Public so render passes (which receive RenderSystem* via RenderContext::owner)
 	// can trigger lazy volume-noise generation.
@@ -59,6 +60,9 @@ private:
 
 	// Non-owning; injected by Engine. Source of scene views + shaders.
 	ResourceManager* rm_ = nullptr;
+
+	// Non-owning; injected by Engine. Currently-selected object for the gizmo pass.
+	SelectionModel* selection_ = nullptr;
 
 	// Ordered render passes, populated once in init() and iterated each frame.
 	std::vector<std::unique_ptr<RenderPass>> passes;

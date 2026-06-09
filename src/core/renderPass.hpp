@@ -30,10 +30,13 @@ struct RenderContext {
 	std::vector<GameObjectPtr> volumes;
 	std::vector<GameObjectPtr> skeletons;
 
+	// Currently-selected object (selection gizmo), or null if nothing is selected.
+	GameObjectPtr selectedObject;
+
 	// shaders (shared_ptr by value, fetched once per frame)
 	ShaderPtr defaultShader, skyboxShader, depthShader, screenQuadShader,
 	          depthCubeShader, lightCubeShader, gaussianBlurShader,
-	          boneShader, volumeShader, cloudUpsampleShader;
+	          boneShader, volumeShader, cloudUpsampleShader, gizmoShader;
 
 	// shared GL targets: references into RenderSystem (NOT owned)
 	UniformBuffer* uboMatrices = nullptr;

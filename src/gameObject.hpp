@@ -65,4 +65,18 @@ bool GameObject::has()
 
 using GameObjectPtr = std::shared_ptr<GameObject>;
 
+// Single source of truth for the currently-selected object, shared between the GUI
+// (scene tree writes + inspector reads) and the renderer (selection gizmo). Holds a
+// weak_ptr so it auto-expires if the object is destroyed elsewhere. Owned by Engine
+// (composition root) and injected into both systems by non-owning pointer, keeping
+// GuiSystem and RenderSystem free of a mutual dependency.
+class SelectionModel {
+public:
+	void set(const GameObjectPtr& obj) { selected_ = obj; }
+	void clear() { selected_.reset(); }
+	GameObjectPtr get() const { return selected_.lock(); }
+private:
+	std::weak_ptr<GameObject> selected_;
+};
+
 #endif // !GAMEOBJECT_HPP

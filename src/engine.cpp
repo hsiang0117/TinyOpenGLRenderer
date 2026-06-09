@@ -8,10 +8,12 @@ void Engine::init() {
 	windowSystem.init(1280, 720, &input);
 	renderSystem.init();
 	renderSystem.setResourceManager(&resourceManager);
+	renderSystem.setSelectionModel(&selectionModel);
 	resourceManager.init();
 	guiSystem.init(windowSystem.getWindow());
 	guiSystem.setRenderSystem(&renderSystem);
 	guiSystem.setResourceManager(&resourceManager);
+	guiSystem.setSelectionModel(&selectionModel);
 	resourceManager.setCurrentScene(SceneFactory::createDefaultScene());
 }
 

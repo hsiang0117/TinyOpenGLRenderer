@@ -255,6 +255,49 @@ void VolumeSkeletonPass::execute(RenderContext& ctx) {
 	ctx.afterEffectFBO->unbind();
 }
 
+void GizmoPass::execute(RenderContext& ctx) {
+	if (!ctx.selectedObject) return;
+	auto transform = ctx.selectedObject->getComponent<Transform>();
+	if (!transform) return;
+
+	// Constant screen size: scale by distance to the camera so the gizmo subtends a
+	// roughly fixed angle. v1 ignores fov (no getter on Camera) -> mild size drift on
+	// scroll-zoom; acceptable. k tuned by eye.
+	const float kGizmoScreenScale = 0.15f;
+	glm::vec3 origin = transform->translate;
+	float dist = glm::length(ctx.camera->getPos() - origin);
+	float gizmoScale = dist * kGizmoScreenScale;
+
+	// model = translate(origin) * object-rotation (Z,Y,X like buildModelMatrix) *
+	// uniform scale. Deliberately excludes the object's own scale (a 10x object must
+	// not give a 10x gizmo) and uses only its rotation.
+	glm::mat4 model = glm::translate(glm::mat4(1.0f), origin);
+	model = glm::rotate(model, glm::radians(transform->rotate.z), glm::vec3(0, 0, 1));
+	model = glm::rotate(model, glm::radians(transform->rotate.y), glm::vec3(0, 1, 0));
+	model = glm::rotate(model, glm::radians(transform->rotate.x), glm::vec3(1, 0, 0));
+	model = glm::scale(model, glm::vec3(gizmoScale));
+
+	// Draw into the shared after-effect target (no depth attachment) so the gizmo is
+	// always on top. Do NOT clear: it overlays whatever VolumeSkeletonPass left there.
+	glViewport(0, 0, (GLsizei)ctx.width, (GLsizei)ctx.height);
+	ctx.afterEffectFBO->bind();
+	glDisable(GL_DEPTH_TEST);
+	// No backface culling: the arrows are single-color and this target has no depth
+	// buffer, so front and back faces rasterize to the identical color -> the solid
+	// arrow silhouette is correct regardless of triangle winding. Disabling cull (the
+	// global baseline anyway) keeps correctness independent of the geometry's winding.
+	glDisable(GL_CULL_FACE);
+	glDisable(GL_BLEND);
+
+	ctx.gizmoShader->use();
+	ctx.gizmoShader->setMat4("model", model);
+	RenderHelpers::drawSelectionGizmo();
+
+	ctx.afterEffectFBO->unbind();
+	// Restore the global baseline the rest of the pipeline expects (cull stays disabled).
+	glEnable(GL_DEPTH_TEST);
+}
+
 void BloomPass::execute(RenderContext& ctx) {
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 	ctx.gaussianBlurShader->use();

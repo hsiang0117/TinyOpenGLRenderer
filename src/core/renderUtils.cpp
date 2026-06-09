@@ -3,6 +3,8 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <string>
+#include <vector>
+#include <cmath>
 
 namespace RenderHelpers {
 
@@ -258,6 +260,85 @@ void drawScreenQuad() {
 	}
 	glBindVertexArray(quadVAO);
 	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+	glBindVertexArray(0);
+}
+
+void drawSelectionGizmo() {
+	static GLuint gizmoVAO = 0, gizmoVBO = 0;
+	static GLsizei gizmoVertexCount = 0;
+
+	if (!gizmoVAO) {
+		const int SEG = 12;
+		const float shaftLen = 0.75f;
+		const float shaftRadius = 0.02f;
+		const float headRadius = 0.06f;
+		const float tipX = 1.0f;
+		const float PI = 3.14159265358979323846f;
+
+		// Interleaved pos(3) + color(3). One canonical arrow points along +X; it is
+		// rotated to +X/+Y/+Z and tinted R/G/B, all baked here so the whole gizmo is a
+		// single static buffer drawn in one call. Triangles are wound outward (CCW),
+		// though GizmoPass draws with culling disabled so winding does not matter.
+		std::vector<float> verts;
+
+		glm::mat3 axisRot[3] = {
+			glm::mat3(1.0f),                                                                  // +X
+			glm::mat3(glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0, 0, 1))), // +X -> +Y
+			glm::mat3(glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(0, 1, 0))) // +X -> +Z
+		};
+		glm::vec3 axisColor[3] = { glm::vec3(1, 0, 0), glm::vec3(0, 1, 0), glm::vec3(0, 0, 1) };
+
+		for (int a = 0; a < 3; a++) {
+			glm::mat3 R = axisRot[a];
+			glm::vec3 c = axisColor[a];
+			auto push = [&](glm::vec3 p) {
+				glm::vec3 wp = R * p;
+				verts.push_back(wp.x); verts.push_back(wp.y); verts.push_back(wp.z);
+				verts.push_back(c.r); verts.push_back(c.g); verts.push_back(c.b);
+			};
+
+			for (int i = 0; i < SEG; i++) {
+				float t0 = (float)i / SEG * 2.0f * PI;
+				float t1 = (float)(i + 1) / SEG * 2.0f * PI;
+				glm::vec2 d0 = glm::vec2(std::cos(t0), std::sin(t0));
+				glm::vec2 d1 = glm::vec2(std::cos(t1), std::sin(t1));
+				glm::vec2 s0 = d0 * shaftRadius, s1 = d1 * shaftRadius;
+				glm::vec2 h0 = d0 * headRadius, h1 = d1 * headRadius;
+
+				// Shaft (cylinder) side, outward CCW.
+				glm::vec3 b0(0.0f, s0.x, s0.y), b1(0.0f, s1.x, s1.y);
+				glm::vec3 tp0(shaftLen, s0.x, s0.y), tp1(shaftLen, s1.x, s1.y);
+				push(b0); push(b1); push(tp0);
+				push(b1); push(tp1); push(tp0);
+
+				// Cone head side, outward CCW.
+				glm::vec3 hb0(shaftLen, h0.x, h0.y), hb1(shaftLen, h1.x, h1.y);
+				glm::vec3 tip(tipX, 0.0f, 0.0f);
+				push(hb0); push(hb1); push(tip);
+
+				// Cone base cap (faces -X), outward CCW.
+				glm::vec3 baseCenter(shaftLen, 0.0f, 0.0f);
+				push(baseCenter); push(hb1); push(hb0);
+			}
+		}
+
+		gizmoVertexCount = (GLsizei)(verts.size() / 6);
+
+		glGenVertexArrays(1, &gizmoVAO);
+		glGenBuffers(1, &gizmoVBO);
+		glBindVertexArray(gizmoVAO);
+		glBindBuffer(GL_ARRAY_BUFFER, gizmoVBO);
+		glBufferData(GL_ARRAY_BUFFER, verts.size() * sizeof(float), verts.data(), GL_STATIC_DRAW);
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
+		glEnableVertexAttribArray(0);
+		glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+		glEnableVertexAttribArray(1);
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
+		glBindVertexArray(0);
+	}
+
+	glBindVertexArray(gizmoVAO);
+	glDrawArrays(GL_TRIANGLES, 0, gizmoVertexCount);
 	glBindVertexArray(0);
 }
 
