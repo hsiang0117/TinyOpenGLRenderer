@@ -9,3 +9,7 @@
 # Volume cloud.
 
 ![Image](data/volumeCloud.gif)
+
+# Refactor - Docked layout.
+
+![Image](data/docked_layout.png)
