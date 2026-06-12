@@ -70,7 +70,7 @@ float phase(float cosAngle){
 
 float sampleNoise(vec3 p){
 	p += windVelocity * time;
-	return texture(worleyNoiseTexture, p * baseNoiseScale).r;
+	return texture(perlinNoiseTexture, p * baseNoiseScale).r;
 }
 
 float getEdgeFade(vec3 p, float fadeDistance) {
@@ -94,18 +94,21 @@ float getHeightGradient(float heightFraction, float cloudType) {
 	return mix(a, cumulus, clamp(cloudType * 2.0 - 1.0, 0.0, 1.0));
 }
 
-// Shared cloud silhouette field: domain warp + 4-octave Worley FBM, shaped by the
+// Shared cloud silhouette field: domain warp + 4-octave Perlin FBM, shaped by the
 // analytic height gradient and weather coverage. This is the base density field
 // common to BOTH the view march and the light (shadow) march, so self-shadowing is
 // sampled from the same medium that is rendered. Returns the post-coverage density
 // in [0,1] (0 in empty space, via the same provably-safe early-outs as before).
 // Outputs heightFraction so callers reuse it without a recompute.
 //
-// Cheap empty-space rejection runs first: heightGradient is analytic (0 fetches),
-// coverage costs 1 weather fetch. The FBM below has maximum value equal to the sum
-// of its octave amplitudes (0.5+0.25+0.125+0.0625 = 0.9375); if even that maximum
-// cannot clear the coverage remap floor (1 - coverage), the result is provably 0 for
-// all noise, so the 6 warp + FBM fetches are skipped with no change in output.
+// Standard Perlin-Worley layout: the low/mid-frequency Perlin FBM here gives the
+// coherent cloud body; getCloudDensity then erodes the edges with high-frequency
+// Worley. Cheap empty-space rejection runs first: heightGradient is analytic (0
+// fetches), coverage costs 1 weather fetch. The FBM below has maximum value equal to
+// the sum of its octave amplitudes (0.5+0.25+0.125+0.0625 = 0.9375); since both noise
+// textures are normalized to [0,1], if even that maximum cannot clear the coverage
+// remap floor (1 - coverage), the result is provably 0 for all noise, so the 6 warp +
+// FBM fetches are skipped with no change in output.
 float cloudBaseDensity(vec3 p, out float heightFraction) {
 	heightFraction = clamp((p.y - aabbMin.y) / (aabbMax.y - aabbMin.y), 0.0, 1.0);
 	float heightGradient = getHeightGradient(heightFraction, cloudType);
@@ -150,8 +153,10 @@ float getCloudDensity(vec3 p) {
 	if (baseDensity <= 0.0) return 0.0;
 
 	// View-only high-frequency detail erosion (carves the visible cloud edges).
+	// Uses the high-frequency Worley texture sampled at a finer world scale than the
+	// base, giving cauliflower-style fringes rather than a uniform density scale.
 	vec3 detailPos = p + windVelocity * time;
-	float detailNoise = texture(perlinNoiseTexture, detailPos * detailScale).r;
+	float detailNoise = texture(worleyNoiseTexture, detailPos * detailScale).r;
 	float detailModifier = mix(detailNoise, 1.0 - detailNoise, clamp(heightFraction * 5.0, 0.0, 1.0));
 	baseDensity = clamp(remap(baseDensity, detailModifier * detailErosionStrength, 1.0, 0.0, 1.0), 0.0, 1.0);
 

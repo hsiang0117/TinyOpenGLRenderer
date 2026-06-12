@@ -112,7 +112,7 @@ public:
 		baseNoiseScale = 0.01f;
 		warpScale = 0.003f;
 		warpStrength = 25.0f;
-		detailScale = 0.01f;
+		detailScale = 0.04f;
 		detailErosionStrength = 0.35f;
 		lightAttenuation = 2.0f;
 		densityGain = 2.5f;
