@@ -38,9 +38,6 @@ void WindowSystem::update() {
 	if (input_->isKeyPressed(GLFW_KEY_ESCAPE)) {
 		setShouldClose(true);
 	}
-	if (input_->isKeyPressed(GLFW_KEY_LEFT_ALT)) {
-		setCursor(!getCursor());
-	}
 }
 
 GLFWwindow* WindowSystem::getWindow()

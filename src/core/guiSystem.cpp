@@ -1,5 +1,6 @@
 #include "guiSystem.hpp"
 #include "../Input.hpp"
+#include "../camera.hpp"
 #include "../gameObjectFactory.hpp"
 #include "resourceManager.hpp"
 #include "windowSystem.hpp"
@@ -53,6 +54,7 @@ namespace {
 }
 
 void GuiSystem::init(GLFWwindow* window) {
+	window_ = window;
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 	ImGuiIO& io = ImGui::GetIO();
@@ -121,7 +123,7 @@ void GuiSystem::render(double deltaTime) {
 	showInspectorPanel();
 	showRenderSettingsPanel(deltaTime);
 	showAssetsPanel();
-	showViewportPanel();
+	showViewportPanel(deltaTime);
 
 	// Display the file dialog as a top-level (modal) window, after the panels so it
 	// layers above them and receives input.
@@ -161,7 +163,7 @@ void GuiSystem::showInspectorPanel()
 	ImGui::End();
 }
 
-void GuiSystem::showViewportPanel()
+void GuiSystem::showViewportPanel(double deltaTime)
 {
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
 	ImGui::Begin("Viewport");
@@ -174,6 +176,51 @@ void GuiSystem::showViewportPanel()
 		renderSystem_->setViewportSize(w, h);
 		ImTextureID texId = (ImTextureID)(intptr_t)renderSystem_->getSceneColorTextureID();
 		ImGui::Image(texId, avail, ImVec2(0, 1), ImVec2(1, 0));
+
+		// Editor fly camera: hold RMB over the viewport to look (mouse) + move
+		// (WASD/Space/LeftCtrl); wheel zooms the FOV. Latched so the look keeps working
+		// even if the cursor drifts off the image; releasing RMB anywhere exits.
+		const bool wasFlying = flying_;
+		const bool hovered = ImGui::IsItemHovered();
+		if (hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Right)) flying_ = true;
+		if (!ImGui::IsMouseDown(ImGuiMouseButton_Right)) flying_ = false;
+		// A modal popup (e.g. the file dialog) owns input exclusively: never fly under it.
+		if (ImGui::GetTopMostPopupModal() != nullptr) flying_ = false;
+
+		// Lock + hide the OS cursor while flying so it cannot leave the window and stop
+		// the rotation at a screen edge. GLFW_CURSOR_DISABLED reports unbounded virtual
+		// coordinates, so we drive the look from our own per-frame cursor delta (not
+		// io.MouseDelta, which is clamped to the window). The ImGui GLFW backend
+		// early-returns from cursor management while DISABLED, so it won't fight us.
+		if (window_ && flying_ && !wasFlying) {
+			glfwSetInputMode(window_, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+			glfwGetCursorPos(window_, &lastCursorX_, &lastCursorY_);
+		}
+		if (window_ && !flying_ && wasFlying) {
+			glfwSetInputMode(window_, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+		}
+
+		if (flying_ && camera_ && window_) {
+			double cx, cy;
+			glfwGetCursorPos(window_, &cx, &cy);
+			camera_->lookDelta((float)(cx - lastCursorX_), (float)(cy - lastCursorY_));
+			lastCursorX_ = cx;
+			lastCursorY_ = cy;
+			if (ImGui::IsKeyDown(ImGuiKey_W)) camera_->processKeyboard(FRONT, deltaTime);
+			if (ImGui::IsKeyDown(ImGuiKey_S)) camera_->processKeyboard(BACK, deltaTime);
+			if (ImGui::IsKeyDown(ImGuiKey_A)) camera_->processKeyboard(LEFT, deltaTime);
+			if (ImGui::IsKeyDown(ImGuiKey_D)) camera_->processKeyboard(RIGHT, deltaTime);
+			if (ImGui::IsKeyDown(ImGuiKey_Space)) camera_->processKeyboard(UP, deltaTime);
+			if (ImGui::IsKeyDown(ImGuiKey_LeftCtrl)) camera_->processKeyboard(DOWN, deltaTime);
+			ImGui::SetNextFrameWantCaptureMouse(true);
+		}
+
+		// Wheel zooms FOV when hovering the viewport, or while flying (RMB held), where
+		// the cursor is locked so IsItemHovered() no longer reports true.
+		if ((hovered || flying_) && camera_) {
+			float wheel = ImGui::GetIO().MouseWheel;
+			if (wheel != 0.0f) camera_->zoom(wheel);
+		}
 	}
 	ImGui::End();
 	ImGui::PopStyleVar();

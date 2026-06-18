@@ -14,6 +14,7 @@ void Engine::init() {
 	guiSystem.setRenderSystem(&renderSystem);
 	guiSystem.setResourceManager(&resourceManager);
 	guiSystem.setSelectionModel(&selectionModel);
+	guiSystem.setCamera(&camera);
 	resourceManager.setCurrentScene(SceneFactory::createDefaultScene());
 }
 
@@ -23,11 +24,10 @@ void Engine::run() {
 		input.update();
 		windowSystem.update();
 		resourceManager.update();
-		camera.update(deltaTime, input);
 		renderSystem.update(deltaTime);
 		guiSystem.beginFrame();
 		renderSystem.render(camera);
-		guiSystem.render(deltaTime);
+		guiSystem.render(deltaTime);   // viewport panel drives the camera (applies next frame)
 		windowSystem.swapBuffers();
 	}
 	guiSystem.shutDown();

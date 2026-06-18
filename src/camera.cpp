@@ -1,6 +1,5 @@
 #include "camera.hpp"
 #include <glm/gtc/matrix_transform.hpp>
-#include <GLFW/glfw3.h>
 
 Camera::Camera() {
 	pos = DEFAULT_CAMERA_POS;
@@ -113,87 +112,24 @@ void Camera::processKeyboard(Direction d, double deltaTime) {
 	}
 }
 
-void Camera::processMouseMovement(float xPos, float yPos) {
-	if (firstMouse)
-	{
-		lastX = xPos;
-		lastY = yPos;
-		firstMouse = false;
-	}
-
-	float xoffset = xPos - lastX;
-	float yoffset = lastY - yPos;
-	lastX = xPos;
-	lastY = yPos;
-
-	xoffset *= sensitivity;
-	yoffset *= sensitivity;
-
-	yaw += xoffset;
-	pitch += yoffset;
+void Camera::lookDelta(float dxPixels, float dyPixels) {
+	yaw += dxPixels * sensitivity;
+	pitch -= dyPixels * sensitivity;   // ImGui MouseDelta.y is +downward
 
 	if (pitch > 89.0f)
 		pitch = 89.0f;
 	if (pitch < -89.0f)
 		pitch = -89.0f;
 
-	glm::vec3 front;
-	front.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
-	front.y = sin(glm::radians(pitch));
-	front.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
-	this->front = glm::normalize(front);
+	glm::vec3 dir;
+	dir.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
+	dir.y = sin(glm::radians(pitch));
+	dir.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
+	front = glm::normalize(dir);
 }
 
-void Camera::processMouseScroll(float yOffset) {
-	if (fov >= 1.0f && fov <= 70.0f)
-		fov -= yOffset;
-	if (fov <= 1.0f)
-		fov = 1.0f;
-	if (fov >= 70.0f)
-		fov = 70.0f;
-}
-
-void Camera::update(double deltaTime, Input& input)
-{
-	static bool movable = false;
-	if (input.isKeyPressed(GLFW_KEY_LEFT_ALT)) {
-		movable = !movable;
-		if (!movable) {
-			firstMouse = true;
-		}
-	}
-
-	if (!movable) {
-		return;
-	}
-
-	if (input.isKeyHeld(GLFW_KEY_W)) {
-		processKeyboard(FRONT, deltaTime);
-	}
-	if (input.isKeyHeld(GLFW_KEY_S)) {
-		processKeyboard(BACK, deltaTime);
-	}
-	if (input.isKeyHeld(GLFW_KEY_A)) {
-		processKeyboard(LEFT, deltaTime);
-	}
-	if (input.isKeyHeld(GLFW_KEY_D)) {
-		processKeyboard(RIGHT, deltaTime);
-	}
-	if (input.isKeyHeld(GLFW_KEY_SPACE)) {
-		processKeyboard(UP, deltaTime);
-	}
-	if (input.isKeyHeld(GLFW_KEY_LEFT_CONTROL)) {
-		processKeyboard(DOWN, deltaTime);
-	}
-
-	if (input.isMouseMoved()) {
-		double xPos = input.getMouseX();
-		double yPos = input.getMouseY();
-		processMouseMovement((float)xPos, (float)yPos);
-	}
-
-	if (input.isScrollMoved()) {
-		double yOffset = input.getScrollY();
-		processMouseScroll((float)yOffset);
-	}
+void Camera::zoom(float wheelSteps) {
+	fov -= wheelSteps;   // wheel up (positive) narrows FOV = zoom in
+	if (fov < 1.0f) fov = 1.0f;
+	if (fov > 70.0f) fov = 70.0f;
 }

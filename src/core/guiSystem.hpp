@@ -17,6 +17,7 @@ using ComponentWidgetFunc = std::function<void(ComponentPtr)>;
 
 class RenderSystem;
 class ResourceManager;
+class Camera;
 
 class GuiSystem {
 public:
@@ -26,6 +27,7 @@ public:
 	void setRenderSystem(RenderSystem* rs) { renderSystem_ = rs; }
 	void setResourceManager(ResourceManager* rm) { rm_ = rm; }
 	void setSelectionModel(SelectionModel* s) { selection_ = s; }
+	void setCamera(Camera* c) { camera_ = c; }
 	void beginFrame();
 	void render(double deltaTime);
 	void shutDown();
@@ -49,7 +51,7 @@ private:
 	void showInspectorPanel();
 	void showRenderSettingsPanel(double deltaTime);
 	void showAssetsPanel();
-	void showViewportPanel();
+	void showViewportPanel(double deltaTime);
 	void drawAddMenu();
 	void drawSceneTree();
 	void drawInspector();
@@ -70,6 +72,12 @@ private:
 
 	// Non-owning; injected by Engine. Scene mutation + shader/model access.
 	ResourceManager* rm_ = nullptr;
+
+	// Non-owning; injected by Engine. Driven by the Viewport panel's fly controls.
+	Camera* camera_ = nullptr;
+	bool flying_ = false;   // true while RMB is held after pressing over the Viewport
+	GLFWwindow* window_ = nullptr;            // for cursor lock during fly
+	double lastCursorX_ = 0.0, lastCursorY_ = 0.0;   // previous-frame cursor pos while flying
 };
 
 template<typename T>

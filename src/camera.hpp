@@ -2,7 +2,6 @@
 #define CAMERA_HPP
 #pragma once
 
-#include "input.hpp"
 #include <glm/glm.hpp>
 
 #define DEFAULT_CAMERA_POS glm::vec3(0.0f,0.0f,5.0f)
@@ -41,9 +40,10 @@ public:
 	glm::mat4 getProjectionMat(const float scrWidth, const float scrHeight);
 	Frustum getFrustum(const float scrWidth, const float scrHeight);
 	void processKeyboard(Direction d, double deltaTime);
-	void processMouseMovement(const float xPos, const float yPos);
-	void processMouseScroll(const float yOffset);
-	void update(double deltaTime, Input& input);
+	// Editor fly-camera primitives (driven by the Viewport panel via ImGui input):
+	// lookDelta applies a per-frame pixel delta to yaw/pitch; zoom adjusts the FOV.
+	void lookDelta(float dxPixels, float dyPixels);
+	void zoom(float wheelSteps);
 private:
 	glm::vec3 pos;
 	glm::vec3 front;
@@ -52,9 +52,6 @@ private:
 	float yaw;
 	float fov;
 	float sensitivity;
-	bool firstMouse = true;
-	float lastX;
-	float lastY;
 };
 
 #endif // !CAMERA_HPP
