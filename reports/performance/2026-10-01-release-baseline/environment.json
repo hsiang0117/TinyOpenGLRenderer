@@ -1,0 +1,32 @@
+﻿{
+    "date":  "2026-10-01T14:14:25.7127335+08:00",
+    "configuration":  "Release x64 /MD /O2; bundled Debug Assimp (no imported models in benchmark)",
+    "cpu":  [
+                "AMD Ryzen 9 8940HX with Radeon Graphics        "
+            ],
+    "videoControllers":  [
+                             {
+                                 "Name":  "AMD Radeon(TM) 610M",
+                                 "DriverVersion":  "32.0.13034.7001"
+                             },
+                             {
+                                 "Name":  "Parsec Virtual Display Adapter",
+                                 "DriverVersion":  "0.45.0.0"
+                             },
+                             {
+                                 "Name":  "MuMu Virtual Display Adapter",
+                                 "DriverVersion":  "20.36.41.498"
+                             },
+                             {
+                                 "Name":  "NVIDIA GeForce RTX 5060 Laptop GPU",
+                                 "DriverVersion":  "32.0.16.1714"
+                             }
+                         ],
+    "gitHead":  "dac4981ef3b56ccc1e6a424e65002beb46a9468a",
+    "benchmarkSha256":  "2B75750ED91A7845357CE5360FC4F34D32A5060B94DBB5AA77256792FC5E57E3",
+    "width":  1280,
+    "height":  720,
+    "warmupFrames":  60,
+    "sampleFrames":  120,
+    "rounds":  3
+}

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <ExternalDependenciesDir>$(ProjectDir)external-dependencies\</ExternalDependenciesDir>
+    <ExternalIncludeDir>$(ExternalDependenciesDir)include</ExternalIncludeDir>
+    <ExternalImGuiIncludeDir>$(ExternalIncludeDir)\imgui</ExternalImGuiIncludeDir>
+    <ExternalLibraryDir>$(ExternalDependenciesDir)lib\$(Platform)</ExternalLibraryDir>
+    <AssimpRuntimePath>$(ExternalDependenciesDir)runtime\$(Platform)\assimp-vc143-mtd.dll</AssimpRuntimePath>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Platform)'=='x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>$(ExternalIncludeDir);$(ExternalImGuiIncludeDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <AdditionalLibraryDirectories>$(ExternalLibraryDir);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <!-- The repository currently bundles only the Debug Assimp import library. -->
+      <AdditionalDependencies>glfw3.lib;opengl32.lib;assimp-vc143-mtd.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <Target Name="CopyAssimpRuntime" AfterTargets="Build" Condition="'$(Platform)'=='x64'">
+    <Copy SourceFiles="$(AssimpRuntimePath)" DestinationFolder="$(TargetDir)" SkipUnchangedFiles="true">
+      <Output TaskParameter="CopiedFiles" ItemName="FileWrites" />
+    </Copy>
+  </Target>
+</Project>

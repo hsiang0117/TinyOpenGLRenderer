@@ -1,0 +1,10 @@
+root = true
+
+[*.{cpp,hpp,c,h,vert,frag,geom,glsl,ps1,props,sln,vcxproj,filters,md}]
+end_of_line = crlf
+
+[.{gitattributes,gitignore,editorconfig}]
+end_of_line = crlf
+
+[external-dependencies/**]
+end_of_line = unset

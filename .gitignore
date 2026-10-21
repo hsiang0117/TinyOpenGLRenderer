@@ -17,6 +17,7 @@
 mono_crash.*
 
 # Build results
+/temporary-build/
 [Dd]ebug/
 [Dd]ebugPublic/
 [Rr]elease/
@@ -365,4 +366,11 @@ FodyWeavers.xsd
 data/model
 /data/cache/
 /data/shader/settings.glsl
+/data/shader/settings.glsl.tmp
 imgui.ini
+
+# Bundled libraries and runtimes are repository inputs, including x64 folders.
+!/external-dependencies/lib/
+!/external-dependencies/lib/**
+!/external-dependencies/runtime/
+!/external-dependencies/runtime/**

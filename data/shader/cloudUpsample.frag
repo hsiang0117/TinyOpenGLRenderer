@@ -10,7 +10,7 @@
 in vec2 texCoords;
 out vec4 fragColor;
 
-uniform sampler2D cloudTexture;   // half-res raymarch: rgb = scattered light, a = coverage
+uniform sampler2D cloudRaymarchTexture;   // half-res raymarch: rgb = scattered light, a = coverage
 uniform sampler2D depthTexture;   // full-res scene depth (same texture the march sampled)
 uniform vec2 cloudTexSize;        // half-res target dimensions, in texels
 uniform float nearPlane;
@@ -43,7 +43,7 @@ void main() {
 	offs[3] = vec2(1.0, 1.0);
 
 	// Keep taps inside the valid texel-center range so neither texture samples its
-	// (clamp/border) edge: cloudTexture is CLAMP_TO_EDGE, depth is CLAMP_TO_BORDER.
+	// (clamp/border) edge: cloudRaymarchTexture is CLAMP_TO_EDGE, depth is CLAMP_TO_BORDER.
 	vec2 minUv = 0.5 * invSize;
 	vec2 maxUv = 1.0 - 0.5 * invSize;
 
@@ -60,7 +60,7 @@ void main() {
 		float lowLin = linearizeDepth(texture(depthTexture, texelUv).r);
 		float dw = 1.0 / (1.0 + abs(lowLin - refLin) * sharpness);
 		float w = bw[i] * dw;
-		sumColor += texture(cloudTexture, texelUv) * w;
+		sumColor += texture(cloudRaymarchTexture, texelUv) * w;
 		sumW += w;
 	}
 

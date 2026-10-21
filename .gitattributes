@@ -3,6 +3,22 @@
 ###############################################################################
 * text=auto
 
+# Windows line endings for renderer sources, shaders, tests, and project files.
+/src/** text=auto eol=crlf
+/config/** text=auto eol=crlf
+# Preserve bundled dependencies exactly, including their original line endings.
+/external-dependencies/** -text
+/data/shader/** text=auto eol=crlf
+/tests/** text=auto eol=crlf
+/docs/** text=auto eol=crlf
+/readme.md text eol=crlf
+/*.sln text eol=crlf
+/*.vcxproj text eol=crlf
+/*.vcxproj.filters text eol=crlf
+/.gitattributes text eol=crlf
+/.gitignore text eol=crlf
+/.editorconfig text eol=crlf
+
 ###############################################################################
 # Set default behavior for command prompt diff.
 #

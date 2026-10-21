@@ -1,326 +1,564 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="源文件">
-      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
-      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    <Filter Include="App">
+      <UniqueIdentifier>{59EEDD99-B20D-4B0B-BCD0-4D0E2083AAB4}</UniqueIdentifier>
     </Filter>
-    <Filter Include="头文件">
-      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
-      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
+    <Filter Include="Platform">
+      <UniqueIdentifier>{A45D339A-9CD5-438B-A586-7B1CC0922926}</UniqueIdentifier>
     </Filter>
-    <Filter Include="资源文件">
-      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
-      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    <Filter Include="Scene">
+      <UniqueIdentifier>{0865235A-7062-4F4E-A108-87D2B0BA5AF3}</UniqueIdentifier>
     </Filter>
-    <Filter Include="资源文件\shader">
-      <UniqueIdentifier>{77951021-f105-4e02-b794-72996f6de53c}</UniqueIdentifier>
+    <Filter Include="Assets">
+      <UniqueIdentifier>{D63D0716-962B-4D55-B311-AE156A80FED1}</UniqueIdentifier>
     </Filter>
-    <Filter Include="头文件\core">
-      <UniqueIdentifier>{ceafbe3e-2e78-481e-bcd6-c52dea2c6e5d}</UniqueIdentifier>
+    <Filter Include="Animation">
+      <UniqueIdentifier>{A2A7AD4C-BA93-45A5-9E7E-8DF9CEED9733}</UniqueIdentifier>
     </Filter>
-    <Filter Include="源文件\thirdParty">
+    <Filter Include="Rendering">
+      <UniqueIdentifier>{66360DD4-A746-4671-9E5D-E32FD71F6BFB}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Rendering\Geometry">
+      <UniqueIdentifier>{F784B0F9-3470-413C-905C-A13BCB612801}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Rendering\Passes">
+      <UniqueIdentifier>{D6F04AE8-50FE-47D6-AB36-003003B9D192}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Rendering\OpenGL">
+      <UniqueIdentifier>{C61F0E7F-3571-4303-B67D-C29FA0E25AF8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Rendering\Clouds">
+      <UniqueIdentifier>{1A6E4719-A982-437C-8C0F-02A343736E6C}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Editor">
+      <UniqueIdentifier>{F6A15F42-4E24-4538-94D2-E808B892BCE0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Core">
+      <UniqueIdentifier>{31B606B3-454A-40AD-842D-BA1AAD983884}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Shaders">
+      <UniqueIdentifier>{47999284-ADC6-4559-AAC4-340C50372D7D}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Shaders\Common">
+      <UniqueIdentifier>{7C21B8A1-7420-4A91-B601-7F437691DB79}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Shaders\Forward">
+      <UniqueIdentifier>{3E1B75C0-8DF2-4B3D-B856-0B21DA70D918}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Shaders\Shadow">
+      <UniqueIdentifier>{EE66005C-AE63-4A77-BBCB-40D85EF8A45C}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Shaders\Cloud">
+      <UniqueIdentifier>{6A43C5ED-9E0E-4225-A898-F120A955B8D9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Shaders\PostProcess">
+      <UniqueIdentifier>{F3702AD6-8928-4F4C-8B14-DA28AB13B19C}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Shaders\Overlay">
+      <UniqueIdentifier>{86712D51-3882-432A-BD13-9229CC0F140A}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Tests">
+      <UniqueIdentifier>{BEEC51B3-2D39-4E91-88DE-57B16C3F0816}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Tests\Shaders">
+      <UniqueIdentifier>{B2270524-FC4F-4983-8548-3A4C2E6E61A5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Docs">
+      <UniqueIdentifier>{F3CF524B-DAE0-4F1C-BA07-1015BFFC6798}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Config">
+      <UniqueIdentifier>{96FEAB30-BF94-4EC6-A52E-B58126F17B11}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ThirdParty">
       <UniqueIdentifier>{590e9712-1021-463f-b7b0-1542d64125c5}</UniqueIdentifier>
     </Filter>
-    <Filter Include="源文件\thirdParty\imgui">
+    <Filter Include="ThirdParty\ImGui">
       <UniqueIdentifier>{96367e2b-4c89-4789-8869-bd665580e612}</UniqueIdentifier>
     </Filter>
-    <Filter Include="源文件\thirdParty\glad">
+    <Filter Include="ThirdParty\GLAD">
       <UniqueIdentifier>{8e0fb7d3-49db-468c-87d7-87465faa7052}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\main.cpp">
-      <Filter>源文件</Filter>
+    <ClCompile Include="external-dependencies\src\imgui\imgui.cpp">
+      <Filter>ThirdParty\ImGui</Filter>
     </ClCompile>
-    <ClCompile Include="src\input.cpp">
-      <Filter>源文件</Filter>
+    <ClCompile Include="external-dependencies\src\imgui\ImGuiFileDialog.cpp">
+      <Filter>ThirdParty\ImGui</Filter>
     </ClCompile>
-    <ClCompile Include="src\shader.cpp">
-      <Filter>源文件</Filter>
+    <ClCompile Include="external-dependencies\src\imgui\imgui_demo.cpp">
+      <Filter>ThirdParty\ImGui</Filter>
     </ClCompile>
-    <ClCompile Include="src\bone.cpp">
-      <Filter>源文件</Filter>
+    <ClCompile Include="external-dependencies\src\imgui\imgui_draw.cpp">
+      <Filter>ThirdParty\ImGui</Filter>
     </ClCompile>
-    <ClCompile Include="src\texture.cpp">
-      <Filter>源文件</Filter>
+    <ClCompile Include="external-dependencies\src\imgui\imgui_impl_glfw.cpp">
+      <Filter>ThirdParty\ImGui</Filter>
     </ClCompile>
-    <ClCompile Include="src\glBuffer.cpp">
-      <Filter>源文件</Filter>
+    <ClCompile Include="external-dependencies\src\imgui\imgui_impl_opengl3.cpp">
+      <Filter>ThirdParty\ImGui</Filter>
     </ClCompile>
-    <ClCompile Include="src\mesh.cpp">
-      <Filter>源文件</Filter>
+    <ClCompile Include="external-dependencies\src\imgui\imgui_tables.cpp">
+      <Filter>ThirdParty\ImGui</Filter>
     </ClCompile>
-    <ClCompile Include="src\material.cpp">
-      <Filter>源文件</Filter>
+    <ClCompile Include="external-dependencies\src\imgui\imgui_widgets.cpp">
+      <Filter>ThirdParty\ImGui</Filter>
     </ClCompile>
-    <ClCompile Include="src\skybox.cpp">
-      <Filter>源文件</Filter>
+    <ClCompile Include="src\animation\animation.cpp">
+      <Filter>Animation</Filter>
     </ClCompile>
-    <ClCompile Include="src\camera.cpp">
-      <Filter>源文件</Filter>
+    <ClCompile Include="src\animation\bone.cpp">
+      <Filter>Animation</Filter>
     </ClCompile>
-    <ClCompile Include="src\component.cpp">
-      <Filter>源文件</Filter>
+    <ClCompile Include="src\rendering\camera.cpp">
+      <Filter>Rendering</Filter>
     </ClCompile>
-    <ClCompile Include="src\core\windowSystem.cpp">
-      <Filter>源文件</Filter>
+    <ClCompile Include="src\scene\component.cpp">
+      <Filter>Scene</Filter>
     </ClCompile>
-    <ClCompile Include="src\core\guiSystem.cpp">
-      <Filter>源文件</Filter>
+    <ClCompile Include="src\platform\windowSystem.cpp">
+      <Filter>Platform</Filter>
+    </ClCompile>
+    <ClCompile Include="src\editor\guiSystem.cpp">
+      <Filter>Editor</Filter>
     </ClCompile>
     <ClCompile Include="src\core\logger.cpp">
-      <Filter>源文件</Filter>
+      <Filter>Core</Filter>
     </ClCompile>
-    <ClCompile Include="src\core\renderSystem.cpp">
-      <Filter>源文件</Filter>
+    <ClCompile Include="src\rendering\renderSystem.cpp">
+      <Filter>Rendering</Filter>
     </ClCompile>
-    <ClCompile Include="src\core\renderUtils.cpp">
-      <Filter>源文件</Filter>
+    <ClCompile Include="src\rendering\renderUtils.cpp">
+      <Filter>Rendering</Filter>
     </ClCompile>
-    <ClCompile Include="src\core\renderPasses.cpp">
-      <Filter>源文件</Filter>
+    <ClCompile Include="src\rendering\passes\renderPasses.cpp">
+      <Filter>Rendering\Passes</Filter>
     </ClCompile>
-    <ClCompile Include="src\engine.cpp">
-      <Filter>源文件</Filter>
+    <ClCompile Include="src\app\engine.cpp">
+      <Filter>App</Filter>
     </ClCompile>
-    <ClCompile Include="src\gameObjectFactory.cpp">
-      <Filter>源文件</Filter>
+    <ClCompile Include="src\scene\gameObjectFactory.cpp">
+      <Filter>Scene</Filter>
     </ClCompile>
-    <ClCompile Include="src\sceneFactory.cpp">
-      <Filter>源文件</Filter>
+    <ClCompile Include="src\scene\sceneFactory.cpp">
+      <Filter>Scene</Filter>
     </ClCompile>
-    <ClCompile Include="src\utils.cpp">
-      <Filter>源文件</Filter>
+    <ClCompile Include="src\rendering\opengl\glBuffer.cpp">
+      <Filter>Rendering\OpenGL</Filter>
     </ClCompile>
-    <ClCompile Include="src\meshGenerator.cpp">
-      <Filter>源文件</Filter>
+    <ClCompile Include="src\platform\input.cpp">
+      <Filter>Platform</Filter>
     </ClCompile>
-    <ClCompile Include="src\ply.cpp">
-      <Filter>源文件</Filter>
+    <ClCompile Include="src\app\main.cpp">
+      <Filter>App</Filter>
     </ClCompile>
-    <ClCompile Include="src\animation.cpp">
-      <Filter>源文件</Filter>
+    <ClCompile Include="src\rendering\material.cpp">
+      <Filter>Rendering</Filter>
     </ClCompile>
-    <ClCompile Include="src\model.cpp">
-      <Filter>源文件</Filter>
+    <ClCompile Include="src\rendering\geometry\mesh.cpp">
+      <Filter>Rendering\Geometry</Filter>
     </ClCompile>
-    <ClCompile Include="include\imgui\imgui_tables.cpp">
-      <Filter>源文件\thirdParty\imgui</Filter>
+    <ClCompile Include="src\rendering\geometry\meshGenerator.cpp">
+      <Filter>Rendering\Geometry</Filter>
     </ClCompile>
-    <ClCompile Include="include\imgui\imgui_widgets.cpp">
-      <Filter>源文件\thirdParty\imgui</Filter>
+    <ClCompile Include="src\assets\model.cpp">
+      <Filter>Assets</Filter>
     </ClCompile>
-    <ClCompile Include="include\imgui\imgui.cpp">
-      <Filter>源文件\thirdParty\imgui</Filter>
+    <ClCompile Include="src\assets\modelLoader.cpp">
+      <Filter>Assets</Filter>
     </ClCompile>
-    <ClCompile Include="include\imgui\imgui_demo.cpp">
-      <Filter>源文件\thirdParty\imgui</Filter>
+    <ClCompile Include="src\assets\resourceManager.cpp">
+      <Filter>Assets</Filter>
     </ClCompile>
-    <ClCompile Include="include\imgui\imgui_draw.cpp">
-      <Filter>源文件\thirdParty\imgui</Filter>
+    <ClCompile Include="src\assets\shaderLoader.cpp">
+      <Filter>Assets</Filter>
     </ClCompile>
-    <ClCompile Include="include\imgui\imgui_impl_glfw.cpp">
-      <Filter>源文件\thirdParty\imgui</Filter>
+    <ClCompile Include="src\scene\scene.cpp">
+      <Filter>Scene</Filter>
     </ClCompile>
-    <ClCompile Include="include\imgui\imgui_impl_opengl3.cpp">
-      <Filter>源文件\thirdParty\imgui</Filter>
+    <ClCompile Include="src\assets\ply.cpp">
+      <Filter>Assets</Filter>
     </ClCompile>
-    <ClCompile Include="src\thirdParty\glad.c">
-      <Filter>源文件\thirdParty\glad</Filter>
+    <ClCompile Include="src\rendering\opengl\shader.cpp">
+      <Filter>Rendering\OpenGL</Filter>
     </ClCompile>
-    <ClCompile Include="include\imgui\ImGuiFileDialog.cpp">
-      <Filter>源文件\thirdParty\imgui</Filter>
+    <ClCompile Include="src\rendering\skybox.cpp">
+      <Filter>Rendering</Filter>
+    </ClCompile>
+    <ClCompile Include="src\rendering\opengl\texture.cpp">
+      <Filter>Rendering\OpenGL</Filter>
+    </ClCompile>
+    <ClCompile Include="external-dependencies\src\glad\glad.c">
+      <Filter>ThirdParty\GLAD</Filter>
+    </ClCompile>
+    <ClCompile Include="src\rendering\clouds\noiseTextureGenerator.cpp">
+      <Filter>Rendering\Clouds</Filter>
+    </ClCompile>
+    <ClCompile Include="src\rendering\clouds\cloudTemporal.cpp">
+      <Filter>Rendering\Clouds</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="include\imgui\imgui_internal.h">
-      <Filter>源文件\thirdParty\imgui</Filter>
+    <ClInclude Include="external-dependencies\include\imgui\imconfig.h">
+      <Filter>ThirdParty\ImGui</Filter>
     </ClInclude>
-    <ClInclude Include="include\imgui\imconfig.h">
-      <Filter>源文件\thirdParty\imgui</Filter>
+    <ClInclude Include="external-dependencies\include\imgui\imgui.h">
+      <Filter>ThirdParty\ImGui</Filter>
     </ClInclude>
-    <ClInclude Include="include\imgui\imgui.h">
-      <Filter>源文件\thirdParty\imgui</Filter>
+    <ClInclude Include="external-dependencies\include\imgui\ImGuiFileDialog.h">
+      <Filter>ThirdParty\ImGui</Filter>
     </ClInclude>
-    <ClInclude Include="include\imgui\imgui_impl_glfw.h">
-      <Filter>源文件\thirdParty\imgui</Filter>
+    <ClInclude Include="external-dependencies\include\imgui\ImGuiFileDialogConfig.h">
+      <Filter>ThirdParty\ImGui</Filter>
     </ClInclude>
-    <ClInclude Include="include\imgui\imgui_impl_opengl3.h">
-      <Filter>源文件\thirdParty\imgui</Filter>
+    <ClInclude Include="external-dependencies\include\imgui\imgui_impl_glfw.h">
+      <Filter>ThirdParty\ImGui</Filter>
     </ClInclude>
-    <ClInclude Include="include\imgui\imgui_impl_opengl3_loader.h">
-      <Filter>源文件\thirdParty\imgui</Filter>
+    <ClInclude Include="external-dependencies\include\imgui\imgui_impl_opengl3.h">
+      <Filter>ThirdParty\ImGui</Filter>
     </ClInclude>
-    <ClInclude Include="src\core\renderSystem.hpp">
-      <Filter>头文件\core</Filter>
+    <ClInclude Include="external-dependencies\include\imgui\imgui_impl_opengl3_loader.h">
+      <Filter>ThirdParty\ImGui</Filter>
     </ClInclude>
-    <ClInclude Include="src\core\renderPass.hpp">
-      <Filter>头文件\core</Filter>
+    <ClInclude Include="external-dependencies\include\imgui\imgui_internal.h">
+      <Filter>ThirdParty\ImGui</Filter>
     </ClInclude>
-    <ClInclude Include="src\core\renderPasses.hpp">
-      <Filter>头文件\core</Filter>
+    <ClInclude Include="src\animation\animation.hpp">
+      <Filter>Animation</Filter>
     </ClInclude>
-    <ClInclude Include="src\core\renderUtils.hpp">
-      <Filter>头文件\core</Filter>
+    <ClInclude Include="src\animation\assimpNode.hpp">
+      <Filter>Animation</Filter>
     </ClInclude>
-    <ClInclude Include="src\core\resourceManager.hpp">
-      <Filter>头文件\core</Filter>
+    <ClInclude Include="src\animation\bone.hpp">
+      <Filter>Animation</Filter>
     </ClInclude>
-    <ClInclude Include="src\core\windowSystem.hpp">
-      <Filter>头文件\core</Filter>
+    <ClInclude Include="src\rendering\camera.hpp">
+      <Filter>Rendering</Filter>
     </ClInclude>
-    <ClInclude Include="src\camera.hpp">
-      <Filter>头文件</Filter>
+    <ClInclude Include="src\scene\component.hpp">
+      <Filter>Scene</Filter>
     </ClInclude>
-    <ClInclude Include="src\engine.hpp">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="src\glBuffer.hpp">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="src\input.hpp">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="src\material.hpp">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="src\mesh.hpp">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="src\model.hpp">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="src\texture.hpp">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="src\shader.hpp">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="src\core\guiSystem.hpp">
-      <Filter>头文件\core</Filter>
+    <ClInclude Include="src\editor\guiSystem.hpp">
+      <Filter>Editor</Filter>
     </ClInclude>
     <ClInclude Include="src\core\logger.hpp">
-      <Filter>头文件\core</Filter>
+      <Filter>Core</Filter>
     </ClInclude>
-    <ClInclude Include="src\gameObject.hpp">
-      <Filter>头文件</Filter>
+    <ClInclude Include="src\rendering\renderSystem.hpp">
+      <Filter>Rendering</Filter>
     </ClInclude>
-    <ClInclude Include="src\gameObjectFactory.hpp">
-      <Filter>头文件</Filter>
+    <ClInclude Include="src\rendering\passes\renderPass.hpp">
+      <Filter>Rendering\Passes</Filter>
     </ClInclude>
-    <ClInclude Include="src\sceneFactory.hpp">
-      <Filter>头文件</Filter>
+    <ClInclude Include="src\rendering\passes\renderPasses.hpp">
+      <Filter>Rendering\Passes</Filter>
     </ClInclude>
-    <ClInclude Include="include\imgui\ImGuiFileDialogConfig.h">
-      <Filter>源文件\thirdParty\imgui</Filter>
+    <ClInclude Include="src\rendering\renderLimits.hpp">
+      <Filter>Rendering</Filter>
     </ClInclude>
-    <ClInclude Include="include\imgui\ImGuiFileDialog.h">
-      <Filter>源文件\thirdParty\imgui</Filter>
+    <ClInclude Include="src\rendering\clouds\cloudVolume.hpp">
+      <Filter>Rendering\Clouds</Filter>
     </ClInclude>
-    <ClInclude Include="src\component.hpp">
-      <Filter>头文件</Filter>
+    <ClInclude Include="src\rendering\clouds\cloudTemporal.hpp">
+      <Filter>Rendering\Clouds</Filter>
     </ClInclude>
-    <ClInclude Include="src\skybox.hpp">
-      <Filter>头文件</Filter>
+    <ClInclude Include="src\rendering\renderUtils.hpp">
+      <Filter>Rendering</Filter>
     </ClInclude>
-    <ClInclude Include="src\meshGenerator.hpp">
-      <Filter>头文件</Filter>
+    <ClInclude Include="src\assets\resourceManager.hpp">
+      <Filter>Assets</Filter>
     </ClInclude>
-    <ClInclude Include="src\utils.hpp">
-      <Filter>头文件</Filter>
+    <ClInclude Include="src\assets\modelLoader.hpp">
+      <Filter>Assets</Filter>
     </ClInclude>
-    <ClInclude Include="src\bone.hpp">
-      <Filter>头文件</Filter>
+    <ClInclude Include="src\assets\shaderLoader.hpp">
+      <Filter>Assets</Filter>
     </ClInclude>
-    <ClInclude Include="src\animation.hpp">
-      <Filter>头文件</Filter>
+    <ClInclude Include="src\assets\shaderCatalog.hpp">
+      <Filter>Assets</Filter>
     </ClInclude>
-    <ClInclude Include="src\assimpNode.hpp">
-      <Filter>头文件</Filter>
+    <ClInclude Include="src\scene\scene.hpp">
+      <Filter>Scene</Filter>
     </ClInclude>
-    <ClInclude Include="src\ply.hpp">
-      <Filter>头文件</Filter>
+    <ClInclude Include="src\platform\windowSystem.hpp">
+      <Filter>Platform</Filter>
+    </ClInclude>
+    <ClInclude Include="src\app\engine.hpp">
+      <Filter>App</Filter>
+    </ClInclude>
+    <ClInclude Include="src\rendering\opengl\glBuffer.hpp">
+      <Filter>Rendering\OpenGL</Filter>
+    </ClInclude>
+    <ClInclude Include="src\platform\input.hpp">
+      <Filter>Platform</Filter>
+    </ClInclude>
+    <ClInclude Include="src\scene\gameObject.hpp">
+      <Filter>Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="src\scene\gameObjectFactory.hpp">
+      <Filter>Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="src\scene\sceneFactory.hpp">
+      <Filter>Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="src\rendering\material.hpp">
+      <Filter>Rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="src\rendering\geometry\mesh.hpp">
+      <Filter>Rendering\Geometry</Filter>
+    </ClInclude>
+    <ClInclude Include="src\rendering\geometry\meshGenerator.hpp">
+      <Filter>Rendering\Geometry</Filter>
+    </ClInclude>
+    <ClInclude Include="src\assets\model.hpp">
+      <Filter>Assets</Filter>
+    </ClInclude>
+    <ClInclude Include="src\assets\assimpGlmHelpers.hpp">
+      <Filter>Assets</Filter>
+    </ClInclude>
+    <ClInclude Include="src\assets\ply.hpp">
+      <Filter>Assets</Filter>
+    </ClInclude>
+    <ClInclude Include="src\rendering\opengl\shader.hpp">
+      <Filter>Rendering\OpenGL</Filter>
+    </ClInclude>
+    <ClInclude Include="src\rendering\skybox.hpp">
+      <Filter>Rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="src\rendering\opengl\texture.hpp">
+      <Filter>Rendering\OpenGL</Filter>
+    </ClInclude>
+    <ClInclude Include="src\rendering\clouds\noiseTextureGenerator.hpp">
+      <Filter>Rendering\Clouds</Filter>
+    </ClInclude>
+    <ClInclude Include="src\rendering\clouds\noiseVolumeData.hpp">
+      <Filter>Rendering\Clouds</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include="data\config.json">
-      <Filter>资源文件</Filter>
+    <None Include=".editorconfig">
+      <Filter>Config</Filter>
     </None>
-    <None Include="data\shader\test.vert">
-      <Filter>资源文件\shader</Filter>
-    </None>
-    <None Include="data\shader\test.frag">
-      <Filter>资源文件\shader</Filter>
-    </None>
-    <None Include="data\shader\skybox.vert">
-      <Filter>资源文件\shader</Filter>
-    </None>
-    <None Include="data\shader\skybox.frag">
-      <Filter>资源文件\shader</Filter>
-    </None>
-    <None Include="data\shader\settings.glsl">
-      <Filter>资源文件\shader</Filter>
-    </None>
-    <None Include="data\shader\depth.vert">
-      <Filter>资源文件\shader</Filter>
-    </None>
-    <None Include="data\shader\depth.frag">
-      <Filter>资源文件\shader</Filter>
-    </None>
-    <None Include="data\shader\screenQuad.vert">
-      <Filter>资源文件\shader</Filter>
-    </None>
-    <None Include="data\shader\screenQuad.frag">
-      <Filter>资源文件\shader</Filter>
-    </None>
-    <None Include="data\shader\depthCube.vert">
-      <Filter>资源文件\shader</Filter>
-    </None>
-    <None Include="data\shader\depthCube.geom">
-      <Filter>资源文件\shader</Filter>
-    </None>
-    <None Include="data\shader\depthCube.frag">
-      <Filter>资源文件\shader</Filter>
-    </None>
-    <None Include="data\shader\lightCube.vert">
-      <Filter>资源文件\shader</Filter>
-    </None>
-    <None Include="data\shader\lightCube.frag">
-      <Filter>资源文件\shader</Filter>
-    </None>
-    <None Include="data\shader\gaussianBlur.vert">
-      <Filter>资源文件\shader</Filter>
-    </None>
-    <None Include="data\shader\gaussianBlur.frag">
-      <Filter>资源文件\shader</Filter>
-    </None>
-    <None Include="readme.md">
-      <Filter>资源文件</Filter>
-    </None>
-    <None Include="data\shader\bone.vert">
-      <Filter>资源文件\shader</Filter>
-    </None>
-    <None Include="data\shader\bone.frag">
-      <Filter>资源文件\shader</Filter>
+    <None Include=".gitattributes">
+      <Filter>Config</Filter>
     </None>
     <None Include=".gitignore">
-      <Filter>资源文件</Filter>
+      <Filter>Config</Filter>
     </None>
-    <None Include="data\shader\volume.vert">
-      <Filter>资源文件\shader</Filter>
+    <None Include="data\config.json">
+      <Filter>Config</Filter>
     </None>
-    <None Include="data\shader\volume.frag">
-      <Filter>资源文件\shader</Filter>
+    <None Include="data\shader\skeleton.frag">
+      <Filter>Shaders\Overlay</Filter>
+    </None>
+    <None Include="data\shader\skeleton.vert">
+      <Filter>Shaders\Overlay</Filter>
+    </None>
+    <None Include="data\shader\directionalShadow.frag">
+      <Filter>Shaders\Shadow</Filter>
+    </None>
+    <None Include="data\shader\directionalShadow.vert">
+      <Filter>Shaders\Shadow</Filter>
+    </None>
+    <None Include="data\shader\pointShadow.frag">
+      <Filter>Shaders\Shadow</Filter>
+    </None>
+    <None Include="data\shader\pointShadow.geom">
+      <Filter>Shaders\Shadow</Filter>
+    </None>
+    <None Include="data\shader\pointShadow.vert">
+      <Filter>Shaders\Shadow</Filter>
+    </None>
+    <None Include="data\shader\gaussianBlur.frag">
+      <Filter>Shaders\PostProcess</Filter>
+    </None>
+    <None Include="data\shader\gaussianBlur.vert">
+      <Filter>Shaders\PostProcess</Filter>
+    </None>
+    <None Include="data\shader\lightMarker.frag">
+      <Filter>Shaders\Overlay</Filter>
+    </None>
+    <None Include="data\shader\lightMarker.vert">
+      <Filter>Shaders\Overlay</Filter>
+    </None>
+    <None Include="data\shader\composite.frag">
+      <Filter>Shaders\PostProcess</Filter>
+    </None>
+    <None Include="data\shader\fullscreen.vert">
+      <Filter>Shaders\Common</Filter>
+    </None>
+    <None Include="data\shader\settings.glsl">
+      <Filter>Shaders\Common</Filter>
+    </None>
+    <None Include="data\shader\settings.defaults.glsl">
+      <Filter>Shaders\Common</Filter>
+    </None>
+    <None Include="data\shader\skybox.frag">
+      <Filter>Shaders\Forward</Filter>
+    </None>
+    <None Include="data\shader\skybox.vert">
+      <Filter>Shaders\Forward</Filter>
+    </None>
+    <None Include="data\shader\forward.frag">
+      <Filter>Shaders\Forward</Filter>
+    </None>
+    <None Include="data\shader\forward.vert">
+      <Filter>Shaders\Forward</Filter>
+    </None>
+    <None Include="data\shader\cloudRaymarch.vert">
+      <Filter>Shaders\Cloud</Filter>
+    </None>
+    <None Include="data\shader\cloudRaymarch.frag">
+      <Filter>Shaders\Cloud</Filter>
+    </None>
+    <None Include="data\shader\cloudNoise.glsl">
+      <Filter>Shaders\Cloud</Filter>
+    </None>
+    <None Include="data\shader\cloudDensity.glsl">
+      <Filter>Shaders\Cloud</Filter>
+    </None>
+    <None Include="data\shader\cloudTemporal.frag">
+      <Filter>Shaders\Cloud</Filter>
     </None>
     <None Include="data\shader\cloudUpsample.frag">
-      <Filter>资源文件\shader</Filter>
-    </None>
-    <None Include="data\shader\gizmo.frag">
-      <Filter>资源文件\shader</Filter>
+      <Filter>Shaders\Cloud</Filter>
     </None>
     <None Include="data\shader\gizmo.vert">
-      <Filter>资源文件\shader</Filter>
+      <Filter>Shaders\Overlay</Filter>
+    </None>
+    <None Include="data\shader\gizmo.frag">
+      <Filter>Shaders\Overlay</Filter>
+    </None>
+    <None Include="docs\header-dependencies.md">
+      <Filter>Docs</Filter>
+    </None>
+    <None Include="docs\naming.md">
+      <Filter>Docs</Filter>
+    </None>
+    <None Include="docs\project-structure.md">
+      <Filter>Docs</Filter>
+    </None>
+    <None Include="docs\clouds.md">
+      <Filter>Docs</Filter>
+    </None>
+    <None Include="readme.md">
+      <Filter>Docs</Filter>
+    </None>
+    <None Include="tests\renderBenchmark.cpp">
+      <Filter>Tests</Filter>
+    </None>
+    <None Include="tests\renderCorrectness.cpp">
+      <Filter>Tests</Filter>
+    </None>
+    <None Include="tests\cloudNoiseChecks.cpp">
+      <Filter>Tests</Filter>
+    </None>
+    <None Include="tests\renderPerformance.cpp">
+      <Filter>Tests</Filter>
+    </None>
+    <None Include="tests\renderSafety.cpp">
+      <Filter>Tests</Filter>
+    </None>
+    <None Include="tests\renderStartup.cpp">
+      <Filter>Tests</Filter>
+    </None>
+    <None Include="tests\run-render-benchmark.ps1">
+      <Filter>Tests</Filter>
+    </None>
+    <None Include="tests\run-render-safety.ps1">
+      <Filter>Tests</Filter>
+    </None>
+    <None Include="tests\shaders\cubeSample.vert">
+      <Filter>Tests\Shaders</Filter>
+    </None>
+    <None Include="tests\shaders\lighting.vert">
+      <Filter>Tests\Shaders</Filter>
+    </None>
+    <None Include="tests\shaders\cloudNoiseProbe.frag">
+      <Filter>Tests\Shaders</Filter>
+    </None>
+    <None Include="tests\shaders\cloudDensityProbe.frag">
+      <Filter>Tests\Shaders</Filter>
+    </None>
+    <None Include="tests\cloudSamplingChecks.cpp">
+      <Filter>Tests</Filter>
+    </None>
+    <None Include="tests\shaders\cloudSamplingProbe.frag">
+      <Filter>Tests\Shaders</Filter>
+    </None>
+    <None Include="tests\shaders\cloudTemporalInput.frag">
+      <Filter>Tests\Shaders</Filter>
+    </None>
+    <None Include="tests\shaders\cloudRaymarchReference.frag">
+      <Filter>Tests\Shaders</Filter>
+    </None>
+    <None Include="tests\shaders\cloudDensityReference.glsl">
+      <Filter>Tests\Shaders</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="ThirdParty\GLFW">
+      <UniqueIdentifier>{67D096CD-454B-42C7-A32D-52E44E4C9871}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ThirdParty\GLM">
+      <UniqueIdentifier>{AE69B962-8E7D-4A4E-9BC9-748EC94C24B3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ThirdParty\Assimp">
+      <UniqueIdentifier>{9C247928-DFF3-4B25-8432-C0B9CA31EA27}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ThirdParty\Dirent">
+      <UniqueIdentifier>{03CA0834-0646-4192-8E4A-47659B5E58A0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ThirdParty\STB">
+      <UniqueIdentifier>{40351939-8AE8-4064-9D50-F0522B35B14C}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="external-dependencies\include\glad\glad.h">
+      <Filter>ThirdParty\GLAD</Filter>
+    </ClInclude>
+    <ClInclude Include="external-dependencies\include\KHR\khrplatform.h">
+      <Filter>ThirdParty\GLAD</Filter>
+    </ClInclude>
+    <ClInclude Include="external-dependencies\include\GLFW\glfw3.h">
+      <Filter>ThirdParty\GLFW</Filter>
+    </ClInclude>
+    <ClInclude Include="external-dependencies\include\GLFW\glfw3native.h">
+      <Filter>ThirdParty\GLFW</Filter>
+    </ClInclude>
+    <ClInclude Include="external-dependencies\include\glm\glm.hpp">
+      <Filter>ThirdParty\GLM</Filter>
+    </ClInclude>
+    <ClInclude Include="external-dependencies\include\assimp\Importer.hpp">
+      <Filter>ThirdParty\Assimp</Filter>
+    </ClInclude>
+    <ClInclude Include="external-dependencies\include\assimp\scene.h">
+      <Filter>ThirdParty\Assimp</Filter>
+    </ClInclude>
+    <ClInclude Include="external-dependencies\include\assimp\postprocess.h">
+      <Filter>ThirdParty\Assimp</Filter>
+    </ClInclude>
+    <ClInclude Include="external-dependencies\include\dirent\dirent.h">
+      <Filter>ThirdParty\Dirent</Filter>
+    </ClInclude>
+    <ClInclude Include="external-dependencies\include\stb_image.h">
+      <Filter>ThirdParty\STB</Filter>
+    </ClInclude>
+    <None Include="config\external-dependencies.props">
+      <Filter>Config</Filter>
+    </None>
+    <None Include="docs\external-dependencies.md">
+      <Filter>Docs</Filter>
+    </None>
+    <None Include="external-dependencies\lib\x64\assimp-vc143-mtd.lib">
+      <Filter>ThirdParty\Assimp</Filter>
+    </None>
+    <None Include="external-dependencies\runtime\x64\assimp-vc143-mtd.dll">
+      <Filter>ThirdParty\Assimp</Filter>
+    </None>
+    <None Include="external-dependencies\lib\x64\glfw3.lib">
+      <Filter>ThirdParty\GLFW</Filter>
     </None>
   </ItemGroup>
 </Project>

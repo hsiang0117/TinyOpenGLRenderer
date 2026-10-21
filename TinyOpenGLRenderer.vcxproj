@@ -69,7 +69,24 @@
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
+  <ImportGroup Label="PropertySheets">
+    <Import Project="config\external-dependencies.props" />
+  </ImportGroup>
   <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Platform)'=='x64'">
+    <OutDir>$(ProjectDir)temporary-build\$(Platform)\$(Configuration)\</OutDir>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <AdditionalIncludeDirectories>$(ProjectDir)src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Platform)'=='x64'">
+    <ClCompile>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <PreprocessorDefinitions>GLFW_INCLUDE_NONE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+  </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
@@ -104,17 +121,13 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_DEBUG;_CONSOLE;GLFW_INCLUDE_NONE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>.\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <EntryPointSymbol>mainCRTStartup</EntryPointSymbol>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>.\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>glfw3.lib;opengl32.lib;assimp-vc143-mtd.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <IgnoreSpecificDefaultLibraries>msvcrt.lib</IgnoreSpecificDefaultLibraries>
     </Link>
   </ItemDefinitionGroup>
@@ -136,108 +149,166 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="include\imgui\imgui.cpp" />
-    <ClCompile Include="include\imgui\ImGuiFileDialog.cpp" />
-    <ClCompile Include="include\imgui\imgui_demo.cpp" />
-    <ClCompile Include="include\imgui\imgui_draw.cpp" />
-    <ClCompile Include="include\imgui\imgui_impl_glfw.cpp" />
-    <ClCompile Include="include\imgui\imgui_impl_opengl3.cpp" />
-    <ClCompile Include="include\imgui\imgui_tables.cpp" />
-    <ClCompile Include="include\imgui\imgui_widgets.cpp" />
-    <ClCompile Include="src\animation.cpp" />
-    <ClCompile Include="src\bone.cpp" />
-    <ClCompile Include="src\camera.cpp" />
-    <ClCompile Include="src\component.cpp" />
-    <ClCompile Include="src\core\windowSystem.cpp" />
-    <ClCompile Include="src\core\guiSystem.cpp" />
+    <ClCompile Include="external-dependencies\src\imgui\imgui.cpp" />
+    <ClCompile Include="external-dependencies\src\imgui\ImGuiFileDialog.cpp" />
+    <ClCompile Include="external-dependencies\src\imgui\imgui_demo.cpp" />
+    <ClCompile Include="external-dependencies\src\imgui\imgui_draw.cpp" />
+    <ClCompile Include="external-dependencies\src\imgui\imgui_impl_glfw.cpp" />
+    <ClCompile Include="external-dependencies\src\imgui\imgui_impl_opengl3.cpp" />
+    <ClCompile Include="external-dependencies\src\imgui\imgui_tables.cpp" />
+    <ClCompile Include="external-dependencies\src\imgui\imgui_widgets.cpp" />
+    <ClCompile Include="src\animation\animation.cpp" />
+    <ClCompile Include="src\animation\bone.cpp" />
+    <ClCompile Include="src\rendering\camera.cpp" />
+    <ClCompile Include="src\scene\component.cpp" />
+    <ClCompile Include="src\platform\windowSystem.cpp" />
+    <ClCompile Include="src\editor\guiSystem.cpp" />
     <ClCompile Include="src\core\logger.cpp" />
-    <ClCompile Include="src\core\renderSystem.cpp" />
-    <ClCompile Include="src\core\renderUtils.cpp" />
-    <ClCompile Include="src\core\renderPasses.cpp" />
-    <ClCompile Include="src\engine.cpp" />
-    <ClCompile Include="src\gameObjectFactory.cpp" />
-    <ClCompile Include="src\sceneFactory.cpp" />
-    <ClCompile Include="src\glBuffer.cpp" />
-    <ClCompile Include="src\input.cpp" />
-    <ClCompile Include="src\main.cpp" />
-    <ClCompile Include="src\material.cpp" />
-    <ClCompile Include="src\mesh.cpp" />
-    <ClCompile Include="src\meshGenerator.cpp" />
-    <ClCompile Include="src\model.cpp" />
-    <ClCompile Include="src\ply.cpp" />
-    <ClCompile Include="src\shader.cpp" />
-    <ClCompile Include="src\skybox.cpp" />
-    <ClCompile Include="src\texture.cpp" />
-    <ClCompile Include="src\thirdParty\glad.c" />
-    <ClCompile Include="src\utils.cpp" />
+    <ClCompile Include="src\rendering\renderSystem.cpp" />
+    <ClCompile Include="src\rendering\renderUtils.cpp" />
+    <ClCompile Include="src\rendering\passes\renderPasses.cpp" />
+    <ClCompile Include="src\app\engine.cpp" />
+    <ClCompile Include="src\scene\gameObjectFactory.cpp" />
+    <ClCompile Include="src\scene\sceneFactory.cpp" />
+    <ClCompile Include="src\rendering\opengl\glBuffer.cpp" />
+    <ClCompile Include="src\platform\input.cpp" />
+    <ClCompile Include="src\app\main.cpp" />
+    <ClCompile Include="src\rendering\material.cpp" />
+    <ClCompile Include="src\rendering\geometry\mesh.cpp" />
+    <ClCompile Include="src\rendering\geometry\meshGenerator.cpp" />
+    <ClCompile Include="src\assets\model.cpp" />
+    <ClCompile Include="src\assets\modelLoader.cpp" />
+    <ClCompile Include="src\assets\resourceManager.cpp" />
+    <ClCompile Include="src\assets\shaderLoader.cpp" />
+    <ClCompile Include="src\scene\scene.cpp" />
+    <ClCompile Include="src\assets\ply.cpp" />
+    <ClCompile Include="src\rendering\opengl\shader.cpp" />
+    <ClCompile Include="src\rendering\skybox.cpp" />
+    <ClCompile Include="src\rendering\opengl\texture.cpp" />
+    <ClCompile Include="external-dependencies\src\glad\glad.c" />
+    <ClCompile Include="src\rendering\clouds\noiseTextureGenerator.cpp" />
+    <ClCompile Include="src\rendering\clouds\cloudTemporal.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="include\imgui\imconfig.h" />
-    <ClInclude Include="include\imgui\imgui.h" />
-    <ClInclude Include="include\imgui\ImGuiFileDialog.h" />
-    <ClInclude Include="include\imgui\ImGuiFileDialogConfig.h" />
-    <ClInclude Include="include\imgui\imgui_impl_glfw.h" />
-    <ClInclude Include="include\imgui\imgui_impl_opengl3.h" />
-    <ClInclude Include="include\imgui\imgui_impl_opengl3_loader.h" />
-    <ClInclude Include="include\imgui\imgui_internal.h" />
-    <ClInclude Include="src\animation.hpp" />
-    <ClInclude Include="src\assimpNode.hpp" />
-    <ClInclude Include="src\bone.hpp" />
-    <ClInclude Include="src\camera.hpp" />
-    <ClInclude Include="src\component.hpp" />
-    <ClInclude Include="src\core\guiSystem.hpp" />
+    <ClInclude Include="external-dependencies\include\imgui\imconfig.h" />
+    <ClInclude Include="external-dependencies\include\imgui\imgui.h" />
+    <ClInclude Include="external-dependencies\include\imgui\ImGuiFileDialog.h" />
+    <ClInclude Include="external-dependencies\include\imgui\ImGuiFileDialogConfig.h" />
+    <ClInclude Include="external-dependencies\include\imgui\imgui_impl_glfw.h" />
+    <ClInclude Include="external-dependencies\include\imgui\imgui_impl_opengl3.h" />
+    <ClInclude Include="external-dependencies\include\imgui\imgui_impl_opengl3_loader.h" />
+    <ClInclude Include="external-dependencies\include\imgui\imgui_internal.h" />
+    <ClInclude Include="src\animation\animation.hpp" />
+    <ClInclude Include="src\animation\assimpNode.hpp" />
+    <ClInclude Include="src\animation\bone.hpp" />
+    <ClInclude Include="src\rendering\camera.hpp" />
+    <ClInclude Include="src\scene\component.hpp" />
+    <ClInclude Include="src\editor\guiSystem.hpp" />
     <ClInclude Include="src\core\logger.hpp" />
-    <ClInclude Include="src\core\renderSystem.hpp" />
-    <ClInclude Include="src\core\renderPass.hpp" />
-    <ClInclude Include="src\core\renderPasses.hpp" />
-    <ClInclude Include="src\core\renderUtils.hpp" />
-    <ClInclude Include="src\core\resourceManager.hpp" />
-    <ClInclude Include="src\core\windowSystem.hpp" />
-    <ClInclude Include="src\engine.hpp" />
-    <ClInclude Include="src\glBuffer.hpp" />
-    <ClInclude Include="src\input.hpp" />
-    <ClInclude Include="src\gameObject.hpp" />
-    <ClInclude Include="src\gameObjectFactory.hpp" />
-    <ClInclude Include="src\sceneFactory.hpp" />
-    <ClInclude Include="src\material.hpp" />
-    <ClInclude Include="src\mesh.hpp" />
-    <ClInclude Include="src\meshGenerator.hpp" />
-    <ClInclude Include="src\model.hpp" />
-    <ClInclude Include="src\ply.hpp" />
-    <ClInclude Include="src\shader.hpp" />
-    <ClInclude Include="src\skybox.hpp" />
-    <ClInclude Include="src\texture.hpp" />
-    <ClInclude Include="src\utils.hpp" />
+    <ClInclude Include="src\rendering\renderSystem.hpp" />
+    <ClInclude Include="src\rendering\passes\renderPass.hpp" />
+    <ClInclude Include="src\rendering\passes\renderPasses.hpp" />
+    <ClInclude Include="src\rendering\renderLimits.hpp" />
+    <ClInclude Include="src\rendering\clouds\cloudVolume.hpp" />
+    <ClInclude Include="src\rendering\clouds\cloudTemporal.hpp" />
+    <ClInclude Include="src\rendering\renderUtils.hpp" />
+    <ClInclude Include="src\assets\resourceManager.hpp" />
+    <ClInclude Include="src\assets\modelLoader.hpp" />
+    <ClInclude Include="src\assets\shaderLoader.hpp" />
+    <ClInclude Include="src\assets\shaderCatalog.hpp" />
+    <ClInclude Include="src\scene\scene.hpp" />
+    <ClInclude Include="src\platform\windowSystem.hpp" />
+    <ClInclude Include="src\app\engine.hpp" />
+    <ClInclude Include="src\rendering\opengl\glBuffer.hpp" />
+    <ClInclude Include="src\platform\input.hpp" />
+    <ClInclude Include="src\scene\gameObject.hpp" />
+    <ClInclude Include="src\scene\gameObjectFactory.hpp" />
+    <ClInclude Include="src\scene\sceneFactory.hpp" />
+    <ClInclude Include="src\rendering\material.hpp" />
+    <ClInclude Include="src\rendering\geometry\mesh.hpp" />
+    <ClInclude Include="src\rendering\geometry\meshGenerator.hpp" />
+    <ClInclude Include="src\assets\model.hpp" />
+    <ClInclude Include="src\assets\assimpGlmHelpers.hpp" />
+    <ClInclude Include="src\assets\ply.hpp" />
+    <ClInclude Include="src\rendering\opengl\shader.hpp" />
+    <ClInclude Include="src\rendering\skybox.hpp" />
+    <ClInclude Include="src\rendering\opengl\texture.hpp" />
+    <ClInclude Include="src\rendering\clouds\noiseTextureGenerator.hpp" />
+    <ClInclude Include="src\rendering\clouds\noiseVolumeData.hpp" />
   </ItemGroup>
   <ItemGroup>
+    <None Include=".editorconfig" />
+    <None Include=".gitattributes" />
     <None Include=".gitignore" />
     <None Include="data\config.json" />
-    <None Include="data\shader\bone.frag" />
-    <None Include="data\shader\bone.vert" />
-    <None Include="data\shader\depth.frag" />
-    <None Include="data\shader\depth.vert" />
-    <None Include="data\shader\depthCube.frag" />
-    <None Include="data\shader\depthCube.geom" />
-    <None Include="data\shader\depthCube.vert" />
+    <None Include="data\shader\skeleton.frag" />
+    <None Include="data\shader\skeleton.vert" />
+    <None Include="data\shader\directionalShadow.frag" />
+    <None Include="data\shader\directionalShadow.vert" />
+    <None Include="data\shader\pointShadow.frag" />
+    <None Include="data\shader\pointShadow.geom" />
+    <None Include="data\shader\pointShadow.vert" />
     <None Include="data\shader\gaussianBlur.frag" />
     <None Include="data\shader\gaussianBlur.vert" />
-    <None Include="data\shader\lightCube.frag" />
-    <None Include="data\shader\lightCube.vert" />
-    <None Include="data\shader\screenQuad.frag" />
-    <None Include="data\shader\screenQuad.vert" />
+    <None Include="data\shader\lightMarker.frag" />
+    <None Include="data\shader\lightMarker.vert" />
+    <None Include="data\shader\composite.frag" />
+    <None Include="data\shader\fullscreen.vert" />
     <None Include="data\shader\settings.glsl" />
+    <None Include="data\shader\settings.defaults.glsl" />
     <None Include="data\shader\skybox.frag" />
     <None Include="data\shader\skybox.vert" />
-    <None Include="data\shader\test.frag" />
-    <None Include="data\shader\test.vert" />
-    <None Include="data\shader\volume.vert" />
-    <None Include="data\shader\volume.frag" />
+    <None Include="data\shader\forward.frag" />
+    <None Include="data\shader\forward.vert" />
+    <None Include="data\shader\cloudRaymarch.vert" />
+    <None Include="data\shader\cloudRaymarch.frag" />
+    <None Include="data\shader\cloudNoise.glsl" />
+    <None Include="data\shader\cloudDensity.glsl" />
+    <None Include="data\shader\cloudTemporal.frag" />
     <None Include="data\shader\cloudUpsample.frag" />
     <None Include="data\shader\gizmo.vert" />
     <None Include="data\shader\gizmo.frag" />
+    <None Include="docs\header-dependencies.md" />
+    <None Include="docs\naming.md" />
+    <None Include="docs\project-structure.md" />
+    <None Include="docs\clouds.md" />
     <None Include="readme.md" />
+    <None Include="tests\renderBenchmark.cpp" />
+    <None Include="tests\renderCorrectness.cpp" />
+    <None Include="tests\cloudNoiseChecks.cpp" />
+    <None Include="tests\renderPerformance.cpp" />
+    <None Include="tests\renderSafety.cpp" />
+    <None Include="tests\renderStartup.cpp" />
+    <None Include="tests\run-render-benchmark.ps1" />
+    <None Include="tests\run-render-safety.ps1" />
+    <None Include="tests\shaders\cubeSample.vert" />
+    <None Include="tests\shaders\lighting.vert" />
+    <None Include="tests\shaders\cloudNoiseProbe.frag" />
+    <None Include="tests\shaders\cloudDensityProbe.frag" />
+    <None Include="tests\cloudSamplingChecks.cpp" />
+    <None Include="tests\shaders\cloudSamplingProbe.frag" />
+    <None Include="tests\shaders\cloudTemporalInput.frag" />
+    <None Include="tests\shaders\cloudRaymarchReference.frag" />
+    <None Include="tests\shaders\cloudDensityReference.glsl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
+  <ItemGroup>
+    <ClInclude Include="external-dependencies\include\glad\glad.h" />
+    <ClInclude Include="external-dependencies\include\KHR\khrplatform.h" />
+    <ClInclude Include="external-dependencies\include\GLFW\glfw3.h" />
+    <ClInclude Include="external-dependencies\include\GLFW\glfw3native.h" />
+    <ClInclude Include="external-dependencies\include\glm\glm.hpp" />
+    <ClInclude Include="external-dependencies\include\assimp\Importer.hpp" />
+    <ClInclude Include="external-dependencies\include\assimp\scene.h" />
+    <ClInclude Include="external-dependencies\include\assimp\postprocess.h" />
+    <ClInclude Include="external-dependencies\include\dirent\dirent.h" />
+    <ClInclude Include="external-dependencies\include\stb_image.h" />
+    <None Include="config\external-dependencies.props" />
+    <None Include="docs\external-dependencies.md" />
+    <None Include="external-dependencies\lib\x64\assimp-vc143-mtd.lib" />
+    <None Include="external-dependencies\runtime\x64\assimp-vc143-mtd.dll" />
+    <None Include="external-dependencies\lib\x64\glfw3.lib" />
+  </ItemGroup>
 </Project>
