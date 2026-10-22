@@ -7,6 +7,7 @@
 #include "animation/assimpNode.hpp"
 #include "animation/animation.hpp"
 #include <unordered_map>
+#include <filesystem>
 #include <future>
 #include <memory>
 #include <string>
@@ -26,7 +27,7 @@ public:
 	static std::future<std::shared_ptr<Model>> LoadAsync(const char* path);
 	bool initGLResources();
 
-	std::string getPath() { return path; }
+	std::string getPath() { return path.u8string(); }
 	std::string getName() { return name; }
 	void draw(std::shared_ptr<Shader> shader);
 	bool isReady() const { return loaded && glInitialized; }
@@ -34,7 +35,6 @@ public:
 	Node* findNode(std::string name);
 	std::vector<Node>& getNodes() { return nodes; }
 	std::vector<Animation>& getAnimations() { return animations; }
-	Texture2D& getBoneMatrixTexture() { return boneMatrixTexture; }
 private:
 	bool loaded = false, glInitialized = false;
 
@@ -43,15 +43,13 @@ private:
 	std::vector<Node> nodes;
 	std::vector<Animation> animations;
 
-	std::string path;
-	std::string directory;
+	std::filesystem::path path;
+	std::filesystem::path directory;
 	std::string name;
 
-	void loadModel(std::string path);
+	void loadModel(const std::filesystem::path& modelPath);
 	void processNode(aiNode* node, const aiScene* scene, int parentIndex);
-	Mesh processMesh(aiMesh* mesh, const aiScene* scene, glm::mat4 nodeTransform);
-
-	Texture2D boneMatrixTexture;
+	Mesh processMesh(aiMesh* mesh, const aiScene* scene, glm::mat4 meshToModelBind);
 };
 
 using ModelPtr = std::shared_ptr<Model>;

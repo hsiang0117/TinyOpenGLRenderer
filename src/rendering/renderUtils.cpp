@@ -81,14 +81,6 @@ bool aabbInFrustum(const glm::vec3& minAABB, const glm::vec3& maxAABB, const glm
 	return true;
 }
 
-bool isRenderable(const GameObjectPtr& obj) {
-	if (!obj) return false;
-	if (obj->has<ModelRenderComponent>()) return true;
-	if (obj->has<StaticMeshComponent>() && obj->has<DynamicMaterialComponent>() && !obj->has<CloudVolumeComponent>())
-		return true;
-	return false;
-}
-
 bool isRenderableInFrustum(const GameObjectPtr& obj, Frustum& frustum) {
 	if (!obj) return false;
 	auto transform = obj->getComponent<Transform>();
@@ -162,14 +154,14 @@ void drawLightMarker(const GameObjectPtr& obj, ShaderPtr shader) {
 void drawSkybox(const GameObjectPtr& obj, ShaderPtr shader) {
 	shader->setInt("skybox", 5);
 	if (auto skyboxComponent = obj->getComponent<SkyboxComponent>()) {
-		if (skyboxComponent->skybox) skyboxComponent->skybox->draw();
+		if (skyboxComponent->skybox && skyboxComponent->skybox->isReady()) skyboxComponent->skybox->draw();
 	}
 }
 
 void bindSkyboxCubeMap(const GameObjectPtr& obj, ShaderPtr shader) {
 	shader->setInt("skybox", 5);
 	if (auto skyboxComponent = obj->getComponent<SkyboxComponent>()) {
-		if (skyboxComponent->skybox) skyboxComponent->skybox->useCubeMap();
+		if (skyboxComponent->skybox && skyboxComponent->skybox->isReady()) skyboxComponent->skybox->useCubeMap();
 	}
 }
 

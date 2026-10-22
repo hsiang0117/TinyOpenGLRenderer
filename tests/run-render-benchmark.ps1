@@ -11,6 +11,10 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path -Parent $PSScriptRoot
+function Get-BuildPath([string]$Path) {
+    if ([IO.Path]::IsPathRooted($Path)) { return $Path }
+    return Join-Path $projectRoot $Path
+}
 $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio/Installer/vswhere.exe'
 $vsRoot = (& $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath)
 if (-not $vsRoot) { throw 'Visual Studio C++ tools were not found.' }
@@ -19,19 +23,27 @@ Push-Location $projectRoot
 try {
     & $msbuild TinyOpenGLRenderer.sln /t:Build /p:Configuration=Release /p:Platform=x64 /nologo /verbosity:minimal
     if ($LASTEXITCODE -ne 0) { throw 'Release build failed.' }
-    $buildPropertyJson = & $msbuild TinyOpenGLRenderer.vcxproj /p:Configuration=Release /p:Platform=x64 /getProperty:IntDir,OutDir,ExternalIncludeDir,ExternalLibraryDir /nologo
+    $buildPropertyJson = & $msbuild TinyOpenGLRenderer.vcxproj /p:Configuration=Release /p:Platform=x64 /getProperty:IntDir,OutDir,ExternalIncludeDir,ExternalLibraryDir /getItem:ClCompile /nologo
     if ($LASTEXITCODE -ne 0) { throw 'Renderer build paths could not be read.' }
-    $buildProperties = ($buildPropertyJson -join [Environment]::NewLine | ConvertFrom-Json).Properties
-    $intDir = $buildProperties.IntDir
-    $objects = @(Get-ChildItem -LiteralPath (Join-Path $projectRoot $intDir) -Filter '*.obj' | Where-Object Name -ne 'main.obj')
+    $buildInformation = $buildPropertyJson -join [Environment]::NewLine | ConvertFrom-Json
+    $buildProperties = $buildInformation.Properties
+    $objects = @($buildInformation.Items.ClCompile |
+        Where-Object { $_.ExcludedFromBuild -ne 'true' -and [IO.Path]::GetFileName($_.Identity) -ne 'main.cpp' } |
+        ForEach-Object {
+            $objectPath = $_.ObjectFileName
+            if ([IO.Path]::GetExtension($objectPath) -ne '.obj') {
+                $objectPath = Join-Path $objectPath ([IO.Path]::GetFileNameWithoutExtension($_.Identity) + '.obj')
+            }
+            Get-Item -LiteralPath (Get-BuildPath $objectPath)
+        })
     if ($objects.Count -eq 0) { throw 'Renderer object files were not found.' }
-    $outputDir = $buildProperties.OutDir
+    $outputDir = Get-BuildPath $buildProperties.OutDir
     $buildDir = Join-Path $outputDir 'BenchmarkBuild'
     New-Item -ItemType Directory -Path $buildDir -Force | Out-Null
     $benchmarkExe = Join-Path $outputDir 'renderBenchmark.exe'
     $responsePath = Join-Path $buildDir 'compile.rsp'
     $arguments = @(
-        '/nologo', '/EHsc', '/std:c++17', '/DGLFW_INCLUDE_NONE', '/DNDEBUG', '/MD', '/O2',
+        '/nologo', '/EHsc', '/std:c++17', '/utf-8', '/DGLFW_INCLUDE_NONE', '/DNDEBUG', '/MD', '/O2',
         ('/I"' + $buildProperties.ExternalIncludeDir + '"'),
         ('/I"' + (Join-Path $projectRoot 'src') + '"'),
         ('/Fo"' + $buildDir + '/"'),

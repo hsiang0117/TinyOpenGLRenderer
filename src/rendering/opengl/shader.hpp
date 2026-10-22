@@ -8,6 +8,7 @@
 #include <memory>
 #include <map>
 #include <functional>
+#include <filesystem>
 
 class Shader
 {
@@ -34,20 +35,18 @@ public:
     void setInt(const char* name, int value);
     void setBool(const char* name, bool value);
     bool hasUniform(const char* name);
-    static bool changeSettings(const char* name, bool value);
 private:
     Shader() = default;
     void compile(const std::string* settingsOverride = nullptr);
     GLint uniformLocation(const char* name);
     // Transparent lookup avoids a temporary string on every uniform update.
     std::map<std::string, GLint, std::less<>> uniformLocations;
-    std::string preprocessShader(std::string shaderContent, const std::string* settingsOverride);
     bool valid_ = false;
     std::string lastError_;
     std::map<std::string, bool, std::less<>> compiledSettings_;
-    std::string vertexShaderPath;
-    std::string fragmentShaderPath;
-    std::string geometryShaderPath;
+    std::filesystem::path vertexShaderPath;
+    std::filesystem::path fragmentShaderPath;
+    std::filesystem::path geometryShaderPath;
 };
 
 using ShaderPtr = std::shared_ptr<Shader>;

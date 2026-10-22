@@ -26,15 +26,12 @@ public:
 	void shutdown();
 
 	void queueModelLoad(const std::string& path);
-	std::shared_ptr<Model> getModel(const std::string& key) const;
 	std::vector<std::shared_ptr<Model>> getAllModels() const;
 	std::shared_ptr<Shader> getShader(const std::string& key) const;
 
 	bool addGameObject(GameObjectPtr obj);
 	void removeGameObject(std::size_t idx);
 	std::vector<GameObjectPtr> getGameObjects() const;
-	GameObjectPtr getGameObjectAt(std::size_t idx) const;
-	std::size_t getGameObjectCount() const;
 	int getPointLightCount() const;
 	int getDirectionalLightCount() const;
 	int getSpotLightCount() const;

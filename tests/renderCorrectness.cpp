@@ -2,11 +2,13 @@
 #include "rendering/renderUtils.hpp"
 #include "assets/resourceManager.hpp"
 #include "assets/shaderCatalog.hpp"
+#include "assets/model.hpp"
 #include "scene/component.hpp"
 #include "rendering/opengl/shader.hpp"
 #include "rendering/geometry/meshGenerator.hpp"
 #include "rendering/opengl/glBuffer.hpp"
 #include "rendering/geometry/mesh.hpp"
+#include "rendering/skybox.hpp"
 #include <GLFW/glfw3.h>
 #include <glm/gtc/matrix_transform.hpp>
 #include <algorithm>
@@ -19,6 +21,7 @@
 
 void runCloudNoiseChecks();
 void runCloudSamplingChecks();
+void runModelAnimationChecks();
 
 namespace {
 void check(bool ok, const char* message) { if (!ok) throw std::runtime_error(message); }
@@ -95,7 +98,7 @@ void checkLighting() {
         shader->setVec3("cameraPos", glm::vec3(0, 0, 5));
         shader->setInt("pointLightCount", 2); shader->setInt("spotLightCount", 0); shader->setInt("directionalLightCount", 1);
         shader->setBool("directionalShadowEnabled", true);
-        for (auto unit = GL_TEXTURE0; unit <= GL_TEXTURE4; ++unit) bindDummyTexture2D(unit);
+        for (auto unit = GL_TEXTURE0; unit <= GL_TEXTURE3; ++unit) bindDummyTexture2D(unit);
         depth.use(GL_TEXTURE6); cubes.use(GL_TEXTURE7);
         glViewport(0, 0, 1, 1); RenderHelpers::drawFullscreenQuad();
         auto lit = pixel(); auto bloom = pixel(GL_COLOR_ATTACHMENT1);
@@ -480,6 +483,328 @@ void writeImage(const std::filesystem::path& path, int width, int height, int ch
     check(bool(output), "Texture fixture write failed");
 }
 
+void checkModelPaths() {
+    namespace fs = std::filesystem;
+    struct RestoreDirectory {
+        fs::path original = fs::current_path();
+        ~RestoreDirectory() { std::error_code ec; fs::current_path(original, ec); }
+    } restoreDirectory;
+    const fs::path directory = fs::u8path(u8"x64/RenderChecks/model.paths/\u6a21\u578b\u76ee\u5f55");
+    const auto models = directory / "models.v1";
+    fs::create_directories(models / "textures");
+    auto write = [](const fs::path& path, const std::string& text) {
+        std::ofstream output(path); output << text;
+        check(bool(output), "Model fixture write failed");
+    };
+    writeImage(models / "textures/albedo.tga", 1, 1, 4, {31, 87, 193, 255});
+    writeImage(models / fs::u8path(u8"textures/\u8d34\u56fe.tga"), 1, 1, 4, {41, 97, 203, 255});
+    writeImage(directory / "shared.tga", 1, 1, 4, {61, 137, 211, 255});
+    writeImage(directory / "absolute.tga", 1, 1, 4, {101, 157, 229, 255});
+    write(directory / "model.vert", "#version 450 core\nlayout(location=0) in vec3 position;\n"
+        "void main(){gl_Position=vec4(position,1);}\n");
+    write(directory / "model.frag", "#version 450 core\nout vec4 result;\nvoid main(){result=vec4(1);}\n");
+    auto shader = std::make_shared<Shader>((directory / "model.vert").u8string().c_str(),
+        (directory / "model.frag").u8string().c_str());
+    linked(shader); shader->use(); glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    struct Case {
+        const char* name;
+        std::string input, texture;
+        glm::vec4 expected;
+    };
+    const Case cases[] = {
+        {"relative.part", (models / "relative.part.obj").generic_u8string(), "textures/albedo.tga", glm::vec4(31, 87, 193, 255) / 255.0f},
+        {"parent.part", (models / "parent.part.obj").make_preferred().u8string(), "..\\shared.tga", glm::vec4(61, 137, 211, 255) / 255.0f},
+        {"absolute.part", fs::absolute(models / "absolute.part.obj").u8string(), fs::absolute(directory / "absolute.tga").u8string(),
+            glm::vec4(101, 157, 229, 255) / 255.0f},
+        {u8"\u6a21\u578b.part", (models / fs::u8path(u8"\u6a21\u578b.part.obj")).u8string(), u8"textures/\u8d34\u56fe.tga",
+            glm::vec4(41, 97, 203, 255) / 255.0f},
+        {"bare.part", "bare.part.obj", "", glm::vec4(1)}
+    };
+    for (const auto& test : cases) {
+        const std::string base = test.name;
+        write(models / fs::u8path(base + ".obj"), "mtllib " + base + ".mtl\n"
+            "v -1 -1 0\nv 1 -1 0\nv 0 1 0\nvt 0 0\nvt 1 0\nvt 0 1\nvn 0 0 1\n"
+            "usemtl material\nf 1/1/1 2/2/1 3/3/1\n");
+        write(models / fs::u8path(base + ".mtl"), "newmtl material\nKd 1 1 1\n" +
+            (test.texture.empty() ? std::string() : "map_Kd " + test.texture + '\n'));
+    }
+    for (const auto& test : cases) {
+        if (test.texture.empty()) fs::current_path(models); // A filename with no parent directory.
+        auto model = Model::LoadAsync(test.input.c_str()).get();
+        check(model->getName() == test.name, "Model name lost a filename suffix or included a dotted directory");
+        check(fs::u8path(model->getPath()) == fs::u8path(test.input), "Model did not preserve its input path");
+        check(model->initGLResources() && model->isReady(), "Model path fixture failed to import or initialize");
+        model->draw(shader);
+        glActiveTexture(GL_TEXTURE0);
+        GLint texture = 0, width = 0, height = 0;
+        glGetIntegerv(GL_TEXTURE_BINDING_2D, &texture);
+        check(texture != 0, "Imported material did not bind its albedo or fallback texture");
+        glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &width);
+        glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &height);
+        check(width == 1 && height == 1, "Imported material bound an unexpected texture");
+        glm::vec4 actual;
+        glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_FLOAT, &actual);
+        for (int channel = 0; channel < 4; ++channel)
+            closeTo(actual[channel], test.expected[channel], "Model material texture path resolved to the wrong image");
+    }
+    glUseProgram(0);
+    std::cout << "PASS: UTF-8 model/MTL/texture paths, dotted directories/names, separators, bare filenames, and relative/absolute/empty textures\n";
+}
+
+void checkAssetPaths() {
+    namespace fs = std::filesystem;
+    const fs::path directory = fs::u8path(u8"x64/RenderChecks/\u8d44\u6e90\u8def\u5f84");
+    fs::create_directories(directory);
+    const auto plyPath = directory / fs::u8path(u8"\u4e09\u89d2\u7f51\u683c.ply");
+    {
+        std::ofstream output(plyPath);
+        output << "ply\nformat ascii 1.0\nelement vertex 3\n"
+            "property float x\nproperty float y\nproperty float z\n"
+            "element face 1\nproperty list uchar int vertex_indices\nend_header\n"
+            "1 2 3\n4 2 3\n1 5 3\n3 0 1 2\n";
+        check(bool(output), "PLY path fixture write failed");
+    }
+    auto checkPlyModel = [](const std::shared_ptr<Model>& model) {
+        check(model->initGLResources() && model->isReady(), "UTF-8 PLY mesh failed to load through Assimp");
+        glm::vec3 minimum, maximum;
+        model->buildAABB(minimum, maximum);
+        for (int i = 0; i < 3; ++i) {
+            closeTo(minimum[i], glm::vec3(1, 2, 3)[i], "PLY model path selected the wrong vertices");
+            closeTo(maximum[i], glm::vec3(4, 5, 3)[i], "PLY model path selected the wrong vertices");
+        }
+    };
+    {
+        auto future = Model::LoadAsync(plyPath.u8string().c_str());
+        checkPlyModel(future.get());
+    }
+    {
+        auto mutablePath = plyPath.u8string();
+        auto future = Model::LoadAsync(mutablePath.c_str());
+        std::fill(mutablePath.begin(), mutablePath.end(), '!');
+        checkPlyModel(future.get());
+        auto empty = Model::LoadAsync("").get();
+        check(!empty->initGLResources() && !empty->isReady(), "Empty model filename should fail");
+    }
+
+    const auto imagePath = directory / fs::u8path(u8"\u989c\u8272.tga");
+    const std::vector<unsigned char> rgba = {37, 91, 173, 255};
+    writeImage(imagePath, 1, 1, 4, rgba);
+    Texture2D texture(imagePath.u8string().c_str(), Texture2D::Type::ALBEDO, GL_CLAMP_TO_EDGE, GL_NEAREST);
+    check(texture.ID != 0, "UTF-8 texture path failed to load");
+    glBindTexture(GL_TEXTURE_2D, texture.ID);
+    std::vector<unsigned char> actual(4);
+    glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, actual.data());
+    check(actual == rgba, "UTF-8 texture path returned the wrong pixels");
+
+    auto cubeDirectory = directory;
+    for (int i = 0; i < 9; ++i)
+        cubeDirectory /= fs::u8path(u8"\u5929\u7a7a\u76d2\u8def\u5f84\u957f\u5ea6\u9a8c\u8bc1");
+    fs::create_directories(cubeDirectory);
+    const char* faces[] = {"right.jpg", "left.jpg", "top.jpg", "bottom.jpg", "front.jpg", "back.jpg"};
+    for (const auto face : faces) writeImage(cubeDirectory / face, 1, 1, 4, rgba);
+    const auto cubePath = cubeDirectory.u8string();
+    const std::string cubeInputs[] = {cubePath, cubePath + "/", fs::absolute(cubeDirectory).u8string() + "\\"};
+    for (const auto& input : cubeInputs) {
+        CubeMap cube(input.c_str(), GL_CLAMP_TO_EDGE, GL_NEAREST);
+        check(cube.ID != 0, "UTF-8 cubemap path with trailing separators failed to load");
+        glBindTexture(GL_TEXTURE_CUBE_MAP, cube.ID);
+        for (int face = 0; face < 6; ++face) {
+            glGetTexImage(GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, 0, GL_RGBA, GL_UNSIGNED_BYTE, actual.data());
+            check(actual == rgba, "UTF-8 cubemap path returned the wrong face pixels");
+        }
+    }
+    CubeMap empty("", GL_CLAMP_TO_EDGE, GL_NEAREST);
+    check(empty.ID == 0, "Empty cubemap directory should fail before allocating a texture");
+    SkyboxComponent skybox;
+    check(cubePath.size() > 254, "Skybox path fixture must exceed the former editor buffer limit");
+    skybox.setSkybox(cubePath);
+    check(skybox.folderPath == cubePath, "Skybox editor truncated its applied UTF-8 path");
+    check(skybox.skybox && skybox.skybox->isReady(), "Skybox could not load a long UTF-8 path");
+
+    Material absent;
+    absent.albedoPath = (directory / "missing.tga").u8string();
+    absent.ambientPath = directory.u8string();
+    absent.normalPath = "<>:|?*";
+    absent.initGLResources(); // Missing, directory and invalid paths must leave the default material usable.
+    std::cout << "PASS: Assimp PLY import, owned async model paths, UTF-8 textures/cubemaps, trailing/empty directories, long editor paths, and absent material files\n";
+}
+
+int rejectedSkyboxDraws = 0;
+void APIENTRY countRejectedSkyboxDraw(GLenum, GLint, GLsizei) { ++rejectedSkyboxDraws; }
+
+void checkResourceFailures() {
+    namespace fs = std::filesystem;
+    const fs::path directory = "x64/RenderChecks/resource-failures";
+    fs::create_directories(directory);
+    const auto missing = directory / "missing.tga", corrupt = directory / "corrupt.tga";
+    { std::ofstream output(corrupt, std::ios::binary); output << "This is not an image."; }
+    for (const auto& path : {missing, corrupt}) {
+        Texture2D texture(path, Texture2D::Type::NORMAL, GL_REPEAT, GL_LINEAR);
+        check(!texture.isValid() && texture.ID == 0, "Failed image load retained a valid texture");
+        check(texture.lastError().find(path.filename().u8string()) != std::string::npos,
+            "Failed image load did not identify its path");
+    }
+    const char* faces[] = {"right.jpg", "left.jpg", "top.jpg", "bottom.jpg", "front.jpg", "back.jpg"};
+    auto writeCube = [&](const fs::path& path) {
+        fs::create_directories(path);
+        for (const auto face : faces) writeImage(path / face, 2, 2, 4, std::vector<unsigned char>(16, 127));
+    };
+    const char* defects[] = {"missing-face", "non-square", "different-size", "different-format"};
+    for (int defect = 0; defect < 4; ++defect) {
+        const auto cubePath = directory / defects[defect]; writeCube(cubePath);
+        const auto badFace = cubePath / "back.jpg";
+        if (defect == 0) fs::remove(badFace);
+        else if (defect == 1) writeImage(badFace, 2, 1, 4, std::vector<unsigned char>(8, 127));
+        else if (defect == 2) writeImage(badFace, 1, 1, 4, std::vector<unsigned char>(4, 127));
+        else writeImage(badFace, 2, 2, 3, std::vector<unsigned char>(12, 127));
+        CubeMap cube(cubePath, GL_CLAMP_TO_EDGE, GL_LINEAR);
+        check(!cube.isValid() && cube.ID == 0, "Invalid cubemap faces produced a usable texture");
+        check(cube.lastError().find("back.jpg") != std::string::npos,
+            "Cubemap validation did not identify the invalid face");
+    }
+    std::cout << "PASS: missing/corrupt image diagnostics and missing/non-square/mismatched cubemap faces\n";
+
+    const auto retryPath = directory / "retry-skybox"; writeCube(retryPath);
+    fs::remove(retryPath / "back.jpg");
+    Skybox retry(retryPath.u8string());
+    for (int attempt = 0; attempt < 2; ++attempt) {
+        check(!retry.initGLResources() && !retry.isReady(), "Incomplete skybox was marked ready");
+        check(retry.lastError().find("back.jpg") != std::string::npos, "Skybox lost its cubemap failure reason");
+    }
+    // Bind a complete sentinel to detect useCubeMap() changing the unit on failure.
+    const auto validPath = directory / "valid-skybox"; writeCube(validPath);
+    CubeMap boundCube(validPath, GL_CLAMP_TO_EDGE, GL_LINEAR);
+    check(boundCube.isValid(), "Skybox sentinel failed to load"); boundCube.use(GL_TEXTURE5);
+    const auto originalDraw = glad_glDrawArrays;
+    rejectedSkyboxDraws = 0; glad_glDrawArrays = countRejectedSkyboxDraw;
+    retry.draw(); retry.useCubeMap();
+    glad_glDrawArrays = originalDraw;
+    GLint binding = 0; glGetIntegerv(GL_TEXTURE_BINDING_CUBE_MAP, &binding);
+    check(rejectedSkyboxDraws == 0 && binding == static_cast<GLint>(boundCube.ID),
+        "Failed skybox attempted a draw or replaced the current cubemap binding");
+    writeImage(retryPath / "back.jpg", 2, 2, 4, std::vector<unsigned char>(16, 127));
+    check(retry.initGLResources() && retry.initGLResources() && retry.isReady(),
+        "Failed skybox could not retry or ready initialization was not idempotent");
+    check(retry.lastError().empty(), "Successful skybox retry retained the old error");
+
+    SkyboxComponent skybox;
+    check(skybox.setSkybox(validPath.u8string()), "Initial skybox could not be applied");
+    const auto previous = skybox.skybox; const auto previousPath = skybox.folderPath;
+    const auto invalidPath = (directory / "missing-face").u8string();
+    check(!skybox.setSkybox(invalidPath), "Invalid skybox replacement was accepted");
+    check(skybox.skybox == previous && skybox.folderPath == previousPath && previous->isReady(),
+        "Failed skybox replacement discarded the active resource or successful path");
+    check(!skybox.lastError().empty(), "Failed skybox replacement did not expose its reason");
+    skybox.folderPath = invalidPath; // The GUI edits this buffer before pressing Apply.
+    check(!skybox.setSkybox(skybox.folderPath) && skybox.skybox == previous && skybox.folderPath == invalidPath,
+        "Failed skybox replacement changed the caller's existing edit buffer");
+    {
+        auto output = color(); FrameBuffer fbo; fbo.init();
+        auto sampler = std::make_shared<Shader>("tests/shaders/cubeSample.vert", ShaderCatalog::skybox.fragmentPath);
+        linked(sampler);
+        struct RestoreSamplingState {
+            GLint program, readFbo, drawFbo, viewport[4], vao, activeTexture, cube;
+            GLboolean depth = glIsEnabled(GL_DEPTH_TEST), blend = glIsEnabled(GL_BLEND), scissor = glIsEnabled(GL_SCISSOR_TEST);
+            RestoreSamplingState() {
+                glGetIntegerv(GL_CURRENT_PROGRAM, &program); glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &readFbo);
+                glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &drawFbo); glGetIntegerv(GL_VIEWPORT, viewport);
+                glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &vao); glGetIntegerv(GL_ACTIVE_TEXTURE, &activeTexture);
+                glActiveTexture(GL_TEXTURE5); glGetIntegerv(GL_TEXTURE_BINDING_CUBE_MAP, &cube);
+                glActiveTexture(activeTexture);
+            }
+            ~RestoreSamplingState() {
+                glUseProgram(program); glBindFramebuffer(GL_READ_FRAMEBUFFER, readFbo); glBindFramebuffer(GL_DRAW_FRAMEBUFFER, drawFbo);
+                glViewport(viewport[0], viewport[1], viewport[2], viewport[3]); glBindVertexArray(vao);
+                glActiveTexture(GL_TEXTURE5); glBindTexture(GL_TEXTURE_CUBE_MAP, cube); glActiveTexture(activeTexture);
+                if (depth) glEnable(GL_DEPTH_TEST); else glDisable(GL_DEPTH_TEST);
+                if (blend) glEnable(GL_BLEND); else glDisable(GL_BLEND);
+                if (scissor) glEnable(GL_SCISSOR_TEST); else glDisable(GL_SCISSOR_TEST);
+            }
+        } restore;
+        fbo.bind(); fbo.attachTexture2D(output, GL_COLOR_ATTACHMENT0); fbo.requireComplete("Black cubemap sampling fixture");
+        bindDummyCubeMap(GL_TEXTURE5);
+        GLint dummy = 0; glGetIntegerv(GL_TEXTURE_BINDING_CUBE_MAP, &dummy);
+        check(dummy != 0, "No-skybox fallback did not bind a cubemap");
+        for (int face = 0; face < 6; ++face) {
+            GLint width = 0, height = 0;
+            glGetTexLevelParameteriv(GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, 0, GL_TEXTURE_WIDTH, &width);
+            glGetTexLevelParameteriv(GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, 0, GL_TEXTURE_HEIGHT, &height);
+            check(width == 1 && height == 1, "No-skybox fallback has an undefined cubemap face");
+        }
+        glDisable(GL_DEPTH_TEST); glDisable(GL_BLEND); glDisable(GL_SCISSOR_TEST); glViewport(0, 0, 1, 1);
+        sampler->use(); sampler->setInt("skybox", 5); RenderHelpers::drawFullscreenQuad();
+        const auto sampled = pixel();
+        for (int channel = 0; channel < 3; ++channel) closeTo(sampled[channel], 0, "No-skybox fallback is not black when sampled by the GPU");
+        closeTo(sampled.a, 1, "No-skybox fallback has incorrect sampled alpha");
+    }
+    std::cout << "PASS: skybox failure guards, retry, transactional replacement, and complete black fallback GPU sampling\n";
+
+    auto shader = variant("tests/shaders/lighting.vert", ShaderCatalog::forward.fragmentPath, "");
+    shader->use(); Material empty;
+    check(empty.initGLResources() && empty.lastError().empty(), "Empty optional material paths were rejected");
+    Material failed; failed.normalPath = corrupt.u8string();
+    check(!failed.initGLResources() && failed.lastError().find("corrupt.tga") != std::string::npos,
+        "Failed material texture did not report a load failure");
+    failed.bind(shader);
+    auto uniform = [&](const char* name) {
+        GLint value = -1; glGetUniformiv(shader->ID, glGetUniformLocation(shader->ID, name), &value); return value;
+    };
+    check(uniform("useDefaultMaterial") == 1 && uniform("hasNormalMap") == 0,
+        "Failed normal texture disabled the default material or enabled normal sampling");
+    const auto albedoPath = directory / "albedo.tga";
+    const std::vector<unsigned char> rgba = {31, 67, 149, 255}; writeImage(albedoPath, 1, 1, 4, rgba);
+    Material shininessOnly; shininessOnly.shininessPath = albedoPath.u8string();
+    check(shininessOnly.initGLResources(), "Valid imported shininess texture was rejected");
+    shininessOnly.bind(shader);
+    check(uniform("useDefaultMaterial") == 0 && uniform("hasNormalMap") == 0,
+        "Shininess-only material lost its existing shader input classification");
+    shininessOnly.shininessPath = corrupt.u8string();
+    check(!shininessOnly.initGLResources() && !shininessOnly.lastError().empty(),
+        "Failed imported shininess texture did not report its load failure");
+    shininessOnly.bind(shader);
+    check(uniform("useDefaultMaterial") == 1, "Failed shininess texture disabled the default material fallback");
+    DynamicMaterialComponent dynamic; dynamic.albedoPath = albedoPath.u8string();
+    check(dynamic.setMaterial(), "Initial material could not be applied");
+    dynamic.material.bind(shader); glActiveTexture(GL_TEXTURE0);
+    GLint previousTexture = 0; glGetIntegerv(GL_TEXTURE_BINDING_2D, &previousTexture);
+    dynamic.normalPath = corrupt.u8string();
+    check(!dynamic.setMaterial(), "Invalid material replacement was accepted");
+    dynamic.material.bind(shader); glActiveTexture(GL_TEXTURE0);
+    glGetIntegerv(GL_TEXTURE_BINDING_2D, &binding);
+    check(binding == previousTexture && uniform("hasNormalMap") == 0,
+        "Failed material replacement discarded the previous textures or enabled a failed normal map");
+    glUseProgram(0);
+    std::cout << "PASS: optional material defaults, shininess-only compatibility, failed normal-map guards, and transactional material replacement\n";
+}
+
+void checkFramebufferFailures() {
+    FrameBuffer empty, complete, read, draw;
+    for (auto fbo : {&empty, &complete, &read, &draw}) { fbo->init(); fbo->bind(); }
+    auto texture = color(); complete.bind(); complete.attachTexture2D(texture, GL_COLOR_ATTACHMENT0);
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, read.ID); glBindFramebuffer(GL_DRAW_FRAMEBUFFER, draw.ID);
+    auto unchangedBindings = [&] {
+        GLint actualRead = 0, actualDraw = 0;
+        glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &actualRead); glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &actualDraw);
+        check(actualRead == static_cast<GLint>(read.ID) && actualDraw == static_cast<GLint>(draw.ID),
+            "Framebuffer validation changed the caller's read/draw bindings");
+    };
+    check(glCheckNamedFramebufferStatus(empty.ID, GL_FRAMEBUFFER) == GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT,
+        "Empty framebuffer fixture was unexpectedly complete");
+    bool rejected = false;
+    try { empty.requireComplete("Regression empty framebuffer"); }
+    catch (const std::runtime_error& error) {
+        const std::string message = error.what();
+        rejected = message.find("Regression empty framebuffer") != std::string::npos &&
+            message.find("missing attachment") != std::string::npos && message.find("0x8CD7") != std::string::npos;
+    }
+    check(rejected, "Incomplete framebuffer did not report its label and actual status"); unchangedBindings();
+    check(glCheckNamedFramebufferStatus(complete.ID, GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE,
+        "Complete framebuffer fixture has an invalid status");
+    complete.requireComplete("Regression complete framebuffer"); unchangedBindings();
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    std::cout << "PASS: real framebuffer completeness failures, labeled status diagnostics, and preserved read/draw bindings\n";
+}
+
 void checkTextureUploads() {
     const std::filesystem::path directory = "x64/RenderChecks/textures";
     std::filesystem::create_directories(directory);
@@ -575,8 +900,9 @@ void runRenderCorrectnessChecks() {
     {
         ResourceManager resources; resources.init();
         checkLighting(); checkComposite(); checkOffscreenCasters(resources); checkClouds(resources);
-        runCloudNoiseChecks(); runCloudSamplingChecks(); checkMeshCaches(); checkTextureUploads();
-        resources.shutdown(); RenderHelpers::shutdownSharedGeometry(); destroyDummyTexture2D();
+        runCloudNoiseChecks(); runCloudSamplingChecks(); checkMeshCaches(); checkTextureUploads(); checkModelPaths(); checkAssetPaths();
+        runModelAnimationChecks(); checkResourceFailures(); checkFramebufferFailures();
+        resources.shutdown(); RenderHelpers::shutdownSharedGeometry(); destroyDummyTexture2D(); destroyDummyCubeMap();
     }
     check(glGetError() == GL_NO_ERROR && debugErrors == 0, "GL errors during rendering regression checks");
     glfwDestroyWindow(window); glfwTerminate();

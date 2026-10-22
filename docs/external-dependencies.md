@@ -9,8 +9,9 @@
 | `include/glad/`、`include/KHR/` | GLAD 与 Khronos 头文件 |
 | `include/glm/` | GLM 数学头文件 |
 | `include/imgui/` | ImGui、ImGuiFileDialog 及其配套头文件 |
-| `include/dirent/`、`include/stb_image.h` | 文件枚举与图片加载头文件 |
-| `src/imgui/` | ImGui、后端与 ImGuiFileDialog 实现 |
+| `include/stb_image.h` | 图片加载头文件 |
+| `include/dirent/` | 历史捆绑，当前未使用；文件枚举使用 `std::filesystem` |
+| `src/imgui/` | ImGui、后端与 ImGuiFileDialog 实现；`imgui_demo.cpp` 保留在依赖目录，不参与应用构建 |
 | `src/glad/` | GLAD 加载器实现 |
 | `lib/x64/` | GLFW 静态库、Assimp 导入库 |
 | `runtime/x64/` | Assimp DLL |
@@ -21,7 +22,7 @@ VS 的 `ThirdParty` 按库显示编译源码、常用入口头文件、库和 DL
 
 `config/external-dependencies.props` 定义 `ExternalIncludeDir`、`ExternalImGuiIncludeDir`、`ExternalLibraryDir` 和 `AssimpRuntimePath`。Debug、Release x64 使用相同的依赖路径，ImGui 实现的短文件名引用通过额外的 ImGui 包含目录解析。属性表还负责将 Assimp DLL 复制到当前 `TargetDir`。
 
-两个测试脚本构建应用后，通过 MSBuild 读取 `IntDir`、`OutDir`、`ExternalIncludeDir` 和 `ExternalLibraryDir`，再编译各自入口，避免维护另一套依赖路径。应用及测试可执行文件输出到 `temporary-build/x64/<配置>/`；基准采样结果继续写入 `x64/BenchmarkRuns/`。
+两个测试脚本构建应用后，通过 MSBuild 读取 `IntDir`、`OutDir`、`ExternalIncludeDir`、`ExternalLibraryDir` 和当前配置的 `ClCompile` 项，再编译各自入口，只链接当前工程使用的对象文件。应用及测试可执行文件输出到 `temporary-build/x64/<配置>/`；基准采样结果继续写入 `x64/BenchmarkRuns/`。
 
 第三方 DLL 是构建输入，保存在 `runtime/x64/`；生成目录中的 DLL 是构建时复制的输出。当前捆绑的 Assimp 库和 DLL 仍是 Debug 版本，目录整理没有更换依赖版本。
 

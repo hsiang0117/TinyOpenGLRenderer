@@ -3,14 +3,16 @@
 #include "gameObjectFactory.hpp"
 #include "component.hpp"
 #include <glm/glm.hpp>
+#include <stdexcept>
 
 ScenePtr SceneFactory::createDefaultScene() {
 	auto scene = std::make_shared<Scene>();
-	scene->setName("Default");
 
 	// Skybox from shipped cubemap (data/textures/skybox/{right,left,top,bottom,front,back}.jpg)
 	auto sky = GameObjectFactory::createSkybox();
-	sky->getComponent<SkyboxComponent>()->setSkybox("data/textures/skybox");
+	auto skybox = sky->getComponent<SkyboxComponent>();
+	if (!skybox->setSkybox("data/textures/skybox"))
+		throw std::runtime_error("Required startup skybox failed: " + skybox->lastError());
 	scene->addObject(sky);
 
 	// Ground plane: dropped below eye level (camera starts at y=0) and scaled wide.

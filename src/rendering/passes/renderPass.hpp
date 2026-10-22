@@ -23,7 +23,7 @@ struct RenderContext {
 	// frame inputs (by value / small)
 	Camera* camera = nullptr;
 	Frustum frustum;
-	float x = 0, y = 0, width = 0, height = 0;
+	float width = 0, height = 0;
 
 	// Per-frame copies of the cached scene views. modelObjects contain
 	// ModelRenderComponent; materialMeshObjects contain DynamicMaterialComponent.
@@ -70,7 +70,6 @@ struct RenderContext {
 	Texture2D* bloomBlurTextures[2] = { nullptr, nullptr };
 	Texture2D* overlayColorTexture = nullptr;   // linear HDR, premultiplied alpha
 	Texture2D* cloudRaymarchTexture = nullptr;  // half-res, linear HDR, premultiplied alpha
-	Texture2D* sceneColorTexture = nullptr;     // final display-encoded Viewport color
 
 	// Half-res cloud target dimensions (overlay and scene use full-res width/height).
 	int cloudRaymarchWidth = 0, cloudRaymarchHeight = 0;

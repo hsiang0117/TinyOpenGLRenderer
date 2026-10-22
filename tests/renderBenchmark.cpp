@@ -113,7 +113,7 @@ const Scenario scenarios[] = {
     {"control_repeat", 0, 0}
 };
 ScenePtr makeScene(const Scenario& scenario, const Options& options) {
-    auto scene = std::make_shared<Scene>(); scene->setName(scenario.name);
+    auto scene = std::make_shared<Scene>();
     if (scenario.preset >= 0) {
         auto sky = GameObjectFactory::createSkybox();
         sky->getComponent<SkyboxComponent>()->setSkybox("data/textures/skybox"); scene->addObject(sky);

@@ -66,7 +66,7 @@ public:
 	std::uint64_t profileAgeFrames() const { return profile_.valid ? renderFrame_ - profile_.frame : 0; }
 	std::uint64_t skippedProfileFrames() const { return skippedProfileFrames_; }
 private:
-	float x, y, width, height;
+	float width, height;
 	UniformBuffer cameraMatricesUbo;
 	ShaderStorageBuffer pointLightsSsbo, directionalLightSsbo, spotLightsSsbo, cloudVolumesSsbo;
 	FrameBuffer directionalShadowFbo, pointShadowFbo, hdrFbo, bloomBlurFbos[2], overlayFbo, cloudRaymarchFbo;

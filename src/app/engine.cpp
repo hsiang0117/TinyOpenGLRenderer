@@ -10,19 +10,25 @@ void Engine::init() {
 	input.init();
 	windowSystem.init(1280, 720, &input);
 	windowReady_ = true;
-	renderSystem.init();
-	renderReady_ = true;
-	renderSystem.setResourceManager(&resourceManager);
-	renderSystem.setSelectionModel(&selectionModel);
-	resourceManager.init();
-	resourcesReady_ = true;
-	guiSystem.init(windowSystem.getWindow());
-	guiReady_ = true;
-	guiSystem.setRenderSystem(&renderSystem);
-	guiSystem.setResourceManager(&resourceManager);
-	guiSystem.setSelectionModel(&selectionModel);
-	guiSystem.setCamera(&camera);
-	resourceManager.setCurrentScene(SceneFactory::createDefaultScene());
+	try {
+		renderSystem.init(); // Cleans its own partial allocations if it throws.
+		renderReady_ = true;
+		renderSystem.setResourceManager(&resourceManager);
+		renderSystem.setSelectionModel(&selectionModel);
+		// Shader registration can fail after some programs have been created.
+		resourcesReady_ = true;
+		resourceManager.init();
+		guiSystem.init(windowSystem.getWindow());
+		guiReady_ = true;
+		guiSystem.setRenderSystem(&renderSystem);
+		guiSystem.setResourceManager(&resourceManager);
+		guiSystem.setSelectionModel(&selectionModel);
+		guiSystem.setCamera(&camera);
+		resourceManager.setCurrentScene(SceneFactory::createDefaultScene());
+	} catch (...) {
+		shutdown();
+		throw;
+	}
 }
 
 void Engine::run() {

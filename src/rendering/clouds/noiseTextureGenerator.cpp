@@ -35,8 +35,10 @@ static void parallelFor(int total, const std::function<void(int, int)>& body) {
 }
 
 // ---------- disk cache ----------
-static std::string cachePath(const std::string& key) {
-	return "data/cache/" + key + ".noise";
+static const std::filesystem::path kCacheDirectory = std::filesystem::path("data") / "cache";
+
+static std::filesystem::path cachePath(const std::string& key) {
+	return kCacheDirectory / (key + ".noise");
 }
 
 // Self-describing cache header. The old format stored raw bytes and validated only
@@ -109,9 +111,10 @@ static bool loadCache(const std::string& key, const NoiseCacheHeader& expected, 
 }
 
 static void saveCache(const std::string& key, const NoiseCacheHeader& header, const std::vector<unsigned char>& data) {
+	const auto path = cachePath(key);
 	std::error_code ec;
-	std::filesystem::create_directories("data/cache", ec);
-	std::ofstream f(cachePath(key), std::ios::binary);
+	std::filesystem::create_directories(path.parent_path(), ec);
+	std::ofstream f(path, std::ios::binary);
 	if (f) {
 		f.write(reinterpret_cast<const char*>(&header), sizeof(header));
 		f.write(reinterpret_cast<const char*>(data.data()), data.size());
@@ -364,17 +367,4 @@ Texture2D NoiseTextureGenerator3D::uploadVolume2D(const NoiseVolumeData& v) {
 	Texture2D texture(v.width, v.height, GL_REPEAT, GL_LINEAR, GL_RED, GL_RED, GL_UNSIGNED_BYTE);
 	texture.subImage2D(0, 0, v.width, v.height, v.data.data());
 	return texture;
-}
-
-// ---------- synchronous convenience ----------
-Texture3D NoiseTextureGenerator3D::generateWorleyNoiseTexture3D(int width, int height, int depth) {
-	return uploadVolume3D(computeWorleyNoise(width, height, depth));
-}
-
-Texture3D NoiseTextureGenerator3D::generatePerlinNoiseTexture3D(int width, int height, int depth) {
-	return uploadVolume3D(computePerlinNoise(width, height, depth));
-}
-
-Texture2D NoiseTextureGenerator3D::generateWeatherMapTexture2D(int width, int height) {
-	return uploadVolume2D(computeWeatherMap(width, height));
 }

@@ -4,7 +4,7 @@
 
 #include "rendering/opengl/texture.hpp"
 #include <glad/glad.h>
-#include <memory>
+#include <filesystem>
 #include <string>
 
 class Skybox {
@@ -17,11 +17,13 @@ public:
 	Skybox& operator=(Skybox&& other) noexcept;
 	bool initGLResources();
 	bool isReady() const { return glInitialized; }
+	const std::string& lastError() const { return lastError_; }
 	void draw();
 	void useCubeMap();
 private:
-	std::string folderPath;
+	std::filesystem::path folderPath;
 	bool glInitialized = false;
+	std::string lastError_;
 	CubeMap cubemap;
 	GLuint VAO = 0, VBO = 0;
 	float vertices[108] = {
@@ -69,5 +71,4 @@ private:
 	};
 };
 
-using SkyboxPtr = std::shared_ptr<Skybox>;
 #endif

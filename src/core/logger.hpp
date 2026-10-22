@@ -16,7 +16,7 @@ struct LogEntry {
 	std::string text;   // message body (may contain embedded newlines, e.g. shader infoLog)
 };
 
-// Global thread-safe log buffer. Worker threads (model/ply async load) call log();
+// Global thread-safe log buffer. Model-loading worker threads call log();
 // the UI thread takes a snapshot() to draw. Header-inline Meyers singleton so it is
 // safe to use during static init / before the GL context exists.
 class Logger {
@@ -55,7 +55,6 @@ private:
 		Logger::getInstance().log(level, _log_oss.str()); \
 	} while (0)
 
-#define LOG_INFO(expr)  LOG_AT(LogLevel::Info, expr)
 #define LOG_WARN(expr)  LOG_AT(LogLevel::Warning, expr)
 #define LOG_ERROR(expr) LOG_AT(LogLevel::Error, expr)
 

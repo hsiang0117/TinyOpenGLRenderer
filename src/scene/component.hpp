@@ -24,8 +24,6 @@ private:
 	std::string name;
 };
 
-using ComponentPtr = std::shared_ptr<Component>;
-
 class Transform : public Component {
 public:
 	Transform() : Component("Transform") {
@@ -42,9 +40,7 @@ public:
 class ModelRenderComponent : public Component {
 public:
 
-	ModelRenderComponent() : Component("ModelRenderComponent") {
-		skeletonVisible = false;
-	}
+	ModelRenderComponent() : Component("ModelRenderComponent") {}
 
 	void setModel(std::shared_ptr<Model> model);
 	std::shared_ptr<Model> model;
@@ -53,8 +49,6 @@ public:
 		glm::vec3 min;
 		glm::vec3 max;
 	}aabb;
-
-	bool skeletonVisible;
 };
 
 class PointLightComponent : public Component {
@@ -161,8 +155,11 @@ public:
 	SkyboxComponent() : Component("SkyboxComponent") {}
 
 	std::shared_ptr<Skybox> skybox;
-	char folderPath[255] = {};   // edit buffer; seeded by setSkybox so the field reflects the current path
-	void setSkybox(std::string folderPath);
+	std::string folderPath;   // UTF-8 edit buffer, synchronized by setSkybox.
+	bool setSkybox(std::string folderPath);
+	const std::string& lastError() const { return lastError_; }
+private:
+	std::string lastError_;
 };
 
 class ShadowCaster2D : public Component {
@@ -202,11 +199,14 @@ class DynamicMaterialComponent : public Component {
 public:
 	DynamicMaterialComponent() : Component("DynamicMaterialComponent") {}
 
-	char albedoPath[255] = {};
-	char specularPath[255] = {};
-	char normalPath[255] = {};
+	std::string albedoPath;
+	std::string specularPath;
+	std::string normalPath;
 	Material material;
-	void setMaterial();
+	bool setMaterial();
+	const std::string& lastError() const { return lastError_; }
+private:
+	std::string lastError_;
 };
 
 class AnimatorComponent : public Component {

@@ -1,5 +1,8 @@
 #include "glBuffer.hpp"
 #include "texture.hpp"
+#include <sstream>
+#include <stdexcept>
+#include <string>
 
 GLBuffer::~GLBuffer() {
 	destroy();
@@ -20,11 +23,6 @@ GLBuffer& GLBuffer::operator=(GLBuffer&& other) noexcept {
 
 void GLBuffer::init() {
 	if (ID) destroy();
-	glGenBuffers(1, &ID);
-}
-
-void GLBuffer::reset() {
-	destroy();
 	glGenBuffers(1, &ID);
 }
 
@@ -82,11 +80,6 @@ void FrameBuffer::init() {
 	glGenFramebuffers(1, &ID);
 }
 
-void FrameBuffer::reset() {
-	destroy();
-	glGenFramebuffers(1, &ID);
-}
-
 void FrameBuffer::destroy() {
 	if (ID) {
 		glDeleteFramebuffers(1, &ID);
@@ -114,14 +107,33 @@ void FrameBuffer::attachTexture2D(Texture2D& texture, GLenum type) {
 	glFramebufferTexture2D(GL_FRAMEBUFFER, type, GL_TEXTURE_2D, texture.ID, 0);
 }
 
-void FrameBuffer::attachRenderBuffer(RenderBuffer& renderBuffer, GLenum type) {
-	glFramebufferRenderbuffer(GL_FRAMEBUFFER, type, GL_RENDERBUFFER, renderBuffer.ID);
-}
-
 void FrameBuffer::drawBuffers(std::initializer_list<GLenum> types) {
 	glDrawBuffers(static_cast<GLsizei>(types.size()), types.begin());
 }
 
 void FrameBuffer::readBuffer(const GLenum type) {
 	glReadBuffer(type);
+}
+
+void FrameBuffer::requireComplete(const char* label) const {
+	const char* name = label ? label : "Unnamed framebuffer";
+	if (!ID) {
+		throw std::runtime_error(std::string(name) + ": framebuffer object was not created (ID=0)");
+	}
+	const GLenum status = glCheckNamedFramebufferStatus(ID, GL_FRAMEBUFFER);
+	if (status == GL_FRAMEBUFFER_COMPLETE) return;
+	const char* reason = "unknown framebuffer status";
+	switch (status) {
+	case GL_FRAMEBUFFER_UNDEFINED: reason = "undefined framebuffer"; break;
+	case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT: reason = "incomplete attachment"; break;
+	case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT: reason = "missing attachment"; break;
+	case GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER: reason = "incomplete draw buffer"; break;
+	case GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER: reason = "incomplete read buffer"; break;
+	case GL_FRAMEBUFFER_UNSUPPORTED: reason = "unsupported attachment formats"; break;
+	case GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE: reason = "inconsistent multisample attachments"; break;
+	case GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS: reason = "inconsistent layered attachments"; break;
+	}
+	std::ostringstream message;
+	message << name << ": " << reason << " (status=0x" << std::hex << std::uppercase << status << ")";
+	throw std::runtime_error(message.str());
 }

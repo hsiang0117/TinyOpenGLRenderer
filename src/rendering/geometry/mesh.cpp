@@ -2,12 +2,6 @@
 #include <algorithm>
 #include <limits>
 
-Mesh::Mesh(std::vector<Vertex> vertices, std::vector<GLuint> indices)
-{
-    this->vertices = std::move(vertices);
-    this->indices = std::move(indices);
-}
-
 Mesh::~Mesh() {
     if (glInitialized) {
         glDeleteVertexArrays(1, &VAO);

@@ -3,6 +3,7 @@
 #include "core/logger.hpp"
 #include <glm/gtc/type_ptr.hpp>
 #include <array>
+#include <algorithm>
 #include <filesystem>
 #include <fstream>
 #include <sstream>
@@ -22,28 +23,109 @@
 #endif
 
 namespace {
+namespace fs = std::filesystem;
 using ShaderCatalog::settingsPath;
 using ShaderCatalog::defaultsPath;
 
-std::string readShaderFile(const char* path) {
+fs::path normalizedPath(const fs::path& path) {
+    return fs::absolute(path).lexically_normal();
+}
+
+bool samePath(const fs::path& left, const fs::path& right) {
+#ifdef _WIN32
+    return CompareStringOrdinal(left.c_str(), -1, right.c_str(), -1, TRUE) == CSTR_EQUAL;
+#else
+    return left == right;
+#endif
+}
+
+std::string readShaderFile(const fs::path& path) {
     std::ifstream input(path);
-    if (!input) throw std::runtime_error(std::string("Cannot read shader file: ") + path);
+    if (!input) throw std::runtime_error("Cannot read shader file: " + path.generic_u8string());
     std::ostringstream contents; contents << input.rdbuf();
-    if (input.bad()) throw std::runtime_error(std::string("Failed reading shader file: ") + path);
+    if (input.bad()) throw std::runtime_error("Failed reading shader file: " + path.generic_u8string());
     return contents.str();
 }
 
 std::string withoutComments(std::string source) {
-    static const std::regex comments(R"(//[^\n]*|/\*[\s\S]*?\*/)");
-    for (std::sregex_iterator it(source.begin(), source.end(), comments), end; it != end; ++it) {
-        const auto start = it->position(), finish = start + it->length();
-        for (auto i = start; i < finish; ++i) if (source[i] != '\n' && source[i] != '\r') source[i] = ' ';
+    enum class State { code, quoted, lineComment, blockComment };
+    State state = State::code;
+    bool escaped = false;
+    for (std::size_t i = 0; i < source.size(); ++i) {
+        const char current = source[i];
+        const char next = i + 1 < source.size() ? source[i + 1] : '\0';
+        if (state == State::quoted) {
+            if (current == '"' && !escaped) state = State::code;
+            escaped = current == '\\' && !escaped;
+        } else if (state == State::lineComment) {
+            if (current == '\n' || current == '\r') state = State::code;
+            else source[i] = ' ';
+        } else if (state == State::blockComment) {
+            if (current == '*' && next == '/') {
+                source[i] = source[i + 1] = ' '; ++i; state = State::code;
+            } else if (current != '\n' && current != '\r') source[i] = ' ';
+        } else if (current == '"') {
+            state = State::quoted; escaped = false;
+        } else if (current == '/' && (next == '/' || next == '*')) {
+            state = next == '/' ? State::lineComment : State::blockComment;
+            source[i] = source[i + 1] = ' '; ++i;
+        }
     }
     return source;
 }
 
 std::string settingsSource() {
-    return readShaderFile(std::filesystem::exists(settingsPath) ? settingsPath : defaultsPath);
+    const auto settings = normalizedPath(fs::u8path(settingsPath));
+    return readShaderFile(fs::exists(settings) ? settings : normalizedPath(fs::u8path(defaultsPath)));
+}
+
+fs::path resolveInclude(const fs::path& included, const fs::path& source) {
+    if (included.has_root_path()) return normalizedPath(included);
+
+    // Existing data/... and tests/... includes are explicitly relative to the
+    // working directory. A sibling data/ directory must not shadow those paths.
+    const auto relative = included.lexically_normal();
+    const auto first = relative.begin();
+    if (first != relative.end() && (samePath(*first, "data") || samePath(*first, "tests")))
+        return normalizedPath(relative);
+
+    // Other includes belong to the containing file; only a missing sibling can
+    // fall back to the original working-directory lookup convention.
+    const auto sibling = normalizedPath(source.parent_path() / included);
+    if (samePath(sibling, normalizedPath(fs::u8path(settingsPath))) || fs::exists(sibling)) return sibling;
+    const auto rootRelative = normalizedPath(included);
+    if (samePath(rootRelative, normalizedPath(fs::u8path(settingsPath))) || fs::exists(rootRelative)) return rootRelative;
+    return sibling;
+}
+
+std::string preprocessFile(const fs::path& path, const std::string* settingsOverride,
+    std::vector<fs::path>& includeStack, unsigned& expansions) {
+    const auto sourcePath = normalizedPath(path);
+    if (std::find_if(includeStack.begin(), includeStack.end(),
+        [&](const fs::path& included) { return samePath(included, sourcePath); }) != includeStack.end())
+        throw std::runtime_error("Shader include cycle: " + sourcePath.generic_u8string());
+    includeStack.push_back(sourcePath);
+    struct PopInclude { std::vector<fs::path>& stack; ~PopInclude() { stack.pop_back(); } } pop{includeStack};
+
+    const bool isSettings = samePath(sourcePath, normalizedPath(fs::u8path(settingsPath)));
+    auto content = withoutComments(isSettings ? (settingsOverride ? *settingsOverride : settingsSource()) : readShaderFile(sourcePath));
+    static const std::regex includePattern(R"###(^[ \t]*#[ \t]*include[ \t]*"([^"]+)")###", std::regex::ECMAScript | std::regex::multiline);
+    std::smatch match;
+    std::string result;
+    while (std::regex_search(content, match, includePattern)) {
+        if (++expansions > 64)
+            throw std::runtime_error("Shader include expansion limit exceeded: " + sourcePath.generic_u8string());
+        result.append(content, 0, match.position());
+        result += preprocessFile(resolveInclude(fs::u8path(match[1].str()), sourcePath), settingsOverride, includeStack, expansions);
+        content.erase(0, match.position() + match.length());
+    }
+    return result + content;
+}
+
+std::string preprocessShader(const fs::path& path, const std::string* settingsOverride) {
+    std::vector<fs::path> includeStack;
+    unsigned expansions = 0;
+    return preprocessFile(path, settingsOverride, includeStack, expansions);
 }
 
 bool knownSetting(const char* name) {
@@ -71,14 +153,15 @@ std::string updateSetting(const std::string& source, const char* name, bool enab
 // Write beside the destination, then replace atomically; a failed write never
 // truncates the user's previous configuration. Both files are on the same volume.
 bool saveSettings(const std::string& source, std::string& error) {
-    const std::string temporary = std::string(settingsPath) + ".tmp";
+    const auto destination = normalizedPath(fs::u8path(settingsPath));
+    auto temporary = destination; temporary += ".tmp";
     {
         std::ofstream output(temporary, std::ios::binary | std::ios::trunc);
         bool created = output.is_open();
         if (created) { output << source; output.close(); }
         if (!output) {
-            error = "Cannot save render settings: " + temporary;
-            if (created) { std::error_code ec; std::filesystem::remove(temporary, ec); }
+            error = "Cannot save render settings: " + temporary.generic_u8string();
+            if (created) { std::error_code ec; fs::remove(temporary, ec); }
             return false;
         }
     }
@@ -86,14 +169,14 @@ bool saveSettings(const std::string& source, std::string& error) {
 #ifdef _WIN32
     // std::filesystem::rename does not replace an existing file on Windows.
     // MoveFileExW performs the replacement without a delete/truncate window.
-    if (!MoveFileExW(std::filesystem::path(temporary).c_str(), std::filesystem::path(settingsPath).c_str(),
+    if (!MoveFileExW(temporary.c_str(), destination.c_str(),
         MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) {
-        error = "Cannot replace render settings (Windows error " + std::to_string(GetLastError()) + "): " + settingsPath;
-        std::filesystem::remove(temporary, ec); return false;
+        error = "Cannot replace render settings (Windows error " + std::to_string(GetLastError()) + "): " + destination.generic_u8string();
+        fs::remove(temporary, ec); return false;
     }
 #else
-    std::filesystem::rename(temporary, settingsPath, ec);
-    if (ec) { error = "Cannot replace render settings: " + ec.message(); std::filesystem::remove(temporary, ec); return false; }
+    fs::rename(temporary, destination, ec);
+    if (ec) { error = "Cannot replace render settings: " + ec.message(); fs::remove(temporary, ec); return false; }
 #endif
     return true;
 }
@@ -133,36 +216,22 @@ Shader& Shader::operator=(Shader&& other) noexcept {
     return *this;
 }
 
-std::string Shader::preprocessShader(std::string content, const std::string* settingsOverride) {
-    content = withoutComments(std::move(content));
-    const std::regex includePattern(R"###(^[ \t]*#[ \t]*include[ \t]*"([^"]+)")###", std::regex::ECMAScript | std::regex::multiline);
-    std::smatch match; int expansions = 0;
-    while (std::regex_search(content, match, includePattern)) {
-        if (++expansions > 64) throw std::runtime_error("Shader include cycle or expansion limit exceeded: " + match[1].str());
-        std::string path = match[1].str();
-        std::string included = path == settingsPath
-            ? (settingsOverride ? *settingsOverride : settingsSource()) : readShaderFile(path.c_str());
-        content.replace(match.position(), match.length(), withoutComments(std::move(included)));
-    }
-    return content;
-}
-
 Shader::Shader(const char* vertex, const char* fragment)
-    : vertexShaderPath(vertex), fragmentShaderPath(fragment) { compile(); }
+    : vertexShaderPath(fs::u8path(vertex)), fragmentShaderPath(fs::u8path(fragment)) { compile(); }
 
 Shader::Shader(const char* vertex, const char* geometry, const char* fragment)
-    : vertexShaderPath(vertex), fragmentShaderPath(fragment), geometryShaderPath(geometry) { compile(); }
+    : vertexShaderPath(fs::u8path(vertex)), fragmentShaderPath(fs::u8path(fragment)), geometryShaderPath(fs::u8path(geometry)) { compile(); }
 
 void Shader::compile(const std::string* settingsOverride) {
     std::array<GLuint, 3> handles{};
     try {
-        struct Stage { GLenum type; std::string path, source; };
+        struct Stage { GLenum type; fs::path path; std::string source; };
         std::vector<Stage> stages = {{GL_VERTEX_SHADER, vertexShaderPath, {}}};
         if (!geometryShaderPath.empty()) stages.push_back({GL_GEOMETRY_SHADER, geometryShaderPath, {}});
         stages.push_back({GL_FRAGMENT_SHADER, fragmentShaderPath, {}});
         std::string combined;
         for (auto& stage : stages) {
-            stage.source = preprocessShader(readShaderFile(stage.path.c_str()), settingsOverride);
+            stage.source = preprocessShader(stage.path, settingsOverride);
             combined += stage.source + '\n';
         }
         bool compiled = true;
@@ -172,7 +241,7 @@ void Shader::compile(const std::string* settingsOverride) {
             GLint status = GL_FALSE; glGetShaderiv(handles[i], GL_COMPILE_STATUS, &status);
             if (!status) {
                 char message[4096]{}; glGetShaderInfoLog(handles[i], sizeof(message), nullptr, message);
-                lastError_ += "Shader compilation failed: " + stages[i].path + "\n" + message + '\n'; compiled = false;
+                lastError_ += "Shader compilation failed: " + stages[i].path.generic_u8string() + "\n" + message + '\n'; compiled = false;
             }
         }
         if (compiled) {
@@ -181,7 +250,7 @@ void Shader::compile(const std::string* settingsOverride) {
             valid_ = status == GL_TRUE;
             if (!valid_) {
                 char message[4096]{}; glGetProgramInfoLog(ID, sizeof(message), nullptr, message);
-                lastError_ = "Shader link failed: " + vertexShaderPath + " / " + fragmentShaderPath + "\n" + message;
+                lastError_ = "Shader link failed: " + vertexShaderPath.generic_u8string() + " / " + fragmentShaderPath.generic_u8string() + "\n" + message;
             } else compiledSettings_ = definedSettings(combined);
         }
     } catch (const std::exception& error) { lastError_ = error.what(); valid_ = false; }
@@ -212,15 +281,6 @@ bool Shader::applySetting(const char* name, bool value) {
         if (!saveSettings(source, lastError_)) { LOG_ERROR(lastError_); return false; }
         *this = std::move(replacement); return true;
     } catch (const std::exception& error) { lastError_ = error.what(); LOG_ERROR(lastError_); return false; }
-}
-
-bool Shader::changeSettings(const char* name, bool value) {
-    try {
-        std::string source = updateSetting(settingsSource(), name, value), error;
-        if (saveSettings(source, error)) return true;
-        LOG_ERROR(error);
-    } catch (const std::exception& error) { LOG_ERROR(error.what()); }
-    return false;
 }
 
 void Shader::use() { glUseProgram(ID); }

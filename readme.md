@@ -40,7 +40,7 @@
   - **Local Volume** 模式沿用世界轴对齐包围盒(平移/缩放)与边缘衰减;天空云层与局部云体统一沿射线积分,支持交叠与云间遮光,结果不依赖对象添加顺序
   - 噪声后台并行生成 + 自描述磁盘缓存(参数变化自动失效重建)
 - **骨骼动画**:Assimp 导入,GPU 蒙皮,骨骼调试叠加显示
-- **天空盒**、PLY / 常见模型格式异步加载
+- **天空盒**、通过 Assimp 异步导入模型（含 OBJ、FBX、网格 PLY）
 
 ### 编辑器
 
@@ -52,7 +52,7 @@
 
 ### 架构
 
-- **ECS-lite**:GameObject + 组件(`unordered_map<type_index, ComponentPtr>`),场景视图按类型缓存
+- **ECS-lite**:GameObject + 组件(`unordered_map<type_index, std::shared_ptr<Component>>`),场景视图按类型缓存
 - **RenderPass 流水线**:FrameSetup → DirectionalShadow → PointShadow → LightUpload → ForwardHdr → CloudSkeletonOverlay → Gizmo → Bloom → Composite,各 pass 仅通过 RenderContext 共享状态
 - **代码命名**:Shader、渲染目标和组件按用途命名;约定及旧名映射见 [命名说明](docs/naming.md)
 - **头文件依赖**:声明层使用前向声明,实现层包含完整定义;约定与边界见 [依赖说明](docs/header-dependencies.md)
@@ -82,7 +82,11 @@
 
 资源路径以项目根目录为工作目录。`data/shader/settings.defaults.glsl` 随仓库提供默认配置:软阴影和 HDR 开启,Bloom 和环境反射关闭。忽略的本地 `data/shader/settings.glsl` 存在时优先使用;在面板成功切换后写入本地配置,下次启动恢复这些开关。配置项使用四个平铺的 `#define`/`//#define` 指令。首次启动无需手动创建该文件。
 
-缺失 shader、编译失败或无法创建 OpenGL 4.5 窗口时,启动会停止并显示错误原因。shader 的顶点、几何、片段阶段统一处理 include;注释内的 include 不会加载,循环 include 会报告错误。
+缺失 shader、编译失败、默认天空盒加载失败、FBO 不完整或无法创建 OpenGL 4.5 窗口时,启动会停止并显示错误原因。shader 的顶点、几何、片段阶段统一处理 include;支持文件相对、嵌套和绝对引用,既有 `data/`、`tests/` 引用仍相对工作目录;注释内的 include 不会加载,循环 include 会报告错误。
+
+可选材质贴图加载失败会报告路径和原因,使用有效默认纹理,不会将 ID=0 加入材质。编辑器替换天空盒或材质失败时保留原资源,并在组件面板显示原因。FBO 在附件装配完成及调整尺寸后检查完整性;资源错误处理约定见 [文件组织说明](docs/project-structure.md)。
+
+文件路径内部使用 `std::filesystem::path`,编辑器和公开字符接口使用 UTF-8。模型、材质贴图、天空盒和 Shader 通过原生路径访问中文目录;异步导入持有路径副本,编辑器路径输入使用可扩容字符串。具体解析规则见 [资源路径说明](docs/project-structure.md#资源路径)。
 
 Debug 和 Release x64 共用头文件路径、依赖库和 C++17 设置。仓库当前只提供 Debug 版 Assimp(`assimp-vc143-mtd.lib` / `.dll`)，两种构建都从 `external-dependencies/runtime/x64/` 复制 DLL 到输出目录。程序本身使用 Release 优化，但 Assimp 仍依赖 Visual C++ 调试运行库；对外发布前需替换为匹配的 Release 版 Assimp 库和 DLL。
 

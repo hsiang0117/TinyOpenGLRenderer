@@ -6,7 +6,6 @@
 #include "assimpNode.hpp"
 #include "rendering/opengl/texture.hpp"
 #include <unordered_map>
-#include <memory>
 #include <string>
 #include <vector>
 #include <glm/glm.hpp>
@@ -32,8 +31,6 @@ private:
 	void readMissingBones(const aiAnimation* animation, std::vector<Node>& nodes);
 };
 
-using AnimationPtr = std::shared_ptr<Animation>;
-
 class Animator
 {
 public:
@@ -47,7 +44,6 @@ private:
 	std::vector<Node>& nodes;
 	Animation* currentAnimation;
 	float currentTime;
-	float deltaTime;
 	std::vector<glm::mat4> finalBoneMatrices;
 	Texture2D boneMatrixTexture;
 };

@@ -18,7 +18,7 @@
 - `gameObject.hpp` 只声明组件基类，组件实现不再由对象容器头文件传播。
 - `guiSystem.hpp`、`windowSystem.hpp` 通过前向声明使用外部对象；GLFW、组件、输入及渲染器定义在实现文件中引入。
 - `renderPass.hpp` 只声明其非拥有资源指针所需的类型；`renderSystem.hpp` 不包含具体 Pass、GUI 或场景组件。
-- `noiseVolumeData.hpp` 保存 CPU 噪声数据结构。`noiseTextureGenerator.hpp` 只包含该数据头文件并前向声明纹理类型；CPU 计算调用方无需引入 GLM 或 OpenGL，调用纹理生成和上传接口时直接包含 `texture.hpp`。
+- `noiseVolumeData.hpp` 保存 CPU 噪声数据结构。`noiseTextureGenerator.hpp` 只包含该数据头文件并前向声明纹理类型；CPU 计算调用方无需引入 GLM 或 OpenGL，调用上传接口并接收纹理对象时直接包含 `texture.hpp`。
 - Assimp 与 GLM 类型转换在独立的 `assets/assimpGlmHelpers.hpp` 中，模型导入直接引用它，云噪声模块不再引入 Assimp。
 - 模型和网格组件的设置函数移到实现文件，组件头文件不再包含模型、网格和天空盒的完整定义。
 - `Scene` 在独立的 `scene.hpp` 中声明，组件定义、光源上限和日志只在 `scene.cpp` 中引入；使用 `getView<T>()` 的调用方直接包含 `T` 的定义。

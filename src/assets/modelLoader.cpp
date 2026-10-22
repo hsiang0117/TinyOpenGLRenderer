@@ -19,12 +19,6 @@ bool ModelLoader::isLoaded(const std::string& key) const
 	return cache.find(key) != cache.end();
 }
 
-std::shared_ptr<Model> ModelLoader::get(const std::string& key) const
-{
-	auto it = cache.find(key);
-	return (it != cache.end()) ? it->second : nullptr;
-}
-
 std::vector<std::shared_ptr<Model>> ModelLoader::getAllLoadedModels() const
 {
 	std::vector<std::shared_ptr<Model>> models;

@@ -43,7 +43,7 @@ void Animation::readMissingBones(const aiAnimation* animation, std::vector<Node>
 				LOG_WARN("Bone node not found in model nodes: " << boneName);
 				continue;
 			}
-			boneInfoMap[node->name] = Bone(id, channel);
+			boneInfoMap[node->name] = Bone(channel);
 		}
 	}
 }
@@ -53,7 +53,6 @@ Animator::Animator(std::vector<Node>& nodes)
 {
 	currentAnimation = nullptr;
 	currentTime = 0.0f;
-	deltaTime = 0.0f;
 	finalBoneMatrices.resize(MAX_BONES, glm::mat4(1.0f));
 	boneMatrixTexture = Texture2D(4, MAX_BONES, GL_CLAMP_TO_BORDER, GL_LINEAR, GL_RGBA32F, GL_RGBA, GL_FLOAT);
 }
@@ -63,16 +62,14 @@ Animator::Animator(Animation* animation, std::vector<Node>& nodes)
 {
 	currentAnimation = animation;
 	currentTime = 0.0f;
-	deltaTime = 0.0f;
 	finalBoneMatrices.resize(MAX_BONES, glm::mat4(1.0f));
 	boneMatrixTexture = Texture2D(4, MAX_BONES, GL_CLAMP_TO_BORDER, GL_LINEAR, GL_RGBA32F, GL_RGBA, GL_FLOAT);
 }
 
 void Animator::updateAnimation(float dt)
 {
-	deltaTime = dt;
 	if (currentAnimation && currentAnimation->isValid() && !nodes.empty()) {
-		currentTime += currentAnimation->getTicksPerSecond() * deltaTime;
+		currentTime += currentAnimation->getTicksPerSecond() * dt;
 		const float duration = currentAnimation->getDuration();
 		currentTime = duration > 0.0f ? fmod(currentTime, duration) : 0.0f;
 		calculateBoneTransform(nodes[0], glm::mat4(1.0f));
@@ -97,6 +94,8 @@ void Animator::calculateBoneTransform(Node& node, const glm::mat4 parentTransfor
 	}
 	glm::mat4 globalTransformation = parentTransform * nodeTransform;
 	if (node.isBoneNode && node.id >= 0 && node.id < MAX_BONES) {
+		// Both the global transform and the imported offset use model space.
+		// The root is already accounted for; adding its inverse here would change that space.
 		finalBoneMatrices[node.id] = globalTransformation * node.offsetMatrix;
 	}
 	node.position = glm::vec3(globalTransformation[3]);

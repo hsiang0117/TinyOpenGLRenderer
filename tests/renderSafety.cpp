@@ -79,7 +79,7 @@ void observeDeletes() {
 
 void checkKeyframes() {
     aiNodeAnim emptyChannel;
-    Bone empty(0, &emptyChannel);
+    Bone empty(&emptyChannel);
     empty.update(10.0f);
     require(empty.getLocalTransform() == glm::mat4(1.0f), "Empty keyframes must be safe");
 
@@ -94,7 +94,7 @@ void checkKeyframes() {
         channel.mRotationKeys[i].mValue = aiQuaternion();
         channel.mScalingKeys[i].mValue = aiVector3D(i + 1.0f);
     }
-    Bone bone(0, &channel);
+    Bone bone(&channel);
     for (float time : { 1.0f, 2.0f, 100.0f }) {
         bone.update(time);
         require(std::abs(bone.getLocalTransform()[3].x - 4.0f) < 0.0001f, "Last keyframe must clamp safely");
@@ -102,7 +102,7 @@ void checkKeyframes() {
     bone.update(-1.0f);
     require(std::abs(bone.getLocalTransform()[3].x) < 0.0001f, "Before-first keyframe must clamp safely");
     channel.mPositionKeys[1].mTime = channel.mRotationKeys[1].mTime = channel.mScalingKeys[1].mTime = 0;
-    Bone duplicateTimes(0, &channel);
+    Bone duplicateTimes(&channel);
     duplicateTimes.update(1.0f);
     require(std::isfinite(duplicateTimes.getLocalTransform()[0].x), "Duplicate timestamps must stay finite");
 }

@@ -84,6 +84,7 @@
   <ItemDefinitionGroup Condition="'$(Platform)'=='x64'">
     <ClCompile>
       <LanguageStandard>stdcpp17</LanguageStandard>
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
       <PreprocessorDefinitions>GLFW_INCLUDE_NONE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
   </ItemDefinitionGroup>
@@ -151,7 +152,6 @@
   <ItemGroup>
     <ClCompile Include="external-dependencies\src\imgui\imgui.cpp" />
     <ClCompile Include="external-dependencies\src\imgui\ImGuiFileDialog.cpp" />
-    <ClCompile Include="external-dependencies\src\imgui\imgui_demo.cpp" />
     <ClCompile Include="external-dependencies\src\imgui\imgui_draw.cpp" />
     <ClCompile Include="external-dependencies\src\imgui\imgui_impl_glfw.cpp" />
     <ClCompile Include="external-dependencies\src\imgui\imgui_impl_opengl3.cpp" />
@@ -177,11 +177,11 @@
     <ClCompile Include="src\rendering\geometry\mesh.cpp" />
     <ClCompile Include="src\rendering\geometry\meshGenerator.cpp" />
     <ClCompile Include="src\assets\model.cpp" />
+    <ClCompile Include="src\assets\assimpFileSystem.cpp" />
     <ClCompile Include="src\assets\modelLoader.cpp" />
     <ClCompile Include="src\assets\resourceManager.cpp" />
     <ClCompile Include="src\assets\shaderLoader.cpp" />
     <ClCompile Include="src\scene\scene.cpp" />
-    <ClCompile Include="src\assets\ply.cpp" />
     <ClCompile Include="src\rendering\opengl\shader.cpp" />
     <ClCompile Include="src\rendering\skybox.cpp" />
     <ClCompile Include="src\rendering\opengl\texture.cpp" />
@@ -228,8 +228,8 @@
     <ClInclude Include="src\rendering\geometry\mesh.hpp" />
     <ClInclude Include="src\rendering\geometry\meshGenerator.hpp" />
     <ClInclude Include="src\assets\model.hpp" />
+    <ClInclude Include="src\assets\assimpFileSystem.hpp" />
     <ClInclude Include="src\assets\assimpGlmHelpers.hpp" />
-    <ClInclude Include="src\assets\ply.hpp" />
     <ClInclude Include="src\rendering\opengl\shader.hpp" />
     <ClInclude Include="src\rendering\skybox.hpp" />
     <ClInclude Include="src\rendering\opengl\texture.hpp" />
@@ -240,7 +240,6 @@
     <None Include=".editorconfig" />
     <None Include=".gitattributes" />
     <None Include=".gitignore" />
-    <None Include="data\config.json" />
     <None Include="data\shader\skeleton.frag" />
     <None Include="data\shader\skeleton.vert" />
     <None Include="data\shader\directionalShadow.frag" />
@@ -275,6 +274,7 @@
     <None Include="readme.md" />
     <None Include="tests\renderBenchmark.cpp" />
     <None Include="tests\renderCorrectness.cpp" />
+    <None Include="tests\modelAnimationChecks.cpp" />
     <None Include="tests\cloudNoiseChecks.cpp" />
     <None Include="tests\renderPerformance.cpp" />
     <None Include="tests\renderSafety.cpp" />
@@ -303,7 +303,6 @@
     <ClInclude Include="external-dependencies\include\assimp\Importer.hpp" />
     <ClInclude Include="external-dependencies\include\assimp\scene.h" />
     <ClInclude Include="external-dependencies\include\assimp\postprocess.h" />
-    <ClInclude Include="external-dependencies\include\dirent\dirent.h" />
     <ClInclude Include="external-dependencies\include\stb_image.h" />
     <None Include="config\external-dependencies.props" />
     <None Include="docs\external-dependencies.md" />

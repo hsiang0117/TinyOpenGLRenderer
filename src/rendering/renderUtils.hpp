@@ -21,7 +21,6 @@ namespace RenderHelpers {
 	bool aabbInFrustum(const glm::vec3& minAABB, const glm::vec3& maxAABB, const glm::mat4& model, Frustum& frustum);
 	bool isRenderableInFrustum(const GameObjectPtr& obj, Frustum& frustum);
 	bool isPointLightInFrustum(const GameObjectPtr& obj, Frustum& frustum);
-	bool isRenderable(const GameObjectPtr& obj);
 
 	void drawRenderable(const GameObjectPtr& obj, ShaderPtr shader);
 	void drawLightMarker(const GameObjectPtr& obj, ShaderPtr shader);

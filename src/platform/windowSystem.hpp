@@ -15,8 +15,6 @@ public:
 	void swapBuffers();
 	void update();
 	GLFWwindow* getWindow();
-	bool getCursor();
-	void setCursor(bool enable);
 	bool getShouldClose();
 	void setShouldClose(bool value);
 	void shutdown();

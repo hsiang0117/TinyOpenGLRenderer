@@ -19,7 +19,6 @@ layout (binding = 1) uniform sampler2D ambientMap;
 layout (binding = 2) uniform sampler2D specularMap;
 uniform bool hasNormalMap;
 layout (binding = 3) uniform sampler2D normalMap;
-layout (binding = 4) uniform sampler2D shininessMap;
 #ifdef USE_ENVIRONMENT_MAPPING
 	layout (binding = 5) uniform samplerCube skybox;
 #endif

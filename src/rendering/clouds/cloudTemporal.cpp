@@ -15,18 +15,25 @@ bool equal(const std::vector<CloudVolumeGpu>& a, const std::vector<CloudVolumeGp
 
 void CloudTemporal::init(int width, int height) {
     destroy();
-    width_ = std::max(width, 1); height_ = std::max(height, 1);
-    // Full precision: ray distance can be much larger than half-float range, and
-    // the opaque-sky sentinel must survive allocation/readback without infinity.
-    currentDepth_ = Texture2D(width_, height_, GL_CLAMP_TO_EDGE, GL_NEAREST, GL_RG32F, GL_RG, GL_FLOAT);
-    for (int i = 0; i < 2; ++i) {
-        color_[i] = Texture2D(width_, height_, GL_CLAMP_TO_EDGE, GL_LINEAR, GL_RGBA16F, GL_RGBA, GL_FLOAT);
-        depth_[i] = Texture2D(width_, height_, GL_CLAMP_TO_EDGE, GL_NEAREST, GL_RG32F, GL_RG, GL_FLOAT);
-        fbo_[i].init(); fbo_[i].bind();
-        fbo_[i].attachTexture2D(color_[i], GL_COLOR_ATTACHMENT0);
-        fbo_[i].attachTexture2D(depth_[i], GL_COLOR_ATTACHMENT1);
-        fbo_[i].drawBuffers({GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1});
-        fbo_[i].unbind();
+    try {
+        width_ = std::max(width, 1); height_ = std::max(height, 1);
+        // Full precision: ray distance can be much larger than half-float range, and
+        // the opaque-sky sentinel must survive allocation/readback without infinity.
+        currentDepth_ = Texture2D(width_, height_, GL_CLAMP_TO_EDGE, GL_NEAREST, GL_RG32F, GL_RG, GL_FLOAT);
+        for (int i = 0; i < 2; ++i) {
+            color_[i] = Texture2D(width_, height_, GL_CLAMP_TO_EDGE, GL_LINEAR, GL_RGBA16F, GL_RGBA, GL_FLOAT);
+            depth_[i] = Texture2D(width_, height_, GL_CLAMP_TO_EDGE, GL_NEAREST, GL_RG32F, GL_RG, GL_FLOAT);
+            fbo_[i].init(); fbo_[i].bind();
+            fbo_[i].attachTexture2D(color_[i], GL_COLOR_ATTACHMENT0);
+            fbo_[i].attachTexture2D(depth_[i], GL_COLOR_ATTACHMENT1);
+            fbo_[i].drawBuffers({GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1});
+            fbo_[i].requireComplete(i == 0 ? "Cloud history framebuffer 0" : "Cloud history framebuffer 1");
+            fbo_[i].unbind();
+        }
+    }
+    catch (...) {
+        destroy();
+        throw;
     }
 }
 
@@ -37,6 +44,9 @@ void CloudTemporal::resize(int width, int height) {
     width_ = width; height_ = height;
     currentDepth_.resetSize(width, height);
     for (int i = 0; i < 2; ++i) { color_[i].resetSize(width, height); depth_[i].resetSize(width, height); }
+    for (int i = 0; i < 2; ++i) {
+        fbo_[i].requireComplete(i == 0 ? "Cloud history framebuffer 0 after resize" : "Cloud history framebuffer 1 after resize");
+    }
     invalidate();
 }
 

@@ -87,9 +87,6 @@
     <ClCompile Include="external-dependencies\src\imgui\ImGuiFileDialog.cpp">
       <Filter>ThirdParty\ImGui</Filter>
     </ClCompile>
-    <ClCompile Include="external-dependencies\src\imgui\imgui_demo.cpp">
-      <Filter>ThirdParty\ImGui</Filter>
-    </ClCompile>
     <ClCompile Include="external-dependencies\src\imgui\imgui_draw.cpp">
       <Filter>ThirdParty\ImGui</Filter>
     </ClCompile>
@@ -165,6 +162,9 @@
     <ClCompile Include="src\assets\model.cpp">
       <Filter>Assets</Filter>
     </ClCompile>
+    <ClCompile Include="src\assets\assimpFileSystem.cpp">
+      <Filter>Assets</Filter>
+    </ClCompile>
     <ClCompile Include="src\assets\modelLoader.cpp">
       <Filter>Assets</Filter>
     </ClCompile>
@@ -176,9 +176,6 @@
     </ClCompile>
     <ClCompile Include="src\scene\scene.cpp">
       <Filter>Scene</Filter>
-    </ClCompile>
-    <ClCompile Include="src\assets\ply.cpp">
-      <Filter>Assets</Filter>
     </ClCompile>
     <ClCompile Include="src\rendering\opengl\shader.cpp">
       <Filter>Rendering\OpenGL</Filter>
@@ -314,10 +311,10 @@
     <ClInclude Include="src\assets\model.hpp">
       <Filter>Assets</Filter>
     </ClInclude>
-    <ClInclude Include="src\assets\assimpGlmHelpers.hpp">
+    <ClInclude Include="src\assets\assimpFileSystem.hpp">
       <Filter>Assets</Filter>
     </ClInclude>
-    <ClInclude Include="src\assets\ply.hpp">
+    <ClInclude Include="src\assets\assimpGlmHelpers.hpp">
       <Filter>Assets</Filter>
     </ClInclude>
     <ClInclude Include="src\rendering\opengl\shader.hpp">
@@ -344,9 +341,6 @@
       <Filter>Config</Filter>
     </None>
     <None Include=".gitignore">
-      <Filter>Config</Filter>
-    </None>
-    <None Include="data\config.json">
       <Filter>Config</Filter>
     </None>
     <None Include="data\shader\skeleton.frag">
@@ -451,6 +445,9 @@
     <None Include="tests\renderCorrectness.cpp">
       <Filter>Tests</Filter>
     </None>
+    <None Include="tests\modelAnimationChecks.cpp">
+      <Filter>Tests</Filter>
+    </None>
     <None Include="tests\cloudNoiseChecks.cpp">
       <Filter>Tests</Filter>
     </None>
@@ -507,9 +504,6 @@
     <Filter Include="ThirdParty\Assimp">
       <UniqueIdentifier>{9C247928-DFF3-4B25-8432-C0B9CA31EA27}</UniqueIdentifier>
     </Filter>
-    <Filter Include="ThirdParty\Dirent">
-      <UniqueIdentifier>{03CA0834-0646-4192-8E4A-47659B5E58A0}</UniqueIdentifier>
-    </Filter>
     <Filter Include="ThirdParty\STB">
       <UniqueIdentifier>{40351939-8AE8-4064-9D50-F0522B35B14C}</UniqueIdentifier>
     </Filter>
@@ -538,9 +532,6 @@
     </ClInclude>
     <ClInclude Include="external-dependencies\include\assimp\postprocess.h">
       <Filter>ThirdParty\Assimp</Filter>
-    </ClInclude>
-    <ClInclude Include="external-dependencies\include\dirent\dirent.h">
-      <Filter>ThirdParty\Dirent</Filter>
     </ClInclude>
     <ClInclude Include="external-dependencies\include\stb_image.h">
       <Filter>ThirdParty\STB</Filter>

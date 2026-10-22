@@ -12,6 +12,7 @@ struct Node {
 	int parentIndex;
 	glm::vec3 position;
 	glm::mat4 transform;
+	// Converts baked model-space vertices into this bone's bind space.
 	glm::mat4 offsetMatrix;
 	bool isBoneNode = false;
 	std::vector<int> childrenIndices;

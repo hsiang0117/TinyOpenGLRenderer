@@ -19,7 +19,7 @@ RenderSystem::RenderSystem() = default;
 RenderSystem::~RenderSystem() = default;
 
 static void APIENTRY glDebugOutput(GLenum source, GLenum type, unsigned int id, GLenum severity,
-	GLsizei length, const char* message, const void* userParam) {
+	GLsizei, const char* message, const void*) {
 	// Skip low-value notifications (e.g. buffer detail messages)
 	if (severity == GL_DEBUG_SEVERITY_NOTIFICATION) return;
 
@@ -58,139 +58,155 @@ void RenderSystem::init() {
 		LOG_ERROR("Failed to initialize GLAD");
 		throw std::runtime_error("Failed to load OpenGL functions (OpenGL 4.5 is required)");
 	}
+	try {
 #ifdef _DEBUG
-	{
-		GLint flags = 0;
-		glGetIntegerv(GL_CONTEXT_FLAGS, &flags);
-		if (flags & GL_CONTEXT_FLAG_DEBUG_BIT) {
-			glEnable(GL_DEBUG_OUTPUT);
-			glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
-			glDebugMessageCallback(glDebugOutput, nullptr);
-			glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, nullptr, GL_TRUE);
+		{
+			GLint flags = 0;
+			glGetIntegerv(GL_CONTEXT_FLAGS, &flags);
+			if (flags & GL_CONTEXT_FLAG_DEBUG_BIT) {
+				glEnable(GL_DEBUG_OUTPUT);
+				glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+				glDebugMessageCallback(glDebugOutput, nullptr);
+				glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, nullptr, GL_TRUE);
+			}
 		}
-	}
 #endif
-	x = 0;
-	y = 0;
-	// Size-dependent targets follow the Viewport panel, not the window. Seed from
-	// the initial viewport guess; update() resizes once the panel reports its size.
-	width = (float)viewportW_;
-	height = (float)viewportH_;
-	glEnable(GL_DEPTH_TEST);
-	glEnable(GL_PROGRAM_POINT_SIZE);
-	glDepthFunc(GL_LEQUAL);
+		// Size-dependent targets follow the Viewport panel, not the window. Seed from
+		// the initial viewport guess; update() resizes once the panel reports its size.
+		width = (float)viewportW_;
+		height = (float)viewportH_;
+		glEnable(GL_DEPTH_TEST);
+		glEnable(GL_PROGRAM_POINT_SIZE);
+		glDepthFunc(GL_LEQUAL);
 
-	cameraMatricesUbo.init();
-	pointLightsSsbo.init();
-	directionalLightSsbo.init();
-	spotLightsSsbo.init();
-	cloudVolumesSsbo.init();
+		cameraMatricesUbo.init();
+		pointLightsSsbo.init();
+		directionalLightSsbo.init();
+		spotLightsSsbo.init();
+		cloudVolumesSsbo.init();
 
-	cameraMatricesUbo.bind();
-	cameraMatricesUbo.bufferBase(0);
-	cameraMatricesUbo.bufferData(2 * sizeof(glm::mat4), NULL);
-	cameraMatricesUbo.unbind();
+		cameraMatricesUbo.bind();
+		cameraMatricesUbo.bufferBase(0);
+		cameraMatricesUbo.bufferData(2 * sizeof(glm::mat4), NULL);
+		cameraMatricesUbo.unbind();
 
-	pointLightsSsbo.bind();
-	pointLightsSsbo.bufferBase(1);
-	pointLightsSsbo.bufferData(RenderLimits::PointLights * PointLightComponent::glslSize, NULL);
-	pointLightsSsbo.unbind();
+		pointLightsSsbo.bind();
+		pointLightsSsbo.bufferBase(1);
+		pointLightsSsbo.bufferData(RenderLimits::PointLights * PointLightComponent::glslSize, NULL);
+		pointLightsSsbo.unbind();
 
-	directionalLightSsbo.bind();
-	directionalLightSsbo.bufferBase(2);
-	directionalLightSsbo.bufferData(DirectionalLightComponent::glslSize, NULL);
-	directionalLightSsbo.unbind();
+		directionalLightSsbo.bind();
+		directionalLightSsbo.bufferBase(2);
+		directionalLightSsbo.bufferData(DirectionalLightComponent::glslSize, NULL);
+		directionalLightSsbo.unbind();
 
-	spotLightsSsbo.bind();
-	spotLightsSsbo.bufferBase(3);
-	spotLightsSsbo.bufferData(RenderLimits::SpotLights * SpotLightComponent::glslSize, NULL);
-	spotLightsSsbo.unbind();
+		spotLightsSsbo.bind();
+		spotLightsSsbo.bufferBase(3);
+		spotLightsSsbo.bufferData(RenderLimits::SpotLights * SpotLightComponent::glslSize, NULL);
+		spotLightsSsbo.unbind();
 
-	directionalShadowFbo.init();
-	directionalShadowFbo.bind();
-	directionalShadowFbo.drawBuffers({ GL_NONE });
-	directionalShadowFbo.readBuffer(GL_NONE);
-	directionalShadowFbo.unbind();
-	directionalShadowTexture = Texture2D(1024, 1024, GL_CLAMP_TO_BORDER, GL_NEAREST, GL_DEPTH_COMPONENT, GL_DEPTH_COMPONENT, GL_FLOAT);
-	directionalShadowTexture.setBorderColor(1.0, 1.0, 1.0, 1.0);
+		directionalShadowTexture = Texture2D(1024, 1024, GL_CLAMP_TO_BORDER, GL_NEAREST, GL_DEPTH_COMPONENT, GL_DEPTH_COMPONENT, GL_FLOAT);
+		directionalShadowTexture.setBorderColor(1.0, 1.0, 1.0, 1.0);
+		directionalShadowFbo.init();
+		directionalShadowFbo.bind();
+		directionalShadowFbo.attachTexture2D(directionalShadowTexture, GL_DEPTH_ATTACHMENT);
+		directionalShadowFbo.drawBuffers({ GL_NONE });
+		directionalShadowFbo.readBuffer(GL_NONE);
+		directionalShadowFbo.requireComplete("Directional shadow framebuffer");
+		directionalShadowFbo.unbind();
 
-	pointShadowFbo.init();
-	pointShadowFbo.bind();
-	pointShadowFbo.drawBuffers({ GL_NONE });
-	pointShadowFbo.readBuffer(GL_NONE);
-	pointShadowFbo.unbind();
-	pointShadowTexture = CubeMapArray(1024, 1024, static_cast<int>(RenderLimits::PointLights), GL_CLAMP_TO_BORDER, GL_NEAREST, GL_DEPTH_COMPONENT, GL_DEPTH_COMPONENT);
+		pointShadowTexture = CubeMapArray(1024, 1024, static_cast<int>(RenderLimits::PointLights), GL_CLAMP_TO_BORDER, GL_NEAREST, GL_DEPTH_COMPONENT, GL_DEPTH_COMPONENT);
+		pointShadowFbo.init();
+		pointShadowFbo.bind();
+		pointShadowFbo.attachTexture(pointShadowTexture, GL_DEPTH_ATTACHMENT);
+		pointShadowFbo.drawBuffers({ GL_NONE });
+		pointShadowFbo.readBuffer(GL_NONE);
+		pointShadowFbo.requireComplete("Point shadow framebuffer");
+		pointShadowFbo.unbind();
 
-	hdrFbo.init();
-	hdrColorTexture = Texture2D(viewportW_, viewportH_, GL_CLAMP_TO_BORDER, GL_LINEAR, GL_RGBA16F, GL_RGBA, GL_FLOAT);
-	bloomBrightTexture = Texture2D(viewportW_, viewportH_, GL_CLAMP_TO_BORDER, GL_LINEAR, GL_RGBA16F, GL_RGBA, GL_FLOAT);
-	hdrDepthTexture = Texture2D(viewportW_, viewportH_, GL_CLAMP_TO_BORDER, GL_NEAREST, GL_DEPTH_COMPONENT, GL_DEPTH_COMPONENT, GL_FLOAT);
-	// Border = far plane (1.0): if anything ever samples depth outside [0,1] (e.g. a
-	// future temporal-reprojection tap), it reads "no geometry" rather than near 0.0.
-	hdrDepthTexture.setBorderColor(1.0, 1.0, 1.0, 1.0);
-	hdrFbo.bind();
-	hdrFbo.attachTexture2D(hdrColorTexture, GL_COLOR_ATTACHMENT0);
-	hdrFbo.attachTexture2D(bloomBrightTexture, GL_COLOR_ATTACHMENT1);
-	hdrFbo.attachTexture2D(hdrDepthTexture, GL_DEPTH_ATTACHMENT);
-	hdrFbo.drawBuffers({ GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 });
-	hdrFbo.unbind();
+		hdrFbo.init();
+		hdrColorTexture = Texture2D(viewportW_, viewportH_, GL_CLAMP_TO_BORDER, GL_LINEAR, GL_RGBA16F, GL_RGBA, GL_FLOAT);
+		bloomBrightTexture = Texture2D(viewportW_, viewportH_, GL_CLAMP_TO_BORDER, GL_LINEAR, GL_RGBA16F, GL_RGBA, GL_FLOAT);
+		hdrDepthTexture = Texture2D(viewportW_, viewportH_, GL_CLAMP_TO_BORDER, GL_NEAREST, GL_DEPTH_COMPONENT, GL_DEPTH_COMPONENT, GL_FLOAT);
+		// Border = far plane (1.0): if anything ever samples depth outside [0,1] (e.g. a
+		// future temporal-reprojection tap), it reads "no geometry" rather than near 0.0.
+		hdrDepthTexture.setBorderColor(1.0, 1.0, 1.0, 1.0);
+		hdrFbo.bind();
+		hdrFbo.attachTexture2D(hdrColorTexture, GL_COLOR_ATTACHMENT0);
+		hdrFbo.attachTexture2D(bloomBrightTexture, GL_COLOR_ATTACHMENT1);
+		hdrFbo.attachTexture2D(hdrDepthTexture, GL_DEPTH_ATTACHMENT);
+		hdrFbo.drawBuffers({ GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 });
+		hdrFbo.requireComplete("HDR framebuffer");
+		hdrFbo.unbind();
 
-	bloomBlurFbos[0].init();
-	bloomBlurFbos[1].init();
-	bloomBlurTextures[0] = Texture2D(viewportW_, viewportH_, GL_CLAMP_TO_BORDER, GL_LINEAR, GL_RGBA16F, GL_RGBA, GL_FLOAT);
-	bloomBlurTextures[1] = Texture2D(viewportW_, viewportH_, GL_CLAMP_TO_BORDER, GL_LINEAR, GL_RGBA16F, GL_RGBA, GL_FLOAT);
-	bloomBlurFbos[0].bind();
-	bloomBlurFbos[0].attachTexture2D(bloomBlurTextures[0], GL_COLOR_ATTACHMENT0);
-	bloomBlurFbos[0].unbind();
-	bloomBlurFbos[1].bind();
-	bloomBlurFbos[1].attachTexture2D(bloomBlurTextures[1], GL_COLOR_ATTACHMENT0);
-	bloomBlurFbos[1].unbind();
+		bloomBlurFbos[0].init();
+		bloomBlurFbos[1].init();
+		bloomBlurTextures[0] = Texture2D(viewportW_, viewportH_, GL_CLAMP_TO_BORDER, GL_LINEAR, GL_RGBA16F, GL_RGBA, GL_FLOAT);
+		bloomBlurTextures[1] = Texture2D(viewportW_, viewportH_, GL_CLAMP_TO_BORDER, GL_LINEAR, GL_RGBA16F, GL_RGBA, GL_FLOAT);
+		bloomBlurFbos[0].bind();
+		bloomBlurFbos[0].attachTexture2D(bloomBlurTextures[0], GL_COLOR_ATTACHMENT0);
+		bloomBlurFbos[0].requireComplete("Bloom blur framebuffer 0");
+		bloomBlurFbos[0].unbind();
+		bloomBlurFbos[1].bind();
+		bloomBlurFbos[1].attachTexture2D(bloomBlurTextures[1], GL_COLOR_ATTACHMENT0);
+		bloomBlurFbos[1].requireComplete("Bloom blur framebuffer 1");
+		bloomBlurFbos[1].unbind();
 
-	overlayFbo.init();
-	overlayColorTexture = Texture2D(viewportW_, viewportH_, GL_CLAMP_TO_BORDER, GL_LINEAR, GL_RGBA16F, GL_RGBA, GL_FLOAT);
-	overlayFbo.bind();
-	overlayFbo.attachTexture2D(overlayColorTexture, GL_COLOR_ATTACHMENT0);
-	overlayFbo.unbind();
+		overlayFbo.init();
+		overlayColorTexture = Texture2D(viewportW_, viewportH_, GL_CLAMP_TO_BORDER, GL_LINEAR, GL_RGBA16F, GL_RGBA, GL_FLOAT);
+		overlayFbo.bind();
+		overlayFbo.attachTexture2D(overlayColorTexture, GL_COLOR_ATTACHMENT0);
+		overlayFbo.requireComplete("Overlay framebuffer");
+		overlayFbo.unbind();
 
-	// Half-resolution cloud raymarch target. Clouds are low frequency, so the
-	// expensive march runs at half the viewport size (~4x fewer fragments); the
-	// CloudSkeletonOverlayPass then depth-aware-upsamples it into overlayFbo.
-	// CLAMP_TO_EDGE + LINEAR: the upsample samples it bilinearly and must not pull
-	// border texels at the edges.
-	cloudRaymarchFbo.init();
-	cloudRaymarchTexture = Texture2D((viewportW_ + 1) / 2, (viewportH_ + 1) / 2, GL_CLAMP_TO_EDGE, GL_LINEAR, GL_RGBA16F, GL_RGBA, GL_FLOAT);
-	cloudTemporal.init((viewportW_ + 1) / 2, (viewportH_ + 1) / 2);
-	cloudRaymarchFbo.bind();
-	cloudRaymarchFbo.attachTexture2D(cloudRaymarchTexture, GL_COLOR_ATTACHMENT0);
-	cloudRaymarchFbo.attachTexture2D(cloudTemporal.currentDepth(), GL_COLOR_ATTACHMENT1);
-	cloudRaymarchFbo.drawBuffers({ GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 });
-	cloudRaymarchFbo.unbind();
+		// Half-resolution cloud raymarch target. Clouds are low frequency, so the
+		// expensive march runs at half the viewport size (~4x fewer fragments); the
+		// CloudSkeletonOverlayPass then depth-aware-upsamples it into overlayFbo.
+		// CLAMP_TO_EDGE + LINEAR: the upsample samples it bilinearly and must not pull
+		// border texels at the edges.
+		cloudRaymarchFbo.init();
+		cloudRaymarchTexture = Texture2D((viewportW_ + 1) / 2, (viewportH_ + 1) / 2, GL_CLAMP_TO_EDGE, GL_LINEAR, GL_RGBA16F, GL_RGBA, GL_FLOAT);
+		cloudTemporal.init((viewportW_ + 1) / 2, (viewportH_ + 1) / 2);
+		cloudRaymarchFbo.bind();
+		cloudRaymarchFbo.attachTexture2D(cloudRaymarchTexture, GL_COLOR_ATTACHMENT0);
+		cloudRaymarchFbo.attachTexture2D(cloudTemporal.currentDepth(), GL_COLOR_ATTACHMENT1);
+		cloudRaymarchFbo.drawBuffers({ GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 });
+		cloudRaymarchFbo.requireComplete("Cloud raymarch framebuffer");
+		cloudRaymarchFbo.unbind();
 
-	// Offscreen scene target for the Viewport panel. Color-only (no depth needed for
-	// the composite fullscreen quad), CLAMP_TO_EDGE + LINEAR so ImGui samples it clean.
-	sceneFbo.init();
-	sceneColorTexture = Texture2D(viewportW_, viewportH_, GL_CLAMP_TO_EDGE, GL_LINEAR, GL_RGBA16F, GL_RGBA, GL_FLOAT);
-	sceneFbo.bind();
-	sceneFbo.attachTexture2D(sceneColorTexture, GL_COLOR_ATTACHMENT0);
-	sceneFbo.drawBuffers({ GL_COLOR_ATTACHMENT0 });
-	sceneFbo.unbind();
+		// Offscreen scene target for the Viewport panel. Color-only (no depth needed for
+		// the composite fullscreen quad), CLAMP_TO_EDGE + LINEAR so ImGui samples it clean.
+		sceneFbo.init();
+		sceneColorTexture = Texture2D(viewportW_, viewportH_, GL_CLAMP_TO_EDGE, GL_LINEAR, GL_RGBA16F, GL_RGBA, GL_FLOAT);
+		sceneFbo.bind();
+		sceneFbo.attachTexture2D(sceneColorTexture, GL_COLOR_ATTACHMENT0);
+		sceneFbo.drawBuffers({ GL_COLOR_ATTACHMENT0 });
+		sceneFbo.requireComplete("Scene framebuffer");
+		sceneFbo.unbind();
 
-	// Volume-cloud noise is not generated here; it is built in the background the
-	// first time the scene contains a volume (see ensureCloudNoise).
+		// Volume-cloud noise is not generated here; it is built in the background the
+		// first time the scene contains a volume (see ensureCloudNoise).
 
-	// Build the ordered pass list. Order encodes producer->consumer dependencies.
-	// LightUpload MUST stay immediately before ForwardHdr: the SSBO bindings,
-	// TEX6/7 shadow maps and light-count uniforms it sets persist into the forward pass.
-	passes.clear();
-	passes.push_back(std::make_unique<FrameSetupPass>());
-	passes.push_back(std::make_unique<DirectionalShadowPass>());
-	passes.push_back(std::make_unique<PointShadowPass>());
-	passes.push_back(std::make_unique<LightUploadPass>());
-	passes.push_back(std::make_unique<ForwardHdrPass>());
-	passes.push_back(std::make_unique<CloudSkeletonOverlayPass>());
-	passes.push_back(std::make_unique<GizmoPass>());
-	passes.push_back(std::make_unique<BloomPass>());
-	passes.push_back(std::make_unique<CompositePass>());
+		// Build the ordered pass list. Order encodes producer->consumer dependencies.
+		// LightUpload MUST stay immediately before ForwardHdr: the SSBO bindings,
+		// TEX6/7 shadow maps and light-count uniforms it sets persist into the forward pass.
+		passes.clear();
+		passes.push_back(std::make_unique<FrameSetupPass>());
+		passes.push_back(std::make_unique<DirectionalShadowPass>());
+		passes.push_back(std::make_unique<PointShadowPass>());
+		passes.push_back(std::make_unique<LightUploadPass>());
+		passes.push_back(std::make_unique<ForwardHdrPass>());
+		passes.push_back(std::make_unique<CloudSkeletonOverlayPass>());
+		passes.push_back(std::make_unique<GizmoPass>());
+		passes.push_back(std::make_unique<BloomPass>());
+		passes.push_back(std::make_unique<CompositePass>());
+	}
+	catch (...) {
+		// Initialization may stop after any allocation; release it before the
+		// caller tears down the window and its current GL context.
+		shutdown();
+		throw;
+	}
 }
 
 void RenderSystem::shutdown() {
@@ -225,6 +241,7 @@ void RenderSystem::shutdown() {
 	cloudVolumesSsbo.destroy();
 	RenderHelpers::shutdownSharedGeometry();
 	destroyDummyTexture2D();
+	destroyDummyCubeMap();
 }
 
 // Lazy generation + upload of the volume-cloud noise textures. Called every frame:
@@ -276,6 +293,13 @@ void RenderSystem::update(double deltaTime) {
 		cloudRaymarchTexture.resetSize((viewportW_ + 1) / 2, (viewportH_ + 1) / 2);
 		cloudTemporal.resize((viewportW_ + 1) / 2, (viewportH_ + 1) / 2);
 		sceneColorTexture.resetSize(viewportW_, viewportH_);
+		// Check only after all attachments have their new dimensions.
+		hdrFbo.requireComplete("HDR framebuffer after resize");
+		bloomBlurFbos[0].requireComplete("Bloom blur framebuffer 0 after resize");
+		bloomBlurFbos[1].requireComplete("Bloom blur framebuffer 1 after resize");
+		overlayFbo.requireComplete("Overlay framebuffer after resize");
+		cloudRaymarchFbo.requireComplete("Cloud raymarch framebuffer after resize");
+		sceneFbo.requireComplete("Scene framebuffer after resize");
 	}
 	for (auto& obj : rm_->getSceneView<AnimatorComponent>()) {
 		auto animator = obj->getComponent<AnimatorComponent>();
@@ -298,7 +322,7 @@ RenderContext RenderSystem::buildContext(Camera& camera) {
 	// Per-frame context: snapshots + non-owning pointers to GL targets.
 	RenderContext ctx;
 	ctx.camera = &camera;
-	ctx.x = x; ctx.y = y; ctx.width = width; ctx.height = height;
+	ctx.width = width; ctx.height = height;
 
 	ctx.forwardShader = rm.getShader(ShaderCatalog::forward.key);
 	ctx.skyboxShader = rm.getShader(ShaderCatalog::skybox.key);
@@ -353,7 +377,6 @@ RenderContext RenderSystem::buildContext(Camera& camera) {
 	ctx.sceneIdentity = rm.getCurrentScene().get();
 	ctx.cloudRaymarchWidth = (viewportW_ + 1) / 2;
 	ctx.cloudRaymarchHeight = (viewportH_ + 1) / 2;
-	ctx.sceneColorTexture = &sceneColorTexture;
 	ctx.owner = this;
 	ctx.worleyNoiseTexture = &worleyNoiseTexture;
 	ctx.perlinNoiseTexture = &perlinNoiseTexture;

@@ -10,11 +10,6 @@ class Texture3D;
 class NoiseTextureGenerator3D
 {
 public:
-	// Convenience: compute and upload synchronously (build-time / main thread).
-	static Texture3D generateWorleyNoiseTexture3D(int width, int height, int depth);
-	static Texture3D generatePerlinNoiseTexture3D(int width, int height, int depth);
-	static Texture2D generateWeatherMapTexture2D(int width, int height);
-
 	// Pure CPU compute (no GL calls, thread-safe); safe to run on a worker thread.
 	// Internally parallelized across CPU cores. Backed by a disk cache
 	// (data/cache/*.noise): on a hit the data is read directly instead of recomputed.

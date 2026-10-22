@@ -3,7 +3,6 @@
 #include "rendering/renderLimits.hpp"
 #include "core/logger.hpp"
 #include <algorithm>
-#include <iterator>
 
 bool Scene::addObject(GameObjectPtr obj)
 {
@@ -17,15 +16,6 @@ bool Scene::addObject(GameObjectPtr obj)
 	objects.push_back(obj);
 	viewCache_.clear();
 	return true;
-}
-
-void Scene::removeObject(GameObjectPtr obj)
-{
-	auto it = std::find(objects.begin(), objects.end(), obj);
-	if (it != objects.end()) {
-		objects.erase(it);
-		viewCache_.clear();
-	}
 }
 
 void Scene::removeObjectByIndex(std::size_t idx)
@@ -57,13 +47,9 @@ void Scene::processRemovals()
 	}
 }
 
-std::vector<GameObjectPtr> Scene::getObjects(ObjectFilter filter) const
+std::vector<GameObjectPtr> Scene::getObjects() const
 {
-	if (!filter) return objects;
-
-	std::vector<GameObjectPtr> filtered;
-	std::copy_if(objects.begin(), objects.end(), std::back_inserter(filtered), filter);
-	return filtered;
+	return objects;
 }
 
 void Scene::shutdown()

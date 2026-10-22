@@ -1,10 +1,12 @@
 ﻿#include "material.hpp"
 #include "rendering/opengl/shader.hpp"
+#include "core/logger.hpp"
 #include <filesystem>
+#include <system_error>
+#include <utility>
 
-Material::Material(unsigned int index, std::string albedoPath, std::string ambientPath, std::string specularPath, std::string normalPath, std::string shininessPath)
+Material::Material(std::string albedoPath, std::string ambientPath, std::string specularPath, std::string normalPath, std::string shininessPath)
 {
-	this->index = index;
 	this->albedoPath = albedoPath;
 	this->ambientPath = ambientPath;
 	this->specularPath = specularPath;
@@ -12,29 +14,36 @@ Material::Material(unsigned int index, std::string albedoPath, std::string ambie
 	this->shininessPath = shininessPath;
 }
 
-void Material::initGLResources()
+bool Material::initGLResources()
 {
 	textures.clear();
-	if (std::filesystem::is_regular_file(albedoPath))
-	{
-		textures.push_back(Texture2D(albedoPath.c_str(), Texture2D::Type::ALBEDO, GL_REPEAT, GL_LINEAR));
-	}
-	if (std::filesystem::is_regular_file(ambientPath))
-	{
-		textures.push_back(Texture2D(ambientPath.c_str(), Texture2D::Type::AMBIENT, GL_REPEAT, GL_LINEAR));
-	}
-	if (std::filesystem::is_regular_file(specularPath))
-	{
-		textures.push_back(Texture2D(specularPath.c_str(), Texture2D::Type::SPECULAR, GL_REPEAT, GL_LINEAR));
-	}
-	if (std::filesystem::is_regular_file(normalPath))
-	{
-		textures.push_back(Texture2D(normalPath.c_str(), Texture2D::Type::NORMAL, GL_REPEAT, GL_LINEAR));
-	}
-	if (std::filesystem::is_regular_file(shininessPath))
-	{
-		textures.push_back(Texture2D(shininessPath.c_str(), Texture2D::Type::SHININESS, GL_REPEAT, GL_LINEAR));
-	}
+	lastError_.clear();
+	auto loadTexture = [this](const std::string& name, Texture2D::Type type) {
+		if (name.empty()) return;
+		try {
+			const auto path = std::filesystem::u8path(name);
+			Texture2D texture(path, type, GL_REPEAT, GL_LINEAR);
+			if (texture.isValid()) textures.push_back(std::move(texture));
+			else {
+				if (!lastError_.empty()) lastError_ += '\n';
+				lastError_ += texture.lastError();
+			}
+		} catch (const std::system_error& error) {
+			const auto message = "Invalid texture path: " + name + ": " + error.what();
+			if (!lastError_.empty()) lastError_ += '\n';
+			lastError_ += message;
+			LOG_ERROR(message);
+		}
+	};
+	loadTexture(albedoPath, Texture2D::Type::ALBEDO);
+	loadTexture(ambientPath, Texture2D::Type::AMBIENT);
+	loadTexture(specularPath, Texture2D::Type::SPECULAR);
+	loadTexture(normalPath, Texture2D::Type::NORMAL);
+	// Imported shininess still participates in the existing default-material
+	// decision via the loaded-map set, although the shader does not sample it.
+	loadTexture(shininessPath, Texture2D::Type::SHININESS);
+	if (!lastError_.empty()) LOG_WARN("Using material defaults for failed textures");
+	return lastError_.empty();
 }
 
 void Material::bind(ShaderPtr shader)

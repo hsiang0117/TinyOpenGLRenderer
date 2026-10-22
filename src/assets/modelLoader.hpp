@@ -20,7 +20,6 @@ public:
 	std::future<std::shared_ptr<Model>> loadAsync(const std::string& path);
 	void loadFromPath(const std::string& path);
 	bool isLoaded(const std::string& key) const;
-	std::shared_ptr<Model> get(const std::string& key) const;
 	std::vector<std::shared_ptr<Model>> getAllLoadedModels() const;
 	void addToCache(const std::string& key, std::shared_ptr<Model> model);
 	void shutdown();

@@ -25,10 +25,9 @@ struct KeyScale {
 class Bone {
 public:
 	Bone() = default;
-	Bone(int id, const aiNodeAnim* channel);
+	explicit Bone(const aiNodeAnim* channel);
 	void update(float animationTime);
 	glm::mat4 getLocalTransform() const { return localTransform; };
-	int getBoneID() const { return id; }
 	int getPositionIndex(float animationTime);
 	int getRotationIndex(float animationTime);
 	int getScaleIndex(float animationTime);
@@ -40,7 +39,6 @@ private:
 	int numRotations;
 	int numScalings;
 	glm::mat4 localTransform;
-	int id;
 
 	float getScaleFactor(float lastTimeStamp, float nextTimeStamp, float animationTime);
 	glm::mat4 interpolatePosition(float animationTime);

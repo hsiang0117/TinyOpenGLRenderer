@@ -2,7 +2,8 @@
 #include "rendering/geometry/mesh.hpp"
 #include "assets/model.hpp"
 #include "rendering/skybox.hpp"
-#include <algorithm>
+#include "core/logger.hpp"
+#include <system_error>
 #include <utility>
 
 CloudVolumeComponent::CloudVolumeComponent() : Component("CloudVolumeComponent") {
@@ -58,20 +59,39 @@ std::string Component::getName() const {
 	return name;
 }
 
-void SkyboxComponent::setSkybox(std::string folderPath) {
-	skybox = std::make_shared<Skybox>(folderPath);
-	skybox->initGLResources();
-	// keep the edit buffer in sync so the inspector shows the applied path
-	size_t n = std::min(folderPath.size(), sizeof(this->folderPath) - 1);
-	folderPath.copy(this->folderPath, n);
-	this->folderPath[n] = '\0';
+bool SkyboxComponent::setSkybox(std::string folderPath) {
+	try {
+		auto candidate = std::make_shared<Skybox>(folderPath);
+		if (!candidate->initGLResources()) {
+			lastError_ = candidate->lastError();
+			return false;
+		}
+		skybox = std::move(candidate);
+		// The by-value argument also permits setSkybox(this->folderPath).
+		this->folderPath = std::move(folderPath);
+		lastError_.clear();
+		return true;
+	} catch (const std::system_error& error) {
+		lastError_ = "Invalid skybox path: " + folderPath + ": " + error.what();
+		LOG_ERROR(lastError_);
+		return false;
+	}
 }
 
-void DynamicMaterialComponent::setMaterial() {
-	material.albedoPath = albedoPath;
-	material.specularPath = specularPath;
-	material.normalPath = normalPath;
-	material.initGLResources();
+bool DynamicMaterialComponent::setMaterial() {
+	Material candidate;
+	candidate.albedoPath = albedoPath;
+	candidate.specularPath = specularPath;
+	candidate.normalPath = normalPath;
+	candidate.ambientPath = material.ambientPath;
+	candidate.shininessPath = material.shininessPath;
+	if (!candidate.initGLResources()) {
+		lastError_ = candidate.lastError();
+		return false;
+	}
+	material = std::move(candidate);
+	lastError_.clear();
+	return true;
 }
 
 std::vector<std::string> AnimatorComponent::getAnimationsNames() {

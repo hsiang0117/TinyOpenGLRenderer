@@ -7,7 +7,6 @@
 
 class Texture;
 class Texture2D;
-class RenderBuffer;
 
 class GLBuffer {
 public:
@@ -21,7 +20,6 @@ public:
 
 	GLuint ID;
 	virtual void init();
-	virtual void reset();
 	virtual void destroy();
 	virtual void bind() = 0;
 	virtual void unbind() = 0;
@@ -57,18 +55,18 @@ public:
 	FrameBuffer& operator=(FrameBuffer&&) = default;
 
 	virtual void init() override;
-	virtual void reset() override;
 	virtual void destroy() override;
 	virtual void bind() override;
 	virtual void unbind() override;
 
 	void attachTexture(Texture& texture, GLenum type);
 	void attachTexture2D(Texture2D& texture, GLenum type);
-	void attachRenderBuffer(RenderBuffer& renderBuffer, GLenum type);
 	template<typename T>
 	void attachTextureLayer(T& textureArray, GLenum type, int index);
 	void drawBuffers(std::initializer_list<GLenum> types);
 	void readBuffer(const GLenum type);
+	// Validate this object without changing either framebuffer binding.
+	void requireComplete(const char* label) const;
 };
 
 template<typename T>

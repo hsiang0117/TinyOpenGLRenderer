@@ -13,8 +13,10 @@ class Material
 {
 public:
 	Material() {};
-	Material(unsigned int index, std::string albedoPath, std::string ambientPath, std::string specularPath, std::string normalPath, std::string shininessPath);
-	void initGLResources();
+	Material(std::string albedoPath, std::string ambientPath, std::string specularPath, std::string normalPath, std::string shininessPath);
+	// Empty paths use defaults; failed requested textures are reported and excluded.
+	bool initGLResources();
+	const std::string& lastError() const { return lastError_; }
 	void bind(std::shared_ptr<Shader> shader);
 
 	std::string albedoPath;
@@ -23,8 +25,8 @@ public:
 	std::string normalPath;
 	std::string shininessPath;
 private:
-	unsigned int index;
 	std::vector<Texture2D> textures;
+	std::string lastError_;
 };
 
 #endif // !MATERIAL_HPP

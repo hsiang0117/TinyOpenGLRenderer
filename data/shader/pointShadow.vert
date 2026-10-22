@@ -36,7 +36,6 @@ void main()
 			break;
 		}
 		mat4 boneMatrix = getBoneMatrix(boneIds[i]);
-        mat3 boneMatrix3 = mat3(boneMatrix);
         totalPosition += boneMatrix * vec4(aPos, 1.0) * weights[i];
 		hasBone = true;
 	}

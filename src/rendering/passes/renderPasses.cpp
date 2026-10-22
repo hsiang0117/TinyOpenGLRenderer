@@ -24,7 +24,7 @@ static void drawAllRenderables(RenderContext& ctx, ShaderPtr shader, bool camera
 	}
 }
 
-void FrameSetupPass::execute(RenderContext& ctx) {
+void FrameSetupPass::execute(RenderContext&) {
 	glDisable(GL_FRAMEBUFFER_SRGB);
 	// Unbind program before clearing so the driver does not validate the leftover
 	// active program's sampler completeness against unbound units.
@@ -38,6 +38,9 @@ void FrameSetupPass::execute(RenderContext& ctx) {
 	// complete texture on the unit to pass the driver's completeness check. Animated
 	// models overwrite unit 8 with their real bone texture when drawn.
 	bindDummyTexture2D(GL_TEXTURE8);
+	// A scene may intentionally have no ready skybox; environment sampling still
+	// needs a complete cubemap. Ready skyboxes replace this binding below.
+	bindDummyCubeMap(GL_TEXTURE5);
 }
 
 void DirectionalShadowPass::execute(RenderContext& ctx) {

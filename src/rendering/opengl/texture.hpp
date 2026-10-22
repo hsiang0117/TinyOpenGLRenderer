@@ -3,6 +3,8 @@
 #pragma once
 
 #include <glad/glad.h>
+#include <filesystem>
+#include <string>
 
 class Texture {
 public:
@@ -15,8 +17,14 @@ public:
 	Texture& operator=(Texture&& other) noexcept;
 
 	GLuint ID;
+	bool isValid() const { return ID != 0; }
+	const std::string& lastError() const { return lastError_; }
 	void destroy();
 	virtual void use(GLenum textureUnit) = 0;
+protected:
+	void fail(std::string reason);
+private:
+	std::string lastError_;
 };
 
 class Texture2D : public Texture {
@@ -31,7 +39,9 @@ public:
 	};
 	Texture2D() {};
 	Texture2D(int width, int height, GLenum wrap, GLenum filter, GLenum internalFormat, GLenum format, GLenum dataType);
+	// Public character paths are UTF-8; path overloads preserve native filenames.
 	Texture2D(const char* path, Type type, GLenum wrap, GLenum filter);
+	Texture2D(const std::filesystem::path& path, Type type, GLenum wrap, GLenum filter);
 	virtual void use(GLenum textureUnit) override;
 	void setBorderColor(float r, float g, float b, float a);
 	void setDefaultColor(float r, float g, float b, float a);
@@ -43,17 +53,11 @@ private:
 	GLenum internalFormat = GL_RGBA8, format = GL_RGBA, dataType = GL_UNSIGNED_BYTE;
 };
 
-class Texture2DArray : public Texture {
-public:
-	Texture2DArray() {}
-	Texture2DArray(int width, int height, int length, GLenum wrap, GLenum filter, GLenum internalFormat, GLenum format);
-	virtual void use(GLenum textureUnit) override;
-};
-
 class CubeMap : public Texture {
 public:
 	CubeMap() {};
 	CubeMap(const char* folderPath, GLenum wrap, GLenum filter);
+	CubeMap(const std::filesystem::path& folderPath, GLenum wrap, GLenum filter);
 	virtual void use(GLenum textureUnit) override;
 };
 
@@ -62,21 +66,6 @@ public:
 	CubeMapArray() {};
 	CubeMapArray(int width, int height, int length, GLenum wrap, GLenum filter, GLenum internalFormat, GLenum format);
 	virtual void use(GLenum textureUnit) override;
-};
-
-class RenderBuffer {
-public:
-	GLuint ID;
-	RenderBuffer() : ID(0) {}
-	RenderBuffer(int width, int height, GLenum internalFormat);
-	~RenderBuffer();
-	RenderBuffer(const RenderBuffer&) = delete;
-	RenderBuffer& operator=(const RenderBuffer&) = delete;
-	RenderBuffer(RenderBuffer&& other) noexcept;
-	RenderBuffer& operator=(RenderBuffer&& other) noexcept;
-	void resetSize(int width, int height);
-private:
-	GLenum internalFormat;
 };
 
 class Texture3D : public Texture {
@@ -94,5 +83,8 @@ private:
 // The renderer explicitly releases this shared texture before context shutdown.
 void bindDummyTexture2D(GLenum textureUnit);
 void destroyDummyTexture2D();
+// Complete black environment for scenes without a ready skybox.
+void bindDummyCubeMap(GLenum textureUnit);
+void destroyDummyCubeMap();
 
 #endif // !TEXTURE_HPP

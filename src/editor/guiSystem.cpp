@@ -20,8 +20,53 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <vector>
 #include <cstring>
+#include <filesystem>
+#include <string>
+#ifdef _WIN32
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#ifdef APIENTRY
+#undef APIENTRY
+#endif
+#include <windows.h>
+#endif
 
 namespace {
+	int resizePathInput(ImGuiInputTextCallbackData* data) {
+		if (data->EventFlag == ImGuiInputTextFlags_CallbackResize) {
+			auto& text = *static_cast<std::string*>(data->UserData);
+			text.resize(static_cast<size_t>(data->BufTextLen));
+			data->Buf = text.data();
+		}
+		return 0;
+	}
+
+	void inputPath(const char* label, std::string& text) {
+		ImGui::InputText(label, text.data(), text.capacity() + 1,
+			ImGuiInputTextFlags_CallbackResize, resizePathInput, &text);
+	}
+
+	std::filesystem::path defaultFontPath() {
+#ifdef _WIN32
+		std::wstring directory(MAX_PATH, L'\0');
+		UINT length = GetWindowsDirectoryW(directory.data(), static_cast<UINT>(directory.size()));
+		if (length >= directory.size()) {
+			directory.resize(length);
+			length = GetWindowsDirectoryW(directory.data(), static_cast<UINT>(directory.size()));
+		}
+		if (length == 0 || length >= directory.size()) return {};
+		directory.resize(length);
+		const auto path = std::filesystem::path(directory) / "Fonts" / "msyh.ttc";
+		std::error_code error;
+		if (std::filesystem::is_regular_file(path, error)) return path;
+#endif
+		return {};
+	}
+
 	// Scene-tree classification predicates (extracted from the former inline lambdas).
 	bool isLightObject(const GameObjectPtr& object) {
 		return object->has<PointLightComponent>() ||
@@ -67,9 +112,11 @@ void GuiSystem::init(GLFWwindow* window) {
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 	ImGuiIO& io = ImGui::GetIO();
-	ImFont* font = io.Fonts->AddFontFromFileTTF("C:/Windows/Fonts/msyh.ttc", 24.0f, NULL, io.Fonts->GetGlyphRangesChineseFull());
-	if (font) {
-		io.FontDefault = font;
+	const auto fontPath = defaultFontPath();
+	if (!fontPath.empty()) {
+		if (auto font = io.Fonts->AddFontFromFileTTF(fontPath.u8string().c_str(), 24.0f, NULL, io.Fonts->GetGlyphRangesChineseFull())) {
+			io.FontDefault = font;
+		}
 	}
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 	io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
@@ -511,8 +558,8 @@ void GuiSystem::registerComponentWidgets()
 		ImGui::Separator();
 		});
 
-	registerComponentWidget<ModelRenderComponent>([](std::shared_ptr<ModelRenderComponent> modelRenderComponent) {
-		});
+	// Storage-only components intentionally have no editable fields.
+	registerComponentWidget<ModelRenderComponent>([](std::shared_ptr<ModelRenderComponent>) {});
 
 	registerComponentWidget<PointLightComponent>([](std::shared_ptr<PointLightComponent> pointLightComponent) {
 		ImGui::Text(u8"PointLight");
@@ -635,24 +682,27 @@ void GuiSystem::registerComponentWidgets()
 	registerComponentWidget<SkyboxComponent>([](std::shared_ptr<SkyboxComponent> skyboxComponent) {
 		ImGui::Text(u8"Skybox");
 		ImGui::Separator();
-		ImGui::InputText("Path", skyboxComponent->folderPath, sizeof(skyboxComponent->folderPath)); ImGui::SameLine();
+		inputPath("Path", skyboxComponent->folderPath); ImGui::SameLine();
 		if (ImGui::Button("OK")) {
-			skyboxComponent->setSkybox(std::string(skyboxComponent->folderPath));
+			skyboxComponent->setSkybox(skyboxComponent->folderPath);
 		}
+		if (!skyboxComponent->lastError().empty())
+			ImGui::TextWrapped("%s", skyboxComponent->lastError().c_str());
 		});
 
-	registerComponentWidget<StaticMeshComponent>([](std::shared_ptr<StaticMeshComponent> staticMeshComponent) {
-		});
+	registerComponentWidget<StaticMeshComponent>([](std::shared_ptr<StaticMeshComponent>) {});
 
 	registerComponentWidget<DynamicMaterialComponent>([](std::shared_ptr<DynamicMaterialComponent> dynamicMaterialComponent) {
 		ImGui::Text(u8"Material");
 		ImGui::Separator();
-		ImGui::InputText(u8"albedo", dynamicMaterialComponent->albedoPath, 255);
-		ImGui::InputText(u8"specular", dynamicMaterialComponent->specularPath, 255);
-		ImGui::InputText(u8"normal", dynamicMaterialComponent->normalPath, 255);
+		inputPath(u8"albedo", dynamicMaterialComponent->albedoPath);
+		inputPath(u8"specular", dynamicMaterialComponent->specularPath);
+		inputPath(u8"normal", dynamicMaterialComponent->normalPath);
 		if (ImGui::Button("OK")) {
 			dynamicMaterialComponent->setMaterial();
 		}
+		if (!dynamicMaterialComponent->lastError().empty())
+			ImGui::TextWrapped("%s", dynamicMaterialComponent->lastError().c_str());
 		});
 
 	registerComponentWidget<ShadowCaster2D>([](std::shared_ptr<ShadowCaster2D> shadowCaster2D) {

@@ -29,11 +29,6 @@ void ResourceManager::queueModelLoad(const std::string& path)
 	modelLoader.loadFromPath(path);
 }
 
-std::shared_ptr<Model> ResourceManager::getModel(const std::string& key) const
-{
-	return modelLoader.get(key);
-}
-
 std::vector<std::shared_ptr<Model>> ResourceManager::getAllModels() const
 {
 	return modelLoader.getAllLoadedModels();
@@ -57,16 +52,6 @@ void ResourceManager::removeGameObject(std::size_t idx)
 std::vector<GameObjectPtr> ResourceManager::getGameObjects() const
 {
 	return currentScene->getObjects();
-}
-
-GameObjectPtr ResourceManager::getGameObjectAt(std::size_t idx) const
-{
-	return currentScene->getObjectAt(idx);
-}
-
-std::size_t ResourceManager::getGameObjectCount() const
-{
-	return currentScene->getObjectCount();
 }
 
 int ResourceManager::getPointLightCount() const

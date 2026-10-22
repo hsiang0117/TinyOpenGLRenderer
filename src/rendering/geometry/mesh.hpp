@@ -27,14 +27,12 @@ public:
     std::vector<Vertex> vertices;
     std::vector<GLuint> indices;
     Mesh() = default;
-    Mesh(std::vector<Vertex> vertices, std::vector<GLuint> indices);
     ~Mesh();
     Mesh(const Mesh&) = delete;
     Mesh& operator=(const Mesh&) = delete;
     Mesh(Mesh&& other) noexcept;
     Mesh& operator=(Mesh&& other) noexcept;
     bool initGLResources();
-    bool isReady() const { return glInitialized; }
     void draw();
     void setMaterialIndex(unsigned int index) { materialIndex = index; }
     unsigned int getMaterialIndex() { return materialIndex; }
