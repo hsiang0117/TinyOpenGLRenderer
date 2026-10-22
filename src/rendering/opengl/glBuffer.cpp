@@ -4,6 +4,8 @@
 #include <stdexcept>
 #include <string>
 
+namespace togr {
+
 GLBuffer::~GLBuffer() {
 	destroy();
 }
@@ -137,3 +139,5 @@ void FrameBuffer::requireComplete(const char* label) const {
 	message << name << ": " << reason << " (status=0x" << std::hex << std::uppercase << status << ")";
 	throw std::runtime_error(message.str());
 }
+
+} // namespace togr

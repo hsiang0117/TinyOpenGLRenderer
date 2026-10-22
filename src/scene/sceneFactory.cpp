@@ -5,6 +5,8 @@
 #include <glm/glm.hpp>
 #include <stdexcept>
 
+namespace togr {
+
 ScenePtr SceneFactory::createDefaultScene() {
 	auto scene = std::make_shared<Scene>();
 
@@ -38,3 +40,5 @@ ScenePtr SceneFactory::createDefaultScene() {
 
 	return scene;
 }
+
+} // namespace togr

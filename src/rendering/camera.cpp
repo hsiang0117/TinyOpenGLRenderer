@@ -1,24 +1,26 @@
 #include "camera.hpp"
 #include <glm/gtc/matrix_transform.hpp>
 
+namespace togr {
+
 Camera::Camera() {
-	pos = DEFAULT_CAMERA_POS;
-	front = DEFAULT_CAMERA_FRONT;
-	up = DEFAULT_CAMERA_UP;
-	pitch = DEFAULT_PITCH;
-	yaw = DEFAULT_YAW;
-	fov = DEFAULT_FOV;
-	sensitivity = DEFAULT_SENSITIVITY;
+	pos = TOGR_DEFAULT_CAMERA_POS;
+	front = TOGR_DEFAULT_CAMERA_FRONT;
+	up = TOGR_DEFAULT_CAMERA_UP;
+	pitch = TOGR_DEFAULT_PITCH;
+	yaw = TOGR_DEFAULT_YAW;
+	fov = TOGR_DEFAULT_FOV;
+	sensitivity = TOGR_DEFAULT_SENSITIVITY;
 }
 
 Camera::Camera(glm::vec3 cameraPos) {
 	pos = cameraPos;
-	front = DEFAULT_CAMERA_FRONT;
-	up = DEFAULT_CAMERA_UP;
-	pitch = DEFAULT_PITCH;
-	yaw = DEFAULT_YAW;
-	fov = DEFAULT_FOV;
-	sensitivity = DEFAULT_SENSITIVITY;
+	front = TOGR_DEFAULT_CAMERA_FRONT;
+	up = TOGR_DEFAULT_CAMERA_UP;
+	pitch = TOGR_DEFAULT_PITCH;
+	yaw = TOGR_DEFAULT_YAW;
+	fov = TOGR_DEFAULT_FOV;
+	sensitivity = TOGR_DEFAULT_SENSITIVITY;
 }
 
 glm::vec3 Camera::getPos() {
@@ -133,3 +135,5 @@ void Camera::zoom(float wheelSteps) {
 	if (fov < 1.0f) fov = 1.0f;
 	if (fov > 70.0f) fov = 70.0f;
 }
+
+} // namespace togr

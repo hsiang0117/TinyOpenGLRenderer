@@ -1,5 +1,5 @@
-#ifndef SCENE_HPP
-#define SCENE_HPP
+#ifndef TOGR_SCENE_HPP
+#define TOGR_SCENE_HPP
 #pragma once
 
 #include "gameObject.hpp"
@@ -12,43 +12,62 @@
 #include <utility>
 #include <vector>
 
+namespace togr {
+
+// Owns the scene's object list, deferred removals and cached component membership.
+// Use on the main thread. Assemble object components before addObject(); editing
+// component values is supported, changing the component set is not tracked here.
 class Scene {
 public:
-	bool addObject(GameObjectPtr obj);
-	void removeObjectByIndex(std::size_t idx);
-	void queueRemoval(std::size_t idx);
-	void processRemovals();
-	std::vector<GameObjectPtr> getObjects() const;
+    // Immediate membership change. Returns false for null or light-capacity
+    // rejection; a rejected object is not inserted.
+    bool addObject(GameObjectPtr obj);
+    void removeObjectByIndex(std::size_t index);
 
-	// Cached component view. Built lazily on first request per type, returned by
-	// const-ref thereafter. Cache is cleared whenever objects are added/removed.
-	// CONTRACT: components must not be added to an object already in the scene
-	// (today all addComponent happens in GameObjectFactory before addObject). If
-	// that ever changes, call viewCache_.clear() after mutating an in-scene object.
-	template<typename T>
-	const std::vector<GameObjectPtr>& getView() const {
-		std::type_index key(typeid(T));
-		auto it = viewCache_.find(key);
-		if (it != viewCache_.end()) return it->second;
-		std::vector<GameObjectPtr> filtered;
-		for (auto& obj : objects) {
-			if (obj && obj->has<T>()) filtered.push_back(obj);
-		}
-		return viewCache_.emplace(key, std::move(filtered)).first->second;
-	}
+    // Deferred removal uses indices in the current list. Commit before making
+    // other immediate changes that would shift those indices. Invalid indices
+    // are ignored; processRemovals() commits in descending index order.
+    void queueRemoval(std::size_t index);
+    void processRemovals();
 
-	GameObjectPtr getObjectAt(std::size_t idx) const {
-		return (idx < objects.size()) ? objects[idx] : nullptr;
-	}
+    // Shared snapshots keep objects alive independently of scene membership.
+    // They do not freeze component values. Invalid indices return nullptr.
+    std::vector<GameObjectPtr> getObjects() const;
+    GameObjectPtr getObjectAt(std::size_t index) const {
+        return (index < objects.size()) ? objects[index] : nullptr;
+    }
 
-	void shutdown();
+    // Borrowed membership view, built lazily per type. A successful membership
+    // change or shutdown() invalidates it. Other getView() calls do not.
+    // The const vector protects the list, not the objects/components it points to.
+    template<typename T>
+    const std::vector<GameObjectPtr>& getView() const;
+
+    // Releases scene references and pending removals; release GL-owning objects
+    // with a current context. External shared snapshots may retain those objects.
+    void shutdown();
 
 private:
-	std::vector<GameObjectPtr> objects;
-	std::queue<std::size_t> removalQueue;
-	mutable std::unordered_map<std::type_index, std::vector<GameObjectPtr>> viewCache_;
+    std::vector<GameObjectPtr> objects;
+    std::queue<std::size_t> removalQueue;
+    mutable std::unordered_map<std::type_index, std::vector<GameObjectPtr>> viewCache_;
 };
+
+template<typename T>
+const std::vector<GameObjectPtr>& Scene::getView() const {
+    const std::type_index key(typeid(T));
+    const auto cached = viewCache_.find(key);
+    if (cached != viewCache_.end()) return cached->second;
+
+    std::vector<GameObjectPtr> filtered;
+    for (const auto& object : objects) {
+        if (object && object->has<T>()) filtered.push_back(object);
+    }
+    return viewCache_.emplace(key, std::move(filtered)).first->second;
+}
 
 using ScenePtr = std::shared_ptr<Scene>;
 
-#endif // !SCENE_HPP
+} // namespace togr
+
+#endif // !TOGR_SCENE_HPP

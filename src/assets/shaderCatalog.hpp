@@ -1,8 +1,10 @@
-#ifndef SHADER_CATALOG_HPP
-#define SHADER_CATALOG_HPP
+#ifndef TOGR_SHADER_CATALOG_HPP
+#define TOGR_SHADER_CATALOG_HPP
 #pragma once
 
 #include <array>
+
+namespace togr {
 
 // Paths remain relative to the application working directory.
 namespace ShaderCatalog {
@@ -62,4 +64,6 @@ inline constexpr auto programs = std::array{
 };
 }
 
-#endif // !SHADER_CATALOG_HPP
+} // namespace togr
+
+#endif // !TOGR_SHADER_CATALOG_HPP

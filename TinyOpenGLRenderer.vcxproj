@@ -163,6 +163,7 @@
     <ClCompile Include="src\scene\component.cpp" />
     <ClCompile Include="src\platform\windowSystem.cpp" />
     <ClCompile Include="src\editor\guiSystem.cpp" />
+    <ClCompile Include="src\editor\componentEditors.cpp" />
     <ClCompile Include="src\core\logger.cpp" />
     <ClCompile Include="src\rendering\renderSystem.cpp" />
     <ClCompile Include="src\rendering\renderUtils.cpp" />
@@ -201,9 +202,11 @@
     <ClInclude Include="src\animation\animation.hpp" />
     <ClInclude Include="src\animation\assimpNode.hpp" />
     <ClInclude Include="src\animation\bone.hpp" />
+    <ClInclude Include="src\animation\skeletonPose.hpp" />
     <ClInclude Include="src\rendering\camera.hpp" />
     <ClInclude Include="src\scene\component.hpp" />
     <ClInclude Include="src\editor\guiSystem.hpp" />
+    <ClInclude Include="src\editor\componentEditors.hpp" />
     <ClInclude Include="src\core\logger.hpp" />
     <ClInclude Include="src\rendering\renderSystem.hpp" />
     <ClInclude Include="src\rendering\passes\renderPass.hpp" />
@@ -222,6 +225,7 @@
     <ClInclude Include="src\rendering\opengl\glBuffer.hpp" />
     <ClInclude Include="src\platform\input.hpp" />
     <ClInclude Include="src\scene\gameObject.hpp" />
+    <ClInclude Include="src\scene\selectionModel.hpp" />
     <ClInclude Include="src\scene\gameObjectFactory.hpp" />
     <ClInclude Include="src\scene\sceneFactory.hpp" />
     <ClInclude Include="src\rendering\material.hpp" />
@@ -267,6 +271,8 @@
     <None Include="data\shader\cloudUpsample.frag" />
     <None Include="data\shader\gizmo.vert" />
     <None Include="data\shader\gizmo.frag" />
+    <None Include="docs\code-reading.md" />
+    <None Include="docs\readability.md" />
     <None Include="docs\header-dependencies.md" />
     <None Include="docs\naming.md" />
     <None Include="docs\project-structure.md" />
@@ -279,6 +285,8 @@
     <None Include="tests\renderPerformance.cpp" />
     <None Include="tests\renderSafety.cpp" />
     <None Include="tests\renderStartup.cpp" />
+    <None Include="tests\guiChecks.cpp" />
+    <None Include="tests\resourceLoadingChecks.cpp" />
     <None Include="tests\run-render-benchmark.ps1" />
     <None Include="tests\run-render-safety.ps1" />
     <None Include="tests\shaders\cubeSample.vert" />

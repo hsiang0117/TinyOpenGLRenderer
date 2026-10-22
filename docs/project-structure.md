@@ -2,6 +2,10 @@
 
 同一功能模块的头文件和实现文件放在同一组。源码目录与 VS 筛选器使用对应的分类，通常控制在两到三层。
 
+程序的执行顺序和功能入口见 [主流程与功能导航](code-reading.md)，后续代码整理遵循 [代码阅读规则](readability.md)。本页说明目录、包含路径及相关资源约定。
+
+自有 C++ 代码统一使用 `togr` 根命名空间，测试使用 `togr::tests`；目录继续表达模块位置，不机械映射为多层命名空间。外部库和全局入口的作用域边界见[命名空间约定](naming.md#c-命名空间)。
+
 ## 源码目录与 VS 筛选器
 
 自有源码已按下表迁移到模块目录，VS 筛选器使用对应分组。`TinyOpenGLRenderer.vcxproj` 记录项目文件及其构建类型，`TinyOpenGLRenderer.vcxproj.filters` 记录它们在解决方案资源管理器中的分组。
@@ -10,18 +14,24 @@
 | --- | --- | --- |
 | `App` | `main`、`engine` | `src/app/` |
 | `Platform` | `windowSystem`、`input` | `src/platform/` |
-| `Scene` | `scene`、`gameObject`、`component`、`gameObjectFactory`、`sceneFactory` | `src/scene/` |
+| `Scene` | `scene`、`gameObject`、`component`、`selectionModel`、`gameObjectFactory`、`sceneFactory` | `src/scene/` |
 | `Assets` | `model`、`modelLoader`、`shaderLoader`、`shaderCatalog`、`resourceManager`、`assimpGlmHelpers`、`assimpFileSystem` | `src/assets/` |
-| `Animation` | `animation`、`bone`、`assimpNode` | `src/animation/` |
+| `Animation` | `animation`、`bone`、`assimpNode`、`skeletonPose` | `src/animation/` |
 | `Rendering` | `renderSystem`、`renderUtils`、`renderLimits`、`camera`、`material`、`skybox` | `src/rendering/` |
 | `Rendering/Geometry` | `mesh`、`meshGenerator` | `src/rendering/geometry/` |
 | `Rendering/Passes` | `renderPass`、`renderPasses` | `src/rendering/passes/` |
 | `Rendering/OpenGL` | `shader`、`texture`、`glBuffer` | `src/rendering/opengl/` |
 | `Rendering/Clouds` | `cloudVolume`、`cloudTemporal`、`noiseVolumeData`、`noiseTextureGenerator` | `src/rendering/clouds/` |
-| `Editor` | `guiSystem` | `src/editor/` |
+| `Editor` | `guiSystem`、`componentEditors` | `src/editor/` |
 | `Core` | `logger` 等公共基础设施 | `src/core/` |
 
 `Scene` 负责对象集合、延迟删除、光源容量和组件视图缓存。`ModelLoader` 负责后台模型导入与缓存，`ShaderLoader` 负责 Shader 注册与缓存。`ResourceManager` 通过现有接口协调加载器和当前场景；这四个类分别有独立文件，主要非模板实现放在 `.cpp` 中，模板和场景的简单访问器保留在头文件中。
+
+模型加载的等待队列、活动任务和已发布缓存分开保存，活动任务将路径键与 future 配对。云的三个 CPU future 集中在渲染器私有的 `CloudNoiseJobs`，纹理和 GPU 就绪状态另行保存。加载阶段、缓存规则和退出清理见[资源加载、缓存与异步任务](code-reading.md#资源加载缓存与异步任务)。
+
+`RenderSystem` 拥有渲染资源并协调初始化、尺寸应用、帧准备和 Pass 执行；`RenderContext` 只为当前帧连接场景视图、Shader 与借用目标。各 Pass 在 `renderPasses` 中声明输入、产出及 GL 状态契约，云的历史资源仍由 `cloudTemporal` 管理。固定执行顺序、绑定责任和计时边界见[一帧中的 Pass](code-reading.md#一帧中的-pass)。
+
+`GuiSystem` 负责 DockHost、面板顺序、当前选择、导入请求、相机输入和 GUI 自身状态。`componentEditors` 只在 Inspector 调用期间借用组件，绘制其字段并调用组件已有的提交接口，不持有场景、选择、相机或加载器。面板与编辑的生效边界见[GUI 面板与组件编辑](code-reading.md#gui-面板与组件编辑)。
 
 加载器头文件前向声明 `Model` 和 `Shader`，完整定义只在实现中引入。场景工厂直接包含 `scene.hpp`，使用组件视图的调用方直接包含相应组件定义。
 
@@ -33,13 +43,15 @@
 
 ## 模型与骨骼坐标空间
 
+模型的 CPU 导入入口为 `Model::importFile()`，通过 `importNode()` 遍历层级、`importMesh()` 协调网格各阶段，所有节点和网格完成后才导入动画。几何转换留在 `model.cpp` 的局部帮助函数中，修改共享节点或材质的步骤为 Model 私有方法；阅读顺序见 [模型导入导航](code-reading.md#模型导入与加入场景是两个动作)。
+
 导入后的顶点统一保存在模型空间，包含 Assimp 根节点和 mesh 节点链的绑定变换。设原顶点为 `p`，完整 mesh 变换为 `M`，则保存的顶点为 `q = M * p`。Assimp offset `O` 接收 mesh 局部坐标，因此导入时保存为 `O_model = O * inverse(M)`，动画矩阵使用 `G(t) * O_model`。作用于 `q` 后得到 `G(t) * O * p`，不会再次应用根或 mesh 变换。此约定下不再额外左乘根逆矩阵。
 
-骨架节点位置和绑定姿态 AABB 使用同一模型空间；动画不会修改绑定 AABB。法线在导入时使用 mesh 变换的逆转置，切线和副切线使用线性部分，缺失或退化的零方向保持为零。该导入规则不改变运行时 Shader 的蒙皮法线算法。
+`Node::bindPosition` 是模型空间的绑定位置，`localBindTransform` 是相对父节点的局部绑定矩阵，`modelToBoneBind` 对应上述 `O_model`。三者导入后保持只读；当前节点位置与蒙皮矩阵保存在每个 Animator 的 `SkeletonPose`，所有权及调试显示流程见[动画姿态与骨架显示](code-reading.md#动画姿态与骨架显示)。绑定姿态 AABB 使用同一模型空间，动画不会修改它。法线在导入时使用 mesh 变换的逆转置，切线和副切线使用线性部分，缺失或退化的零方向保持为零。该导入规则不改变运行时 Shader 的蒙皮法线算法。
 
 多个 mesh 共享骨骼时，转换后的 offset 必须兼容现有共享矩阵表。导入器检查不兼容绑定、不可逆的蒙皮 mesh 变换和非有限矩阵，报告原因并放弃该模型，不用最后一个 mesh 的绑定静默覆盖前面的结果。求逆使用双精度，不以固定行列式阈值拒绝小单位缩放。
 
-`tests/modelAnimationChecks.cpp` 构造并重新导入非单位根变换的 Assimp 模型，覆盖共享骨骼、静态对照、绑定和动画帧、AABB 与骨架位置，并通过 transform feedback 检查前向渲染和两种阴影顶点阶段的实际输出。
+`tests/modelAnimationChecks.cpp` 构造并重新导入非单位根变换的 Assimp 模型，分别覆盖网格先引用骨骼占位和骨骼层级先出现的顺序，检查节点 ID、唯一性与父子连接。测试同时覆盖共享骨骼、静态对照、绑定和动画帧、AABB 与骨架位置，并通过 transform feedback 检查前向渲染和两种阴影顶点阶段的实际输出。多个 Animator 共享同一模型并交错更新，用于检查实例姿态、GPU palette 相互独立及导入数据不变。
 
 ## 资源路径
 

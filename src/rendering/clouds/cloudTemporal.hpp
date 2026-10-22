@@ -5,6 +5,8 @@
 #include <array>
 #include <vector>
 
+namespace togr {
+
 class Shader;
 
 // Owns cloud history only; the raw raymarch color remains owned by RenderSystem.
@@ -40,3 +42,5 @@ private:
     bool valid_ = false, active_ = false, usable_ = false;
     Frame current_, previous_;
 };
+
+} // namespace togr

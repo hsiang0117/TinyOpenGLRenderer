@@ -11,6 +11,8 @@
 #include <iostream>
 #include <stdexcept>
 
+namespace togr::tests {
+
 namespace {
 void check(bool condition, const char* message) { if (!condition) throw std::runtime_error(message); }
 using Image = std::vector<glm::vec4>;
@@ -248,3 +250,5 @@ void runCloudSamplingChecks() {
     std::filesystem::create_directories("x64/RenderChecks");
     samplingChecks(); temporalChecks();
 }
+
+} // namespace togr::tests

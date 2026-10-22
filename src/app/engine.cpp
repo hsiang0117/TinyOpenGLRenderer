@@ -2,6 +2,8 @@
 #include "scene/sceneFactory.hpp"
 #include <GLFW/glfw3.h>
 
+namespace togr {
+
 Engine::~Engine() {
 	shutdown();
 }
@@ -9,17 +11,17 @@ Engine::~Engine() {
 void Engine::init() {
 	input.init();
 	windowSystem.init(1280, 720, &input);
-	windowReady_ = true;
+	windowCleanupRequired_ = true;
 	try {
 		renderSystem.init(); // Cleans its own partial allocations if it throws.
-		renderReady_ = true;
+		renderCleanupRequired_ = true;
 		renderSystem.setResourceManager(&resourceManager);
 		renderSystem.setSelectionModel(&selectionModel);
 		// Shader registration can fail after some programs have been created.
-		resourcesReady_ = true;
+		resourcesCleanupRequired_ = true;
 		resourceManager.init();
 		guiSystem.init(windowSystem.getWindow());
-		guiReady_ = true;
+		guiCleanupRequired_ = true;
 		guiSystem.setRenderSystem(&renderSystem);
 		guiSystem.setResourceManager(&resourceManager);
 		guiSystem.setSelectionModel(&selectionModel);
@@ -47,23 +49,23 @@ void Engine::run() {
 }
 
 void Engine::shutdown() {
-	if (!windowReady_) return;
+	if (!windowCleanupRequired_) return;
 	glfwMakeContextCurrent(windowSystem.getWindow());
-	if (guiReady_) {
+	if (guiCleanupRequired_) {
 		guiSystem.shutdown();
-		guiReady_ = false;
+		guiCleanupRequired_ = false;
 	}
 	selectionModel.clear();
-	if (renderReady_) {
+	if (renderCleanupRequired_) {
 		renderSystem.shutdown();
-		renderReady_ = false;
+		renderCleanupRequired_ = false;
 	}
-	if (resourcesReady_) {
+	if (resourcesCleanupRequired_) {
 		resourceManager.shutdown();
-		resourcesReady_ = false;
+		resourcesCleanupRequired_ = false;
 	}
 	windowSystem.shutdown();
-	windowReady_ = false;
+	windowCleanupRequired_ = false;
 }
 
 double Engine::getDeltaTime()
@@ -74,3 +76,4 @@ double Engine::getDeltaTime()
 	lastFrame = currentFrame;
 	return deltaTime;
 }
+} // namespace togr

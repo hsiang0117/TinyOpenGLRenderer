@@ -1,9 +1,11 @@
-#ifndef ASSIMP_GLM_HELPERS_HPP
-#define ASSIMP_GLM_HELPERS_HPP
+#ifndef TOGR_ASSIMP_GLM_HELPERS_HPP
+#define TOGR_ASSIMP_GLM_HELPERS_HPP
 #pragma once
 
 #include <assimp/matrix4x4.h>
 #include <glm/glm.hpp>
+
+namespace togr {
 
 class AssimpGLMHelpers
 {
@@ -19,5 +21,7 @@ public:
 		return to;
 	}
 };
+
+} // namespace togr
 
 #endif

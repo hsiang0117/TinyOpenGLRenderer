@@ -4,6 +4,8 @@
 #include <map>
 #include <stdexcept>
 
+namespace togr {
+
 MeshPtr MeshGenerator::generateCube() {
 	// Share live meshes without keeping their GL resources past scene teardown.
 	static std::weak_ptr<Mesh> cache;
@@ -197,9 +199,11 @@ void MeshGenerator::computeTangents(std::vector<Vertex>& vertices, std::vector<G
 void MeshGenerator::setDefaultBoneData(std::vector<Vertex>& vertices)
 {
 	for (auto& v : vertices) {
-		for (int i = 0; i < MAX_BONE_INFLUENCE; i++) {
+		for (int i = 0; i < TOGR_MAX_BONE_INFLUENCE; i++) {
 			v.boneIDs[i] = -1;
 			v.weights[i] = -1.0f;
 		}
 	}
 }
+
+} // namespace togr

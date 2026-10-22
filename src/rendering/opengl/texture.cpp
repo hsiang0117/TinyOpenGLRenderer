@@ -8,6 +8,8 @@
 #include <memory>
 #include <utility>
 
+namespace togr {
+
 namespace {
 unsigned char* loadImage(const std::filesystem::path& path, int& width, int& height, int& channels, std::string& error) {
 	if (path.empty()) { error = "Image path is empty"; return nullptr; }
@@ -69,7 +71,7 @@ void Texture::destroy() {
 void Texture::fail(std::string reason) {
 	destroy();
 	lastError_ = std::move(reason);
-	LOG_ERROR(lastError_);
+	TOGR_LOG_ERROR(lastError_);
 }
 
 Texture::Texture(Texture&& other) noexcept : ID(other.ID), lastError_(std::move(other.lastError_)) {
@@ -337,3 +339,5 @@ void bindDummyTexture2D(GLenum textureUnit) {
 	glActiveTexture(textureUnit);
 	glBindTexture(GL_TEXTURE_2D, dummy);
 }
+
+} // namespace togr

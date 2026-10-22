@@ -1,9 +1,11 @@
-#ifndef GLBUFFER_HPP
-#define GLBUFFER_HPP
+#ifndef TOGR_GLBUFFER_HPP
+#define TOGR_GLBUFFER_HPP
 #pragma once
 
 #include <glad/glad.h>
 #include <initializer_list>
+
+namespace togr {
 
 class Texture;
 class Texture2D;
@@ -74,4 +76,6 @@ void FrameBuffer::attachTextureLayer(T& textureArray, GLenum type, int index) {
 	glFramebufferTextureLayer(GL_FRAMEBUFFER, type, textureArray.ID, 0, index);
 }
 
-#endif // !GLBUFFER_HPP
+} // namespace togr
+
+#endif // !TOGR_GLBUFFER_HPP

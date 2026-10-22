@@ -17,6 +17,8 @@
 #include <stdexcept>
 #include <thread>
 
+namespace togr::tests {
+
 namespace {
 namespace fs = std::filesystem;
 using Clock = std::chrono::steady_clock;
@@ -228,7 +230,7 @@ void run(const Options& options, RenderSystem& renderer, ResourceManager& resour
     for (auto cursor = begin; cursor != end; ++cursor) {
         const auto& scenario = *cursor;
         camera = Camera(scenario.skyLayer ? glm::vec3(scenario.cameraX, 0, 5) : glm::vec3(0, 6, 35));
-        if (scenario.skyLayer) camera.lookDelta(0, -scenario.skyPitch / DEFAULT_SENSITIVITY);
+        if (scenario.skyLayer) camera.lookDelta(0, -scenario.skyPitch / TOGR_DEFAULT_SENSITIVITY);
         resources.setCurrentScene(makeScene(scenario, options));
         auto composite = resources.getShader(ShaderCatalog::composite.key);
         if (composite->settingEnabled("USE_BLOOM") != scenario.bloom)
@@ -313,7 +315,7 @@ void run(const Options& options, RenderSystem& renderer, ResourceManager& resour
 }
 }
 
-int main(int argc, char** argv) {
+int runBenchmark(int argc, char** argv) {
     GLFWwindow* window = nullptr;
     try {
         const auto options = arguments(argc, argv); IsolatedFiles files(options.output, options.cloudPresets || options.cloudHorizon, options.cloudReference);
@@ -338,4 +340,10 @@ int main(int argc, char** argv) {
         std::cerr << "FAIL: " << error.what() << '\n';
         if (window) glfwDestroyWindow(window); glfwTerminate(); return 1;
     }
+}
+
+} // namespace togr::tests
+
+int main(int argc, char** argv) {
+    return togr::tests::runBenchmark(argc, argv);
 }

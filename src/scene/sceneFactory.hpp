@@ -1,8 +1,10 @@
-#ifndef SCENEFACTORY_HPP
-#define SCENEFACTORY_HPP
+#ifndef TOGR_SCENEFACTORY_HPP
+#define TOGR_SCENEFACTORY_HPP
 #pragma once
 
 #include <memory>
+
+namespace togr {
 
 class Scene;
 
@@ -12,4 +14,6 @@ public:
 	static std::shared_ptr<Scene> createDefaultScene();
 };
 
-#endif // !SCENEFACTORY_HPP
+} // namespace togr
+
+#endif // !TOGR_SCENEFACTORY_HPP

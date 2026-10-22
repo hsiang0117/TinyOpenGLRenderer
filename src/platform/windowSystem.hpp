@@ -1,11 +1,14 @@
-#ifndef WINDOWSYSTEM_HPP
-#define WINDOWSYSTEM_HPP
+#ifndef TOGR_WINDOWSYSTEM_HPP
+#define TOGR_WINDOWSYSTEM_HPP
 #pragma once
 
 #include <string>
 
-class Input;
 struct GLFWwindow;
+
+namespace togr {
+
+class Input;
 
 class WindowSystem {
 public:
@@ -26,4 +29,6 @@ private:
 	Input* input_ = nullptr;   // non-owning; injected via init()
 };
 
-#endif // !WINDOWSYSTEM_HPP
+} // namespace togr
+
+#endif // !TOGR_WINDOWSYSTEM_HPP

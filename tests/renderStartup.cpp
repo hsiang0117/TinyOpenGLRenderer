@@ -11,6 +11,8 @@
 #include <stdexcept>
 #include <vector>
 
+namespace togr::tests {
+
 namespace {
 namespace fs = std::filesystem;
 void check(bool ok, const char* message) { if (!ok) throw std::runtime_error(message); }
@@ -309,3 +311,5 @@ void runRenderStartupChecks() {
     checkFailedEngineStartup();
     checkMissingStartupSkybox();
 }
+
+} // namespace togr::tests

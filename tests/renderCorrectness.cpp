@@ -19,9 +19,12 @@
 #include <sstream>
 #include <stdexcept>
 
+namespace togr::tests {
+
 void runCloudNoiseChecks();
 void runCloudSamplingChecks();
 void runModelAnimationChecks();
+void runResourceLoadingChecks();
 
 namespace {
 void check(bool ok, const char* message) { if (!ok) throw std::runtime_error(message); }
@@ -59,6 +62,38 @@ glm::vec4 pixel(GLenum attachment = GL_COLOR_ATTACHMENT0, int x = 0, int y = 0) 
     glReadBuffer(attachment); glm::vec4 result;
     glReadPixels(x, y, 1, 1, GL_RGBA, GL_FLOAT, &result); return result;
 }
+void checkFrameSetupBaseline() {
+    auto attachment = color(2);
+    FrameBuffer previous; previous.init(); previous.bind();
+    previous.attachTexture2D(attachment, GL_COLOR_ATTACHMENT0);
+    glViewport(3, 5, 2, 2);
+    glDisable(GL_DEPTH_TEST); glDepthFunc(GL_GREATER); glDepthMask(GL_FALSE);
+    glEnable(GL_BLEND); glEnable(GL_CULL_FACE); glEnable(GL_SCISSOR_TEST);
+    glEnable(GL_FRAMEBUFFER_SRGB); glDisable(GL_PROGRAM_POINT_SIZE);
+    glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+
+    RenderContext ctx; ctx.width = 23; ctx.height = 17;
+    FrameSetupPass().execute(ctx);
+    GLint readFbo = -1, drawFbo = -1, viewport[4] = {}, depthFunction = 0;
+    GLboolean depthWrite = GL_FALSE, colorWrite[4] = {};
+    glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &readFbo);
+    glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &drawFbo);
+    glGetIntegerv(GL_VIEWPORT, viewport); glGetIntegerv(GL_DEPTH_FUNC, &depthFunction);
+    glGetBooleanv(GL_DEPTH_WRITEMASK, &depthWrite); glGetBooleanv(GL_COLOR_WRITEMASK, colorWrite);
+    check(readFbo == 0 && drawFbo == 0 && viewport[0] == 0 && viewport[1] == 0 && viewport[2] == 23 && viewport[3] == 17,
+        "Frame setup retained a previous framebuffer or viewport");
+    check(glIsEnabled(GL_DEPTH_TEST) && depthFunction == GL_LEQUAL && depthWrite == GL_TRUE &&
+        !glIsEnabled(GL_BLEND) && !glIsEnabled(GL_CULL_FACE) && !glIsEnabled(GL_SCISSOR_TEST) &&
+        !glIsEnabled(GL_FRAMEBUFFER_SRGB) && glIsEnabled(GL_PROGRAM_POINT_SIZE),
+        "Frame setup did not establish the declared depth/raster/color baseline");
+    for (const auto enabled : colorWrite) check(enabled == GL_TRUE, "Frame setup retained a disabled color channel");
+    GLint boneTexture = 0, environment = 0;
+    glActiveTexture(GL_TEXTURE8); glGetIntegerv(GL_TEXTURE_BINDING_2D, &boneTexture);
+    glActiveTexture(GL_TEXTURE5); glGetIntegerv(GL_TEXTURE_BINDING_CUBE_MAP, &environment);
+    check(boneTexture != 0 && environment != 0, "Frame setup lost the bone/environment fallback bindings");
+    glActiveTexture(GL_TEXTURE0); glDisable(GL_DEPTH_TEST);
+}
+
 void checkLighting() {
     auto output = color(), bright = color(); FrameBuffer fbo; fbo.init(); fbo.bind();
     fbo.attachTexture2D(output, GL_COLOR_ATTACHMENT0); fbo.attachTexture2D(bright, GL_COLOR_ATTACHMENT1);
@@ -145,19 +180,78 @@ void checkComposite() {
     glm::vec4 h(2, 0.5f, 0.1f, 1), b(0.3f, 0.2f, 0.1f, 1), o(0.2f, 0.1f, 0.05f, 0.4f);
     hdr.subImage2D(0, 0, 1, 1, &h); blur.subImage2D(0, 0, 1, 1, &b); overlay.subImage2D(0, 0, 1, 1, &o);
     FrameBuffer fbo; fbo.init(); fbo.bind(); fbo.attachTexture2D(result, GL_COLOR_ATTACHMENT0);
+    RenderContext ctx; ctx.width = ctx.height = 1;
+    ctx.sceneFbo = &fbo; ctx.hdrColorTexture = &hdr;
+    ctx.bloomBlurTextures[1] = &blur; ctx.overlayColorTexture = &overlay;
     for (bool tone : {false, true}) for (bool bloom : {false, true}) {
         auto shader = variant(ShaderCatalog::fullscreenVertexPath, ShaderCatalog::composite.fragmentPath,
             std::string(tone ? "#define USE_HDR\n" : "") + (bloom ? "#define USE_BLOOM\n" : ""));
-        shader->use(); hdr.use(GL_TEXTURE0); blur.use(GL_TEXTURE1); overlay.use(GL_TEXTURE2);
-        glViewport(0, 0, 1, 1); RenderHelpers::drawFullscreenQuad(); auto actual = pixel();
+        ctx.compositeShader = shader;
+        fbo.unbind(); glViewport(4, 5, 2, 2); glEnable(GL_DEPTH_TEST);
+        CompositePass().execute(ctx);
+        GLint bound = -1, viewport[4] = {};
+        glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &bound); glGetIntegerv(GL_VIEWPORT, viewport);
+        check(bound == 0 && viewport[0] == 0 && viewport[1] == 0 && viewport[2] == 1 && viewport[3] == 1 && glIsEnabled(GL_DEPTH_TEST),
+            "Composite did not apply its target size and restore the pipeline depth baseline");
+        fbo.bind(); const auto actual = pixel();
         for (int i = 0; i < 3; ++i) {
             float linear = h[i] * (1 - o.a) + o[i] + (bloom ? b[i] : 0);
             float mapped = tone ? 1 - std::exp(-linear) : linear;
             closeTo(actual[i], std::pow(mapped, 1 / 2.2f), "Composite must encode gamma after linear composition and tone mapping");
         }
     }
-    glUseProgram(0); fbo.unbind();
+    glUseProgram(0); fbo.unbind(); glDisable(GL_DEPTH_TEST);
     std::cout << "PASS: final composition and gamma (HDR/Bloom on/off)\n";
+}
+void checkForwardBindings(ResourceManager& resources) {
+    Camera camera;
+    RenderContext ctx; ctx.camera = &camera; ctx.width = ctx.height = 8;
+    ctx.forwardShader = resources.getShader(ShaderCatalog::forward.key);
+    ctx.lightMarkerShader = resources.getShader(ShaderCatalog::lightMarker.key);
+    ctx.skyboxShader = resources.getShader(ShaderCatalog::skybox.key);
+    auto hdr = color(8), bright = color(8);
+    hdr.setDefaultColor(0.3f, 0.5f, 0.7f, 1);
+    FrameBuffer target; target.init(); target.bind();
+    target.attachTexture2D(hdr, GL_COLOR_ATTACHMENT0); target.attachTexture2D(bright, GL_COLOR_ATTACHMENT1);
+    target.drawBuffers({GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1}); target.unbind();
+    ctx.hdrFbo = &target;
+    Texture2D shadow(1, 1, GL_CLAMP_TO_EDGE, GL_NEAREST, GL_DEPTH_COMPONENT32F, GL_DEPTH_COMPONENT, GL_FLOAT);
+    CubeMapArray pointShadow(1, 1, 1, GL_CLAMP_TO_EDGE, GL_NEAREST, GL_DEPTH_COMPONENT32F, GL_DEPTH_COMPONENT);
+    ctx.directionalShadowTexture = &shadow; ctx.pointShadowTexture = &pointShadow;
+    ShaderStorageBuffer points, directions, spots;
+    for (auto buffer : {&points, &directions, &spots}) {
+        buffer->init(); buffer->bind(); buffer->bufferData(64, nullptr); buffer->unbind();
+    }
+    ctx.pointLightsSsbo = &points; ctx.directionalLightSsbo = &directions; ctx.spotLightsSsbo = &spots;
+    FrameSetupPass().execute(ctx);
+    for (GLuint slot = 1; slot <= 3; ++slot) glBindBufferBase(GL_SHADER_STORAGE_BUFFER, slot, 0);
+    glActiveTexture(GL_TEXTURE6); glBindTexture(GL_TEXTURE_2D, 0);
+    glActiveTexture(GL_TEXTURE7); glBindTexture(GL_TEXTURE_CUBE_MAP_ARRAY, 0);
+    LightUploadPass().execute(ctx);
+    GLint binding = -1;
+    glActiveTexture(GL_TEXTURE6); glGetIntegerv(GL_TEXTURE_BINDING_2D, &binding);
+    check(binding == 0, "Light upload unexpectedly owns the forward shadow sampler binding");
+    glActiveTexture(GL_TEXTURE7); glGetIntegerv(GL_TEXTURE_BINDING_CUBE_MAP_ARRAY, &binding);
+    check(binding == 0, "Light upload unexpectedly owns the point-shadow sampler binding");
+    for (GLuint slot = 1; slot <= 3; ++slot) glBindBufferBase(GL_SHADER_STORAGE_BUFFER, slot, 0);
+    glViewport(1, 1, 2, 2);
+    ForwardHdrPass().execute(ctx);
+    const GLuint expectedBuffers[] = {points.ID, directions.ID, spots.ID};
+    for (GLuint index = 0; index < 3; ++index) {
+        glGetIntegeri_v(GL_SHADER_STORAGE_BUFFER_BINDING, index + 1, &binding);
+        check(static_cast<GLuint>(binding) == expectedBuffers[index], "Forward pass did not bind its own indexed light buffers");
+    }
+    glActiveTexture(GL_TEXTURE6); glGetIntegerv(GL_TEXTURE_BINDING_2D, &binding);
+    check(static_cast<GLuint>(binding) == shadow.ID, "Forward pass did not bind its directional shadow input");
+    glActiveTexture(GL_TEXTURE7); glGetIntegerv(GL_TEXTURE_BINDING_CUBE_MAP_ARRAY, &binding);
+    check(static_cast<GLuint>(binding) == pointShadow.ID, "Forward pass did not bind its point-shadow input");
+    GLint viewport[4] = {};
+    glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &binding); glGetIntegerv(GL_VIEWPORT, viewport);
+    check(binding == 0 && viewport[0] == 0 && viewport[1] == 0 && viewport[2] == 8 && viewport[3] == 8,
+        "Forward pass did not apply its viewport or release its target binding");
+    target.bind(); const auto cleared = pixel();
+    for (int channel = 0; channel < 3; ++channel) closeTo(cleared[channel], 0, "Forward pass cleared a different framebuffer");
+    target.unbind(); glUseProgram(0); glActiveTexture(GL_TEXTURE0); glDisable(GL_DEPTH_TEST);
 }
 void checkOffscreenCasters(ResourceManager& resources) {
     Camera camera; RenderContext ctx; ctx.camera = &camera; ctx.frustum = camera.getFrustum(64, 64);
@@ -190,7 +284,7 @@ void checkOffscreenCasters(ResourceManager& resources) {
 GameObjectPtr cloud(float z) {
     auto object = std::make_shared<GameObject>("Cloud"); auto t = object->addComponent<Transform>();
     t->translate = glm::vec3(0, 0, z); t->scale = glm::vec3(6, 6, 4);
-    auto mesh = object->addComponent<StaticMeshComponent>(); mesh->aabb.min = glm::vec3(-0.5f); mesh->aabb.max = glm::vec3(0.5f);
+    object->addComponent<StaticMeshComponent>()->setMesh(MeshGenerator::generateCube());
     auto v = object->addComponent<CloudVolumeComponent>();
     v->mode = CloudVolumeComponent::Mode::LocalVolume;
     v->cloudType = 1; v->coverageLow = v->coverageHigh = 1; v->detailErosionStrength = 0;
@@ -289,7 +383,7 @@ void checkClouds(ResourceManager& resources) {
     layer->detailErosionStrength = 0; layer->windVelocity = glm::vec3(0);
     layer->extinctionCoefficient = 0.2f; layer->densityMultiplier = 1;
     auto placeCamera = [&](glm::vec3 position, float pitch = 0.0f) {
-        camera = Camera(position); camera.lookDelta(0, -pitch / DEFAULT_SENSITIVITY);
+        camera = Camera(position); camera.lookDelta(0, -pitch / TOGR_DEFAULT_SENSITIVITY);
     };
     auto finiteImage = [&](const std::vector<glm::vec4>& image) {
         for (const auto& p : image) {
@@ -426,6 +520,16 @@ void checkClouds(ResourceManager& resources) {
     auto sameWorldRay = draw({sky}); finiteImage(sameWorldRay);
     for (int c = 0; c < 4; ++c)
         closeTo(sameWorldRay[skyCenter][c], anchored[skyCenter][c], "Sky weather moved with the camera", 0.01f);
+    overlay.setDefaultColor(0.4f, 0.3f, 0.2f, 0.7f);
+    ctx.cloudVolumes.clear(); glViewport(2, 3, 1, 1);
+    CloudSkeletonOverlayPass().execute(ctx);
+    GLint viewport[4] = {}; glGetIntegerv(GL_VIEWPORT, viewport);
+    check(viewport[0] == 0 && viewport[1] == 0 && viewport[2] == 64 && viewport[3] == 64,
+        "No-cloud overlay did not return to the full-resolution viewport");
+    std::vector<glm::vec4> emptyOverlay(64 * 64); overlay.use(GL_TEXTURE0);
+    glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_FLOAT, emptyOverlay.data());
+    for (const auto& value : emptyOverlay) for (int channel = 0; channel < 4; ++channel)
+        closeTo(value[channel], 0, "Removing clouds retained a previous overlay");
     glUseProgram(0);
     std::cout << "PASS: sky-layer travel, mixed media, above/inside/parallel rays, horizon sun, tracing limit, fade, depth, and world anchoring\n";
 }
@@ -530,7 +634,7 @@ void checkModelPaths() {
     }
     for (const auto& test : cases) {
         if (test.texture.empty()) fs::current_path(models); // A filename with no parent directory.
-        auto model = Model::LoadAsync(test.input.c_str()).get();
+        auto model = Model::importAsync(test.input.c_str()).get();
         check(model->getName() == test.name, "Model name lost a filename suffix or included a dotted directory");
         check(fs::u8path(model->getPath()) == fs::u8path(test.input), "Model did not preserve its input path");
         check(model->initGLResources() && model->isReady(), "Model path fixture failed to import or initialize");
@@ -574,15 +678,15 @@ void checkAssetPaths() {
         }
     };
     {
-        auto future = Model::LoadAsync(plyPath.u8string().c_str());
+        auto future = Model::importAsync(plyPath.u8string().c_str());
         checkPlyModel(future.get());
     }
     {
         auto mutablePath = plyPath.u8string();
-        auto future = Model::LoadAsync(mutablePath.c_str());
+        auto future = Model::importAsync(mutablePath.c_str());
         std::fill(mutablePath.begin(), mutablePath.end(), '!');
         checkPlyModel(future.get());
-        auto empty = Model::LoadAsync("").get();
+        auto empty = Model::importAsync("").get();
         check(!empty->initGLResources() && !empty->isReady(), "Empty model filename should fail");
     }
 
@@ -618,8 +722,8 @@ void checkAssetPaths() {
     SkyboxComponent skybox;
     check(cubePath.size() > 254, "Skybox path fixture must exceed the former editor buffer limit");
     skybox.setSkybox(cubePath);
-    check(skybox.folderPath == cubePath, "Skybox editor truncated its applied UTF-8 path");
-    check(skybox.skybox && skybox.skybox->isReady(), "Skybox could not load a long UTF-8 path");
+    check(skybox.draftFolderPath == cubePath, "Skybox editor truncated its applied UTF-8 path");
+    check(skybox.getSkybox() && skybox.getSkybox()->isReady(), "Skybox could not load a long UTF-8 path");
 
     Material absent;
     absent.albedoPath = (directory / "missing.tga").u8string();
@@ -689,14 +793,14 @@ void checkResourceFailures() {
 
     SkyboxComponent skybox;
     check(skybox.setSkybox(validPath.u8string()), "Initial skybox could not be applied");
-    const auto previous = skybox.skybox; const auto previousPath = skybox.folderPath;
+    const auto previous = skybox.getSkybox(); const auto previousPath = skybox.draftFolderPath;
     const auto invalidPath = (directory / "missing-face").u8string();
     check(!skybox.setSkybox(invalidPath), "Invalid skybox replacement was accepted");
-    check(skybox.skybox == previous && skybox.folderPath == previousPath && previous->isReady(),
+    check(skybox.getSkybox() == previous && skybox.draftFolderPath == previousPath && previous->isReady(),
         "Failed skybox replacement discarded the active resource or successful path");
     check(!skybox.lastError().empty(), "Failed skybox replacement did not expose its reason");
-    skybox.folderPath = invalidPath; // The GUI edits this buffer before pressing Apply.
-    check(!skybox.setSkybox(skybox.folderPath) && skybox.skybox == previous && skybox.folderPath == invalidPath,
+    skybox.draftFolderPath = invalidPath; // The GUI edits this buffer before pressing Apply.
+    check(!skybox.setSkybox(skybox.draftFolderPath) && skybox.getSkybox() == previous && skybox.draftFolderPath == invalidPath,
         "Failed skybox replacement changed the caller's existing edit buffer");
     {
         auto output = color(); FrameBuffer fbo; fbo.init();
@@ -763,15 +867,16 @@ void checkResourceFailures() {
         "Failed imported shininess texture did not report its load failure");
     shininessOnly.bind(shader);
     check(uniform("useDefaultMaterial") == 1, "Failed shininess texture disabled the default material fallback");
-    DynamicMaterialComponent dynamic; dynamic.albedoPath = albedoPath.u8string();
-    check(dynamic.setMaterial(), "Initial material could not be applied");
-    dynamic.material.bind(shader); glActiveTexture(GL_TEXTURE0);
+    DynamicMaterialComponent dynamic; dynamic.draft.albedoPath = albedoPath.u8string();
+    check(dynamic.applyMaterial(), "Initial material could not be applied");
+    dynamic.bindMaterial(shader); glActiveTexture(GL_TEXTURE0);
     GLint previousTexture = 0; glGetIntegerv(GL_TEXTURE_BINDING_2D, &previousTexture);
-    dynamic.normalPath = corrupt.u8string();
-    check(!dynamic.setMaterial(), "Invalid material replacement was accepted");
-    dynamic.material.bind(shader); glActiveTexture(GL_TEXTURE0);
+    dynamic.draft.normalPath = corrupt.u8string();
+    check(!dynamic.applyMaterial(), "Invalid material replacement was accepted");
+    dynamic.bindMaterial(shader); glActiveTexture(GL_TEXTURE0);
     glGetIntegerv(GL_TEXTURE_BINDING_2D, &binding);
-    check(binding == previousTexture && uniform("hasNormalMap") == 0,
+    check(binding == previousTexture && uniform("hasNormalMap") == 0 &&
+        dynamic.getMaterial().normalPath.empty() && dynamic.draft.normalPath == corrupt.u8string(),
         "Failed material replacement discarded the previous textures or enabled a failed normal map");
     glUseProgram(0);
     std::cout << "PASS: optional material defaults, shininess-only compatibility, failed normal-map guards, and transactional material replacement\n";
@@ -899,11 +1004,14 @@ void runRenderCorrectnessChecks() {
     glDisable(GL_DEPTH_TEST); glDisable(GL_BLEND); glDisable(GL_FRAMEBUFFER_SRGB);
     {
         ResourceManager resources; resources.init();
-        checkLighting(); checkComposite(); checkOffscreenCasters(resources); checkClouds(resources);
+        checkFrameSetupBaseline(); checkLighting(); checkComposite(); checkForwardBindings(resources);
+        checkOffscreenCasters(resources); checkClouds(resources);
         runCloudNoiseChecks(); runCloudSamplingChecks(); checkMeshCaches(); checkTextureUploads(); checkModelPaths(); checkAssetPaths();
-        runModelAnimationChecks(); checkResourceFailures(); checkFramebufferFailures();
+        runModelAnimationChecks(); runResourceLoadingChecks(); checkResourceFailures(); checkFramebufferFailures();
         resources.shutdown(); RenderHelpers::shutdownSharedGeometry(); destroyDummyTexture2D(); destroyDummyCubeMap();
     }
     check(glGetError() == GL_NO_ERROR && debugErrors == 0, "GL errors during rendering regression checks");
     glfwDestroyWindow(window); glfwTerminate();
 }
+
+} // namespace togr::tests

@@ -3,36 +3,44 @@
 #include <stdexcept>
 #include <utility>
 
-bool ShaderLoader::isLoaded(const std::string& key) const
-{
-	return cache.find(key) != cache.end();
+namespace togr {
+
+void ShaderLoader::registerShader(const std::string& key, const char* vertexPath, const char* fragmentPath) {
+    if (hasCachedShader(key)) {
+        return;
+    }
+
+    auto shader = std::make_shared<Shader>(vertexPath, fragmentPath);
+    if (!shader->isValid()) {
+        throw std::runtime_error(shader->lastError());
+    }
+    shaderCache_[key] = std::move(shader);
 }
 
-std::shared_ptr<Shader> ShaderLoader::get(const std::string& key) const
-{
-	auto it = cache.find(key);
-	return (it != cache.end()) ? it->second : nullptr;
+void ShaderLoader::registerShader(const std::string& key, const char* vertexPath,
+    const char* geometryPath, const char* fragmentPath) {
+    if (hasCachedShader(key)) {
+        return;
+    }
+
+    auto shader = std::make_shared<Shader>(vertexPath, geometryPath, fragmentPath);
+    if (!shader->isValid()) {
+        throw std::runtime_error(shader->lastError());
+    }
+    shaderCache_[key] = std::move(shader);
 }
 
-void ShaderLoader::registerShader(const std::string& key, const char* vert, const char* frag)
-{
-	if (!isLoaded(key)) {
-		auto shader = std::make_shared<Shader>(vert, frag);
-		if (!shader->isValid()) throw std::runtime_error(shader->lastError());
-		cache[key] = std::move(shader);
-	}
+std::shared_ptr<Shader> ShaderLoader::get(const std::string& key) const {
+    auto found = shaderCache_.find(key);
+    return found != shaderCache_.end() ? found->second : nullptr;
 }
 
-void ShaderLoader::registerShader(const std::string& key, const char* vert, const char* geom, const char* frag)
-{
-	if (!isLoaded(key)) {
-		auto shader = std::make_shared<Shader>(vert, geom, frag);
-		if (!shader->isValid()) throw std::runtime_error(shader->lastError());
-		cache[key] = std::move(shader);
-	}
+void ShaderLoader::shutdown() {
+    shaderCache_.clear();
 }
 
-void ShaderLoader::shutdown()
-{
-	cache.clear();
+bool ShaderLoader::hasCachedShader(const std::string& key) const {
+    return shaderCache_.find(key) != shaderCache_.end();
 }
+
+} // namespace togr

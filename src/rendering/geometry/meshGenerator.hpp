@@ -1,8 +1,10 @@
-#ifndef MESH_GENERATOR_HPP
-#define MESH_GENERATOR_HPP
+#ifndef TOGR_MESH_GENERATOR_HPP
+#define TOGR_MESH_GENERATOR_HPP
 #pragma once
 
 #include "mesh.hpp"
+
+namespace togr {
 
 class MeshGenerator {
 public:
@@ -13,5 +15,7 @@ private:
 	static void computeTangents(std::vector<Vertex>& vertices, std::vector<GLuint>& indices);
 	static void setDefaultBoneData(std::vector<Vertex>& vertices);
 };
+
+} // namespace togr
 
 #endif

@@ -1,5 +1,5 @@
-#ifndef RENDERUTILS_HPP
-#define RENDERUTILS_HPP
+#ifndef TOGR_RENDERUTILS_HPP
+#define TOGR_RENDERUTILS_HPP
 #pragma once
 
 #include "scene/gameObject.hpp"
@@ -7,6 +7,8 @@
 #include <glm/glm.hpp>
 #include <memory>
 #include <vector>
+
+namespace togr {
 
 class Transform;
 class ShaderStorageBuffer;
@@ -45,4 +47,6 @@ namespace RenderHelpers {
 	void shutdownSharedGeometry();
 }
 
-#endif // !RENDERUTILS_HPP
+} // namespace togr
+
+#endif // !TOGR_RENDERUTILS_HPP

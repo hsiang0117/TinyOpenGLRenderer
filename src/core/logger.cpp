@@ -3,6 +3,8 @@
 #include <ctime>
 #include <iostream>
 
+namespace togr {
+
 static std::string nowHHMMSS() {
 	using namespace std::chrono;
 	std::time_t t = system_clock::to_time_t(system_clock::now());
@@ -46,3 +48,4 @@ unsigned long long Logger::revision() {
 	std::lock_guard<std::mutex> lk(mutex_);
 	return revision_;
 }
+} // namespace togr

@@ -2,6 +2,8 @@
 
 头文件应能独立包含，不依赖调用方先包含其他文件。实现文件先包含自己的头文件，再包含实现所需的定义。
 
+项目自有声明位于 `togr`，测试位于 `togr::tests`；具体规则见[命名空间约定](naming.md#c-命名空间)。`#include` 必须在命名空间之外，自有前向声明放在 `togr` 内，而 `GLFWwindow` 和 Assimp 的全局 `ai*` 前向声明保持全局，避免意外声明成另一种类型。
+
 跨模块引用以 `src/` 为包含根，例如 `#include "rendering/opengl/texture.hpp"`；同目录引用使用短文件名，例如 `#include "renderSystem.hpp"`。VS 工程与测试脚本都将 `src/` 加入包含目录，模块归属可以直接从引用路径判断。
 
 第三方头文件位于 `external-dependencies/include/`，包含写法沿用库自身命名空间，如 `<glm/glm.hpp>`、`<glad/glad.h>`。ImGui 源码独立放在 `external-dependencies/src/imgui/`，其短文件名引用由属性表中的 `ExternalImGuiIncludeDir` 解析。依赖路径统一通过 `config/external-dependencies.props` 提供。
@@ -16,11 +18,14 @@
 ## 当前边界
 
 - `gameObject.hpp` 只声明组件基类，组件实现不再由对象容器头文件传播。
+- `SelectionModel` 独立在 `scene/selectionModel.hpp` 中；按值存储或访问选择状态的文件直接包含它，系统头文件仅保存非拥有指针时使用前向声明。
 - `guiSystem.hpp`、`windowSystem.hpp` 通过前向声明使用外部对象；GLFW、组件、输入及渲染器定义在实现文件中引入。
+- `componentEditors.hpp` 只前向声明 `Component`，公开调用期借用的 `draw(Component&)`；具体组件、ImGui 控件和类型分派表留在实现文件中。GUI 头文件不再传播组件编辑注册模板和 RTTI 容器。
 - `renderPass.hpp` 只声明其非拥有资源指针所需的类型；`renderSystem.hpp` 不包含具体 Pass、GUI 或场景组件。
 - `noiseVolumeData.hpp` 保存 CPU 噪声数据结构。`noiseTextureGenerator.hpp` 只包含该数据头文件并前向声明纹理类型；CPU 计算调用方无需引入 GLM 或 OpenGL，调用上传接口并接收纹理对象时直接包含 `texture.hpp`。
 - Assimp 与 GLM 类型转换在独立的 `assets/assimpGlmHelpers.hpp` 中，模型导入直接引用它，云噪声模块不再引入 Assimp。
 - 模型和网格组件的设置函数移到实现文件，组件头文件不再包含模型、网格和天空盒的完整定义。
+- `skeletonPose.hpp` 只保存 CPU 姿态数据，依赖 GLM 和标准容器。`Animator` 按值拥有它；`AnimatorComponent` 通过前向声明保存 `shared_ptr<const Model>`，模型的构造与查询放在 `component.cpp` 中，不形成模型与组件的包含环。
 - `Scene` 在独立的 `scene.hpp` 中声明，组件定义、光源上限和日志只在 `scene.cpp` 中引入；使用 `getView<T>()` 的调用方直接包含 `T` 的定义。
 - `ModelLoader`、`ShaderLoader` 的头文件只声明模型和 Shader 指针，具体加载实现放在各自的 `.cpp`。`resourceManager.hpp` 保留协调接口及 `getSceneView<T>()`，不再传播模型、Shader 或具体组件的完整定义。
 - `shaderCatalog.hpp` 只包含标准库和常量声明，不依赖加载器、渲染器或 OpenGL；使用内置 Shader 名称和路径的实现文件直接包含它。

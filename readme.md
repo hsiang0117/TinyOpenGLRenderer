@@ -2,6 +2,12 @@
 
 一个基于 **OpenGL 4.5 + C++17** 的小型实时渲染器 / 场景编辑器,用于学习与实验现代渲染技术。组件驱动的 ECS-lite 架构,RenderPass 流水线,Dear ImGui(docking)编辑器界面。
 
+## 阅读代码
+
+- 初次阅读从 [主流程与功能导航](docs/code-reading.md) 开始，按启动、单帧、退出理解程序，再按功能查找实现与测试入口。
+- 新增和整理代码遵循 [代码阅读规则](docs/readability.md)，统一职责、接口契约、状态与单位的表达，以及函数组织和排版。
+- 自有 C++ 代码使用 `togr` 根命名空间，例如 `togr::Engine`、`togr::Model`；作用域与宏前缀规则见 [命名约定](docs/naming.md#c-命名空间)。
+
 ## 效果展示
 
 ### 编辑器总览(docking 布局)
@@ -53,7 +59,7 @@
 ### 架构
 
 - **ECS-lite**:GameObject + 组件(`unordered_map<type_index, std::shared_ptr<Component>>`),场景视图按类型缓存
-- **RenderPass 流水线**:FrameSetup → DirectionalShadow → PointShadow → LightUpload → ForwardHdr → CloudSkeletonOverlay → Gizmo → Bloom → Composite,各 pass 仅通过 RenderContext 共享状态
+- **RenderPass 流水线**:FrameSetup → DirectionalShadow → PointShadow → LightUpload → ForwardHdr → CloudSkeletonOverlay → Gizmo → Bloom → Composite。Pass 通过 RenderContext 访问帧数据与资源，GL 绑定和状态也随执行顺序传递；具体职责与依赖见 [主流程与功能导航](docs/code-reading.md)。
 - **代码命名**:Shader、渲染目标和组件按用途命名;约定及旧名映射见 [命名说明](docs/naming.md)
 - **头文件依赖**:声明层使用前向声明,实现层包含完整定义;约定与边界见 [依赖说明](docs/header-dependencies.md)
 - **文件组织**:源码目录与 VS 筛选器按功能模块对应,同一模块的头文件和实现放在一起;分类及包含路径约定见 [文件组织说明](docs/project-structure.md)
@@ -127,11 +133,11 @@ CPU 列测量场景准备与 Pass 执行的主线程时间,不包含采样结果
 
 | 输入 | 行为 |
 |---|---|
-| `W / A / S / D` | 相机平移 |
-| `Space / 左 Ctrl` | 相机升 / 降 |
-| 鼠标移动 | 视角(光标禁用时) |
-| 滚轮 | 缩放(FOV) |
-| `左 Alt` | 切换光标显示 / 锁定 |
+| 在 Viewport 内按住鼠标右键 | 进入飞行模式并锁定光标，松开退出 |
+| 飞行时 `W / A / S / D` | 相机平移 |
+| 飞行时 `Space / 左 Ctrl` | 相机升 / 降 |
+| 飞行时移动鼠标 | 调整视角 |
+| 鼠标悬停 Viewport 或飞行时滚轮 | 缩放(FOV) |
 | `Esc` | 退出 |
 
 场景树中左键选中物体(出现 XYZ gizmo),右键可删除;Inspector 中实时编辑组件参数。

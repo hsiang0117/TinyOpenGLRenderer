@@ -1,6 +1,8 @@
-#ifndef INPUT_HPP
-#define INPUT_HPP
+#ifndef TOGR_INPUT_HPP
+#define TOGR_INPUT_HPP
 #pragma once
+
+namespace togr {
 
 class Input {
 public:
@@ -15,4 +17,6 @@ private:
 	bool keys[1024], prevKeys[1024];
 };
 
-#endif // !INPUT_HPP
+} // namespace togr
+
+#endif // !TOGR_INPUT_HPP

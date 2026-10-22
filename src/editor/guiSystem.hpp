@@ -1,97 +1,110 @@
-#ifndef GUISYSTEM_HPP
-#define GUISYSTEM_HPP
+#ifndef TOGR_GUISYSTEM_HPP
+#define TOGR_GUISYSTEM_HPP
 #pragma once
 
 #include "imgui/imgui.h"
-#include <functional>
 #include <string>
-#include <unordered_map>
-#include <typeindex>
-#include <typeinfo>
-#include <memory>
 
-class Component;
-class SelectionModel;
 struct GLFWwindow;
 
-using ComponentWidgetFunc = std::function<void(std::shared_ptr<Component>)>;
+namespace togr {
 
+class Camera;
 class RenderSystem;
 class ResourceManager;
-class Camera;
+class SelectionModel;
+class Shader;
 
 class GuiSystem {
 public:
-	GuiSystem() = default;
-	~GuiSystem() = default;
-	void init(GLFWwindow* window);
-	void setRenderSystem(RenderSystem* rs) { renderSystem_ = rs; }
-	void setResourceManager(ResourceManager* rm) { rm_ = rm; }
-	void setSelectionModel(SelectionModel* s) { selection_ = s; }
-	void setCamera(Camera* c) { camera_ = c; }
-	void beginFrame();
-	void render(double deltaTime);
-	void shutdown();
+    // Lifecycle: main thread with this window's GL context current and entry
+    // points loaded. The window is required and borrowed through shutdown().
+    // Call shutdown() once after init() returns, before the context is destroyed;
+    // it releases any fly-camera cursor capture and the window borrow. The default
+    // destructor does not shut down the ImGui backends/context.
+    GuiSystem() = default;
+    ~GuiSystem() = default;
+    void init(GLFWwindow* window);
+    void shutdown();
 
-	// Register a detail-panel widget for a component type (keyed by type, no string name).
-	template<typename T>
-	void registerComponentWidget(std::function<void(std::shared_ptr<T>)> func);
+    // Non-owning dependencies; injected owners must outlive their GUI use.
+    // ResourceManager and its built-in shaders are required before render().
+    void setResourceManager(ResourceManager* rm) { rm_ = rm; }
 
-	void showComponentWidget(std::shared_ptr<Component> comp);
+    // Optional renderer: null omits the viewport image and profiling controls.
+    // Optional selection: null disables selection/inspector access.
+    // Optional camera: null omits movement/zoom; a renderer is also needed for
+    // the viewport controls. The initialized window still serves the GUI backend.
+    void setRenderSystem(RenderSystem* rs) { renderSystem_ = rs; }
+    void setSelectionModel(SelectionModel* s) { selection_ = s; }
+    void setCamera(Camera* c) { camera_ = c; }
+
+    // Frame operations: after init(), call beginFrame() then render() on the main
+    // thread with current GL. Engine renders the scene between these calls, so
+    // panel edits, viewport size reports and camera changes affect its next draw.
+    void beginFrame();
+    void render(double deltaTime);
+
 private:
-	// component type -> detail-panel widget. Keyed by type_index (decided at compile time
-	// from the template parameter), removing the old "registration string must match
-	// getName() exactly" footgun.
-	static std::unordered_map<std::type_index, ComponentWidgetFunc>& getWidgetRegistry() {
-		static std::unordered_map<std::type_index, ComponentWidgetFunc> registry;
-		return registry;
-	}
+    void showDockspace();
+    void processModelImportDialog();
 
-	// Dockable panels (each a top-level ImGui window).
-	void showScenePanel();
-	void showInspectorPanel();
-	void showRenderSettingsPanel(double deltaTime);
-	void showAssetsPanel();
-	void showViewportPanel(double deltaTime);
-	void drawAddMenu();
-	void drawSceneTree();
-	void drawInspector();
-	void drawConsoleTab();
-	void registerComponentWidgets();
+    // Dockable panels and their content; each show*Panel() is an ImGui window.
+    void showScenePanel();
+    void showInspectorPanel();
+    void showRenderSettingsPanel(double deltaTime);
+    void showAssetsPanel();
+    void showViewportPanel(double deltaTime);
+    void drawAddMenu();
+    void drawSceneTree();
+    void drawInspector();
+    void drawFrameRateControls(double deltaTime);
+    void drawRenderOptions();
+    void drawShaderOption(const char* label, const char* name, Shader& shader);
+    void drawProfilingControls();
+    void drawModelsTab();
+    void drawConsoleTab();
+    void updateViewportCamera(bool hovered, double deltaTime);
 
-	// Build the default dock layout once, on first run when no imgui.ini exists.
-	void buildDefaultLayoutOnce(ImGuiID dockspaceId);
+    // Default dock layout is created once when no saved imgui.ini exists.
+    void buildDefaultLayoutOnce(ImGuiID dockspaceId);
 
-	// Current selection: shared, identity-based source of truth (scene tree highlight
-	// + writes, inspector reads, renderer gizmo). Owned by Engine, injected here; the
-	// model holds a weak_ptr so it auto-expires if the selected object is destroyed.
-	SelectionModel* selection_ = nullptr;
+    struct FrameRateState {
+        double elapsedSeconds = 0.0;
+        int frameCount = 0;
+        double framesPerSecond = 0.0;
+    };
 
-	// Non-owning; set by Engine. The Viewport panel reports its size here and reads
-	// the scene color texture to display.
-	RenderSystem* renderSystem_ = nullptr;
+    struct ConsoleState {
+        bool showInfo = true;
+        bool showWarn = true;
+        bool showErr = true;
+        bool autoScroll = true;
+        ImGuiTextFilter textFilter;
+        unsigned long long lastSeenRevision = 0;
+    };
 
-	// Non-owning; injected by Engine. Scene mutation + shader/model access.
-	ResourceManager* rm_ = nullptr;
+    // Borrowed systems (see injection contracts above). SelectionModel itself
+    // observes the selected object weakly; GUI does not own the selection model.
+    SelectionModel* selection_ = nullptr;
+    RenderSystem* renderSystem_ = nullptr;
+    ResourceManager* rm_ = nullptr;
+    Camera* camera_ = nullptr;
 
-	// Non-owning; injected by Engine. Driven by the Viewport panel's fly controls.
-	Camera* camera_ = nullptr;
-	bool flying_ = false;   // true while RMB is held after pressing over the Viewport
-	bool vsyncChecked_ = true;
-	float exposure_ = 1.0f;
-	std::string renderSettingsError_;
-	GLFWwindow* window_ = nullptr;            // for cursor lock during fly
-	double lastCursorX_ = 0.0, lastCursorY_ = 0.0;   // previous-frame cursor pos while flying
+    // Viewport interaction and settings shown by the panels.
+    bool flying_ = false; // RMB held after pressing over the Viewport.
+    bool vsyncChecked_ = true;
+    float exposure_ = 1.0f;
+    std::string renderSettingsError_;
+    FrameRateState frameRate_;
+    // Filters and revision advance only when the Console tab is actually drawn.
+    ConsoleState console_;
+    GLFWwindow* window_ = nullptr; // Borrowed window; also used for cursor lock.
+    // Prior cursor position while flying.
+    double lastCursorX_ = 0.0;
+    double lastCursorY_ = 0.0;
 };
 
-template<typename T>
-void GuiSystem::registerComponentWidget(std::function<void(std::shared_ptr<T>)> func) {
-	getWidgetRegistry()[std::type_index(typeid(T))] = [func](std::shared_ptr<Component> comp) {
-		std::shared_ptr<T> specificComp = std::dynamic_pointer_cast<T>(comp);
-		if (specificComp) {
-			func(specificComp);
-		}
-	};
-}
+} // namespace togr
 
 #endif

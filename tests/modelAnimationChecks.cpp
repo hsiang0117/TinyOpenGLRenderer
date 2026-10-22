@@ -1,7 +1,10 @@
 #include "assets/model.hpp"
 #include "assets/shaderCatalog.hpp"
+#include "scene/component.hpp"
+#include "scene/gameObject.hpp"
 #include "rendering/opengl/glBuffer.hpp"
 #include "rendering/opengl/shader.hpp"
+#include "rendering/renderUtils.hpp"
 #include <assimp/Exporter.hpp>
 #include <assimp/anim.h>
 #include <assimp/cexport.h>
@@ -18,6 +21,8 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
+
+namespace togr::tests {
 
 namespace {
 constexpr float tolerance = 0.0005f;
@@ -70,7 +75,7 @@ struct Fixture {
     std::array<glm::mat4, 3> meshTransforms;
     glm::mat4 boneBind = root * glm::translate(glm::mat4(1), glm::vec3(0, 1, 0));
 
-    explicit Fixture(FixtureKind kind) {
+    explicit Fixture(FixtureKind kind, bool boneFirst = false) {
         const auto first = glm::translate(glm::mat4(1), glm::vec3(1, 2, 0)) *
             glm::rotate(glm::mat4(1), glm::radians(90.0f), glm::vec3(0, 0, 1)) *
             glm::scale(glm::mat4(1), glm::vec3(1, 2, 1));
@@ -97,6 +102,10 @@ struct Fixture {
         nodes[4]->mParent = nodes[0].get();
         nodes[4]->mTransformation = assimpMatrix(glm::translate(glm::mat4(1), glm::vec3(0, 1, 0)));
         for (std::size_t index = 1; index < nodes.size(); ++index) children.push_back(nodes[index].get());
+        // Change traversal only; mesh indices, transforms and node storage stay fixed.
+        if (boneFirst) {
+            std::rotate(children.begin(), children.end() - 1, children.end());
+        }
         nodes[0]->mNumChildren = static_cast<unsigned int>(children.size());
         nodes[0]->mChildren = children.data();
         scene.mRootNode = nodes[0].get();
@@ -183,11 +192,15 @@ void writeFixture(const Fixture& fixture, const std::filesystem::path& path) {
     require(bool(output), "Animation fixture write failed");
 }
 
-std::vector<glm::mat4> palette(Animator& animator) {
-    animator.getBoneMatrixTexture().use(GL_TEXTURE8);
-    std::vector<glm::mat4> matrices(MAX_BONES);
+std::vector<glm::mat4> palette(Texture2D& texture) {
+    texture.use(GL_TEXTURE8);
+    std::vector<glm::mat4> matrices(TOGR_MAX_BONES);
     glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_FLOAT, matrices.data());
     return matrices;
+}
+
+std::vector<glm::mat4> palette(Animator& animator) {
+    return palette(animator.getBoneMatrixTexture());
 }
 
 struct CapturedVertex {
@@ -219,7 +232,8 @@ struct CaptureState {
 };
 
 std::vector<CapturedVertex> capture(Model& model, Animator& animator, const char* vertexPath,
-    const std::filesystem::path& fragmentPath, bool withNormals) {
+    const std::filesystem::path& fragmentPath, bool withNormals,
+    const GameObjectPtr& object = nullptr, GLuint expectedTriangles = 3) {
     CaptureState state;
     auto shader = std::make_shared<Shader>(vertexPath, fragmentPath.u8string().c_str());
     require(shader->isValid(), "Production skinning vertex shader did not compile");
@@ -257,12 +271,17 @@ std::vector<CapturedVertex> capture(Model& model, Animator& animator, const char
     glEnable(GL_RASTERIZER_DISCARD);
     glBeginQuery(GL_TRANSFORM_FEEDBACK_PRIMITIVES_WRITTEN, objects.query);
     glBeginTransformFeedback(GL_TRIANGLES);
-    model.draw(shader);
+    if (object) {
+        RenderHelpers::drawRenderable(object, shader);
+    } else {
+        model.draw(shader);
+    }
     glEndTransformFeedback();
     glEndQuery(GL_TRANSFORM_FEEDBACK_PRIMITIVES_WRITTEN);
     GLuint triangleCount = 0;
     glGetQueryObjectuiv(objects.query, GL_QUERY_RESULT, &triangleCount);
-    require(triangleCount == 3, "Animation fixture did not draw both skinned meshes and the static control");
+    require(triangleCount == expectedTriangles, "Model submission drew an unexpected number of fixture triangles");
+    if (expectedTriangles == 0) return {};
     glBindBuffer(GL_TRANSFORM_FEEDBACK_BUFFER, objects.buffer);
     glGetBufferSubData(GL_TRANSFORM_FEEDBACK_BUFFER, 0, data.size() * sizeof(float), data.data());
     std::vector<CapturedVertex> result;
@@ -301,6 +320,205 @@ void requireVertices(const std::vector<CapturedVertex>& actual, const std::vecto
         matched[index] = true;
     }
 }
+
+void requirePose(const SkeletonPose& actual, const SkeletonPose& expected, const char* message) {
+    require(actual.nodePositions.size() == expected.nodePositions.size() &&
+        actual.boneMatrices.size() == expected.boneMatrices.size(), message);
+    for (std::size_t index = 0; index < actual.nodePositions.size(); ++index) {
+        require(near(actual.nodePositions[index], expected.nodePositions[index]), message);
+    }
+    for (std::size_t index = 0; index < actual.boneMatrices.size(); ++index) {
+        requireMatrix(actual.boneMatrices[index], expected.boneMatrices[index], message);
+    }
+}
+
+void requireAnimatorUnchanged(Animator& animator, const SkeletonPose& expected,
+    const std::vector<glm::mat4>& expectedPalette, const char* message) {
+    requirePose(animator.getPose(), expected, message);
+    const auto uploaded = palette(animator);
+    require(uploaded.size() == expectedPalette.size(), message);
+    for (std::size_t index = 0; index < uploaded.size(); ++index) {
+        requireMatrix(uploaded[index], expectedPalette[index], message);
+    }
+}
+
+void checkImportedAnimation(const std::filesystem::path& directory,
+    const std::filesystem::path& fragmentPath, bool boneFirst) {
+    Fixture fixture(FixtureKind::Valid, boneFirst);
+    const auto modelPath = directory / (boneFirst ? "transformed-bone-first.assbin" : "transformed-mesh-first.assbin");
+    writeFixture(fixture, modelPath);
+    auto model = Model::importAsync(modelPath.u8string().c_str()).get();
+    require(model->initGLResources() && model->isReady(), "Animation fixture import failed");
+    require(model->getAnimations().size() == 1, "Assbin fixture lost its animation");
+    const auto& nodes = model->getNodes();
+    const auto bindNodes = nodes;
+    const auto& clip = model->getAnimations().front();
+    const auto clipName = clip.getName();
+    const auto clipDuration = clip.getDuration();
+    const auto clipRate = clip.getTicksPerSecond();
+    const auto* track = clip.findBone("SharedBone");
+    require(track != nullptr, "Assbin fixture lost its animation track");
+    const std::array<float, 3> sampleTicks{{0.0f, 0.5f, 1.5f}};
+    const std::array<glm::mat4, 3> originalSamples{{
+        track->sample(sampleTicks[0]), track->sample(sampleTicks[1]), track->sample(sampleTicks[2])}};
+    require(nodes.size() == 5, "Node traversal duplicated or discarded a hierarchy node");
+    for (std::size_t index = 0; index < nodes.size(); ++index) {
+        require(nodes[index].id == static_cast<int>(index), "Imported node ID no longer matches its vector index");
+    }
+    require(std::count_if(nodes.begin(), nodes.end(), [](const Node& node) { return node.name == "SharedBone"; }) == 1,
+        "A bone placeholder was not reused when its hierarchy node was imported");
+    auto bone = model->findNode("SharedBone");
+    require(bone && bone->isBoneNode && bone->id >= 0 && bone->id < TOGR_MAX_BONES, "Assbin fixture lost its shared bone");
+    require(bone->id == (boneFirst ? 1 : 2), "Bone ID changed for the fixture's node traversal order");
+    const auto boneId = bone->id;
+    const auto root = model->findNode("FixtureRoot");
+    require(root && root->id == 0 && root->parentIndex == -1, "Imported root identity or parent changed");
+    require(root->childrenIndices.size() == 4 && bone->parentIndex == root->id && bone->childrenIndices.empty(),
+        "Bone hierarchy completion lost its parent or changed the fixture topology");
+    for (const auto child : root->childrenIndices) {
+        require(child >= 0 && static_cast<std::size_t>(child) < nodes.size() && nodes[child].parentIndex == root->id,
+            "Imported child link does not agree with its parent index");
+        require(std::count(root->childrenIndices.begin(), root->childrenIndices.end(), child) == 1,
+            "Imported parent contains a duplicate child link");
+    }
+    if (!near(bone->bindPosition, glm::vec3(fixture.boneBind[3]))) {
+        auto printMatrix = [](const char* name, const glm::mat4& matrix) {
+            std::cerr << name << '\n';
+            for (int row = 0; row < 4; ++row) {
+                for (int column = 0; column < 4; ++column) std::cerr << matrix[column][row] << ' ';
+                std::cerr << '\n';
+            }
+        };
+        std::cerr << "Imported SharedBone position: " << bone->bindPosition.x << ' ' << bone->bindPosition.y << ' ' << bone->bindPosition.z << '\n'
+            << "Expected SharedBone position: " << fixture.boneBind[3].x << ' ' << fixture.boneBind[3].y << ' ' << fixture.boneBind[3].z << '\n'
+            << "Imported SharedBone id/parent: " << bone->id << ' ' << bone->parentIndex << '\n';
+        printMatrix("Fixture root:", fixture.root);
+        printMatrix("Fixture boneBind:", fixture.boneBind);
+        if (const auto root = model->findNode("FixtureRoot")) {
+            printMatrix("Imported root local:", root->localBindTransform);
+            std::cerr << "Imported root id/parent: " << root->id << ' ' << root->parentIndex << '\n';
+        }
+        printMatrix("Imported SharedBone local:", bone->localBindTransform);
+    }
+    require(near(bone->bindPosition, glm::vec3(fixture.boneBind[3])), "Imported skeleton is not in the baked mesh's model space");
+    auto expectedBind = expectedVertices(fixture, glm::vec3(0));
+    auto expectedMin = glm::vec3(expectedBind.front().position), expectedMax = expectedMin;
+    for (const auto& vertex : expectedBind) {
+        expectedMin = glm::min(expectedMin, glm::vec3(vertex.position));
+        expectedMax = glm::max(expectedMax, glm::vec3(vertex.position));
+    }
+    glm::vec3 minimum, maximum;
+    model->buildAABB(minimum, maximum);
+    require(near(minimum, expectedMin) && near(maximum, expectedMax), "Bind AABB disagrees with the imported mesh/root transforms");
+    // Animation runs without any SkeletonViewerComponent owning its pose.
+    Animator animator(&clip, nodes);
+    animator.updateAnimation(0);
+    require(animator.getPose().nodePositions.size() == nodes.size(), "Animator pose lost node-vector indexing");
+    require(near(animator.getPose().nodePositions[boneId], glm::vec3(fixture.boneBind[3])),
+        "Animator bind pose disagrees with the imported bone origin");
+    requireMatrix(palette(animator)[boneId], glm::mat4(1), "Bind pose palette must be identity for vertices already baked into model space");
+    const char* stages[] = {ShaderCatalog::forward.vertexPath, ShaderCatalog::directionalShadow.vertexPath, ShaderCatalog::pointShadow.vertexPath};
+    for (int stage = 0; stage < 3; ++stage)
+        requireVertices(capture(*model, animator, stages[stage], fragmentPath, stage == 0), expectedBind, stage == 0);
+
+    animator.updateAnimation(0.5f);
+    const auto animatedBone = fixture.root * glm::translate(glm::mat4(1), glm::vec3(1, 1, 0));
+    require(near(animator.getPose().nodePositions[boneId], glm::vec3(animatedBone[3])), "Animated skeleton lost the nonidentity root transform");
+    const auto skinTransform = animatedBone * glm::inverse(fixture.boneBind);
+    requireMatrix(palette(animator)[boneId], skinTransform, "Animated palette does not match the shared bone's model-space displacement");
+    const auto expectedAnimated = expectedVertices(fixture, glm::vec3(0, 2, 0));
+    for (int stage = 0; stage < 3; ++stage)
+        requireVertices(capture(*model, animator, stages[stage], fragmentPath, stage == 0), expectedAnimated, stage == 0);
+
+    auto requireAtTime = [&](Animator& instance, float seconds) {
+        const auto expectedBone = fixture.root * glm::translate(glm::mat4(1), glm::vec3(2 * seconds, 1, 0));
+        const auto& pose = instance.getPose();
+        require(pose.nodePositions.size() == nodes.size(), "Animator pose lost its node positions");
+        require(near(pose.nodePositions[boneId], glm::vec3(expectedBone[3])), "Independent animator sampled the wrong time");
+        requireMatrix(pose.boneMatrices[boneId], expectedBone * glm::inverse(fixture.boneBind),
+            "Independent CPU palette does not match the fixture displacement");
+        const auto uploaded = palette(instance);
+        require(uploaded.size() == pose.boneMatrices.size(), "CPU and GPU palette sizes disagree");
+        for (std::size_t index = 0; index < uploaded.size(); ++index) {
+            requireMatrix(uploaded[index], pose.boneMatrices[index], "GPU palette does not match its animator's CPU pose");
+        }
+    };
+    requireAtTime(animator, 0.5f);
+    const auto firstPose = animator.getPose();
+    const auto firstPalette = palette(animator);
+    Animator second(&clip, nodes);
+    second.updateAnimation(1.0f);
+    requireAtTime(second, 1.0f);
+    requireAnimatorUnchanged(animator, firstPose, firstPalette, "Updating the second animator changed the first instance");
+    requireVertices(capture(*model, second, stages[0], fragmentPath, true),
+        expectedVertices(fixture, glm::vec3(0, 4, 0)), true);
+    const auto secondPose = second.getPose();
+    const auto secondPalette = palette(second);
+
+    animator.updateAnimation(0.25f);
+    requireAtTime(animator, 0.75f);
+    requireAnimatorUnchanged(second, secondPose, secondPalette, "Updating the first animator changed the second instance");
+    const auto advancedFirstPose = animator.getPose();
+    const auto advancedFirstPalette = palette(animator);
+    second.updateAnimation(0.25f);
+    requireAtTime(second, 1.25f);
+    requireAnimatorUnchanged(animator, advancedFirstPose, advancedFirstPalette,
+        "Interleaved sampling changed an animator that was not updated");
+
+    {
+        AnimatorComponent independent(model);
+        const auto otherModel = std::make_shared<Model>();
+        independent.playAnimation(clipName);
+        independent.update(0.5f);
+        require(independent.isBoundTo(*model) && !independent.isBoundTo(*otherModel) &&
+            near(independent.getPose().nodePositions[boneId], glm::vec3(animatedBone[3])),
+            "AnimatorComponent cannot animate its model independently of a skeleton viewer");
+        const auto selectedPose = independent.getPose();
+        independent.playAnimation(clipName + " missing");
+        require(independent.getCurrentAnimation() == clipName, "Unknown clip name replaced the actual selected animation");
+        requirePose(independent.getPose(), selectedPose, "Unknown clip selection changed the sampled pose");
+        independent.update(0.25f);
+        const auto threeQuarterBone = fixture.root * glm::translate(glm::mat4(1), glm::vec3(1.5f, 1, 0));
+        require(near(independent.getPose().nodePositions[boneId], glm::vec3(threeQuarterBone[3])),
+            "Unknown clip selection reset the running clock");
+        const auto pausedPose = independent.getPose();
+        const auto pausedPalette = palette(independent.getBoneMatrixTexture());
+        independent.playAnimation(clipName);
+        requirePose(independent.getPose(), pausedPose, "Selecting a clip sampled it before update");
+        const auto stillPausedPalette = palette(independent.getBoneMatrixTexture());
+        for (std::size_t index = 0; index < pausedPalette.size(); ++index) {
+            requireMatrix(stillPausedPalette[index], pausedPalette[index], "Clip selection prematurely changed the GPU palette");
+        }
+        independent.update(0);
+        require(near(independent.getPose().nodePositions[boneId], glm::vec3(fixture.boneBind[3])),
+            "Zero-time update did not sample the newly selected clip's first frame");
+        requireMatrix(palette(independent.getBoneMatrixTexture())[boneId], glm::mat4(1),
+            "Restarting a clip did not reset the GPU bind palette");
+
+        auto mismatched = std::make_shared<GameObject>("Mismatched model and animator");
+        mismatched->addComponent<Transform>();
+        mismatched->addComponent<ModelRenderComponent>()->setModel(model);
+        mismatched->addComponent<AnimatorComponent>(otherModel);
+        capture(*model, animator, stages[0], fragmentPath, true, mismatched, 0);
+    }
+    require(nodes.size() == bindNodes.size(), "Animation changed the model's bind node count");
+    for (std::size_t index = 0; index < nodes.size(); ++index) {
+        const auto& actual = nodes[index];
+        const auto& expected = bindNodes[index];
+        require(actual.name == expected.name && actual.id == expected.id && actual.parentIndex == expected.parentIndex &&
+            actual.bindPosition == expected.bindPosition && actual.localBindTransform == expected.localBindTransform &&
+            actual.modelToBoneBind == expected.modelToBoneBind && actual.isBoneNode == expected.isBoneNode &&
+            actual.childrenIndices == expected.childrenIndices, "Instance animation mutated shared model bind data");
+    }
+    require(clip.isValid() && clip.getName() == clipName && clip.getDuration() == clipDuration &&
+        clip.getTicksPerSecond() == clipRate && model->getAnimations().size() == 1,
+        "Instance animation changed the shared clip metadata");
+    for (std::size_t index = 0; index < sampleTicks.size(); ++index) {
+        requireMatrix(track->sample(sampleTicks[index]), originalSamples[index], "Interleaved animation changed shared key tracks");
+    }
+    model->buildAABB(minimum, maximum);
+    require(near(minimum, expectedMin) && near(maximum, expectedMax), "Animation unexpectedly changed the model's bind-pose AABB");
+}
 }
 
 void runModelAnimationChecks() {
@@ -312,67 +530,17 @@ void runModelAnimationChecks() {
         output << "#version 450 core\nout vec4 color;\nvoid main(){color=vec4(1);}\n";
         require(bool(output), "Animation feedback shader write failed");
     }
-    Fixture fixture(FixtureKind::Valid);
-    const auto modelPath = directory / "transformed.assbin";
-    writeFixture(fixture, modelPath);
-    auto model = Model::LoadAsync(modelPath.u8string().c_str()).get();
-    require(model->initGLResources() && model->isReady(), "Animation fixture import failed");
-    require(model->getAnimations().size() == 1, "Assbin fixture lost its animation");
-    auto bone = model->findNode("SharedBone");
-    require(bone && bone->isBoneNode && bone->id >= 0 && bone->id < MAX_BONES, "Assbin fixture lost its shared bone");
-    const auto boneId = bone->id;
-    if (!near(bone->position, glm::vec3(fixture.boneBind[3]))) {
-        auto printMatrix = [](const char* name, const glm::mat4& matrix) {
-            std::cerr << name << '\n';
-            for (int row = 0; row < 4; ++row) {
-                for (int column = 0; column < 4; ++column) std::cerr << matrix[column][row] << ' ';
-                std::cerr << '\n';
-            }
-        };
-        std::cerr << "Imported SharedBone position: " << bone->position.x << ' ' << bone->position.y << ' ' << bone->position.z << '\n'
-            << "Expected SharedBone position: " << fixture.boneBind[3].x << ' ' << fixture.boneBind[3].y << ' ' << fixture.boneBind[3].z << '\n'
-            << "Imported SharedBone id/parent: " << bone->id << ' ' << bone->parentIndex << '\n';
-        printMatrix("Fixture root:", fixture.root);
-        printMatrix("Fixture boneBind:", fixture.boneBind);
-        if (const auto root = model->findNode("FixtureRoot")) {
-            printMatrix("Imported root local:", root->transform);
-            std::cerr << "Imported root id/parent: " << root->id << ' ' << root->parentIndex << '\n';
-        }
-        printMatrix("Imported SharedBone local:", bone->transform);
+    for (const bool boneFirst : {false, true}) {
+        checkImportedAnimation(directory, fragmentPath, boneFirst);
     }
-    require(near(bone->position, glm::vec3(fixture.boneBind[3])), "Imported skeleton is not in the baked mesh's model space");
-    auto expectedBind = expectedVertices(fixture, glm::vec3(0));
-    auto expectedMin = glm::vec3(expectedBind.front().position), expectedMax = expectedMin;
-    for (const auto& vertex : expectedBind) {
-        expectedMin = glm::min(expectedMin, glm::vec3(vertex.position));
-        expectedMax = glm::max(expectedMax, glm::vec3(vertex.position));
-    }
-    glm::vec3 minimum, maximum;
-    model->buildAABB(minimum, maximum);
-    require(near(minimum, expectedMin) && near(maximum, expectedMax), "Bind AABB disagrees with the imported mesh/root transforms");
-    Animator animator(&model->getAnimations().front(), model->getNodes());
-    animator.updateAnimation(0);
-    requireMatrix(palette(animator)[boneId], glm::mat4(1), "Bind pose palette must be identity for vertices already baked into model space");
-    const char* stages[] = {ShaderCatalog::forward.vertexPath, ShaderCatalog::directionalShadow.vertexPath, ShaderCatalog::pointShadow.vertexPath};
-    for (int stage = 0; stage < 3; ++stage)
-        requireVertices(capture(*model, animator, stages[stage], fragmentPath, stage == 0), expectedBind, stage == 0);
-
-    animator.updateAnimation(0.5f);
-    const auto animatedBone = fixture.root * glm::translate(glm::mat4(1), glm::vec3(1, 1, 0));
-    require(near(model->findNode("SharedBone")->position, glm::vec3(animatedBone[3])), "Animated skeleton lost the nonidentity root transform");
-    const auto skinTransform = animatedBone * glm::inverse(fixture.boneBind);
-    requireMatrix(palette(animator)[boneId], skinTransform, "Animated palette does not match the shared bone's model-space displacement");
-    const auto expectedAnimated = expectedVertices(fixture, glm::vec3(0, 2, 0));
-    for (int stage = 0; stage < 3; ++stage)
-        requireVertices(capture(*model, animator, stages[stage], fragmentPath, stage == 0), expectedAnimated, stage == 0);
-    model->buildAABB(minimum, maximum);
-    require(near(minimum, expectedMin) && near(maximum, expectedMax), "Animation unexpectedly changed the model's bind-pose AABB");
     for (const auto kind : {FixtureKind::SingularMesh, FixtureKind::ConflictingBone}) {
         Fixture invalidFixture(kind);
         const auto invalidPath = directory / (kind == FixtureKind::SingularMesh ? "singular.assbin" : "conflicting.assbin");
         writeFixture(invalidFixture, invalidPath);
-        auto invalid = Model::LoadAsync(invalidPath.u8string().c_str()).get();
+        auto invalid = Model::importAsync(invalidPath.u8string().c_str()).get();
         require(!invalid->initGLResources() && !invalid->isReady(), "Unsafe skinning transforms must fail model loading");
     }
-    std::cout << "PASS: imported animation, nonidentity root/mesh transforms, shared offsets, bind palette/AABB/skeleton, three GPU skinning stages, and invalid rigs\n";
+    std::cout << "PASS: both bone/mesh traversal orders, stable bind hierarchy, independent CPU/GPU animator poses without viewers, immutable model/clips, three GPU skinning stages, and invalid rigs\n";
 }
+
+} // namespace togr::tests

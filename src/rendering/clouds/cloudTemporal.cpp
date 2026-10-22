@@ -5,6 +5,8 @@
 #include <cmath>
 #include <cstring>
 
+namespace togr {
+
 namespace {
 bool equal(const glm::mat4& a, const glm::mat4& b) { return std::memcmp(&a, &b, sizeof(a)) == 0; }
 bool equal(const glm::vec3& a, const glm::vec3& b) { return a.x == b.x && a.y == b.y && a.z == b.z; }
@@ -101,3 +103,5 @@ Texture2D& CloudTemporal::resolve(Texture2D& rawColor, Shader& shader) {
     read_ = write; previous_ = current_; valid_ = true; ++sequence_;
     return color_[read_];
 }
+
+} // namespace togr

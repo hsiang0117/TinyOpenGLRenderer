@@ -1,5 +1,7 @@
 #include "input.hpp"
 
+namespace togr {
+
 void Input::init()
 {
 	for (int i = 0; i < 1024; i++) {
@@ -17,3 +19,4 @@ void Input::update() {
 bool Input::isKeyPressed(int key) {
 	return keys[key] && !prevKeys[key];
 }
+} // namespace togr

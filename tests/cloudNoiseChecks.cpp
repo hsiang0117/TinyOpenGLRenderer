@@ -6,12 +6,17 @@
 #include "rendering/opengl/glBuffer.hpp"
 #include "rendering/renderUtils.hpp"
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <iterator>
 #include <stdexcept>
+#include <string>
 #include <vector>
+
+namespace togr::tests {
 
 namespace {
 void check(bool condition, const char* message) {
@@ -38,11 +43,85 @@ double correlation(const Samples& a, int channelA, const Samples& b, int channel
         "Noise correlation fixture has insufficient variation");
     return covariance / std::sqrt(varianceA * varianceB);
 }
+
+std::vector<char> readCacheBytes(const std::filesystem::path& path) {
+    std::ifstream input(path, std::ios::binary);
+    check(bool(input), "Cannot read the isolated noise-cache fixture");
+    std::vector<char> bytes((std::istreambuf_iterator<char>(input)), std::istreambuf_iterator<char>());
+    check(!input.bad(), "Noise-cache fixture read failed");
+    return bytes;
+}
+
+void checkNoiseCacheFiles() {
+    namespace fs = std::filesystem;
+    struct RestoreDirectory {
+        fs::path original = fs::current_path();
+        ~RestoreDirectory() { std::error_code ec; fs::current_path(original, ec); }
+    } restoreDirectory;
+    const auto base = fs::absolute("x64/RenderChecks/noise-cache");
+    fs::create_directories(base);
+    const auto directory = base / std::to_string(std::chrono::steady_clock::now().time_since_epoch().count());
+    check(fs::create_directory(directory), "Cannot create isolated noise-cache fixtures");
+    struct Generator {
+        const char* name;
+        NoiseVolumeData (*compute)();
+    };
+    const Generator generators[] = {
+        {"worley", []() { return NoiseTextureGenerator3D::computeWorleyNoise(8, 8, 8); }},
+        {"perlin", []() { return NoiseTextureGenerator3D::computePerlinNoise(8, 8, 8); }},
+        {"weather", []() { return NoiseTextureGenerator3D::computeWeatherMap(8, 8); }}
+    };
+    for (const auto& generator : generators) {
+        const auto workingDirectory = directory / generator.name;
+        check(fs::create_directory(workingDirectory), "Cannot create a noise generator's isolated directory");
+        fs::current_path(workingDirectory);
+        const auto cold = generator.compute();
+        check(!cold.data.empty(), "Noise cache fixture generated no CPU data");
+        fs::path cacheFile;
+        for (const auto& entry : fs::directory_iterator("data/cache")) {
+            if (entry.is_regular_file() && entry.path().extension() == ".noise") {
+                check(cacheFile.empty(), "A small noise generation created multiple cache files");
+                cacheFile = entry.path();
+            }
+        }
+        check(!cacheFile.empty(), "Cold noise generation did not create a cache file");
+        const auto cleanBytes = readCacheBytes(cacheFile);
+        check(cleanBytes.size() > cold.data.size(), "Noise cache file has no metadata before its data");
+        auto verify = [&](const char* failure) {
+            const auto actual = generator.compute();
+            if (actual.width != cold.width || actual.height != cold.height || actual.depth != cold.depth ||
+                actual.data != cold.data || readCacheBytes(cacheFile) != cleanBytes) {
+                throw std::runtime_error(std::string(generator.name) + ": " + failure);
+            }
+        };
+        verify("Warm cache changed CPU data or serialized bytes");
+
+        fs::resize_file(cacheFile, cleanBytes.size() - 1);
+        verify("A truncated cache was not rejected and regenerated");
+        {
+            std::ofstream output(cacheFile, std::ios::binary | std::ios::app);
+            output.put('!');
+            check(bool(output), "Cannot append a byte to the isolated noise cache");
+        }
+        verify("A cache with trailing bytes was not rejected and regenerated");
+        {
+            std::fstream output(cacheFile, std::ios::binary | std::ios::in | std::ios::out);
+            // Change the leading magic byte without copying the serialized header.
+            output.put(static_cast<char>(cleanBytes.front() ^ 0x7f));
+            check(bool(output), "Cannot corrupt the isolated noise-cache magic");
+        }
+        verify("A cache with damaged magic was not rejected and regenerated");
+    }
+    std::cout << "PASS: isolated Worley, Perlin, and weather disk-cache round trips and corruption recovery\n";
+}
 }
 
 // Called with the render-correctness test's current debug GL context. The probe
 // includes the production GLSL helpers; no CPU copy of the new shader is tested.
 void runCloudNoiseChecks() {
+    // No RenderSystem workers exist here. All CPU generation completes before
+    // this scope restores cwd, so the application's data/cache is untouched.
+    checkNoiseCacheFiles();
     const auto lattice = NoiseTextureGenerator3D::computePerlinNoise(16, 16, 16);
     for (int z = 0; z < 16; z += 4) for (int y = 0; y < 16; y += 4) for (int x = 0; x < 16; x += 4)
         check(lattice.data[x + y * 16 + z * 256] == 127,
@@ -258,3 +337,5 @@ void runCloudNoiseChecks() {
     fbo.unbind(); glUseProgram(0);
     std::cout << "PASS: actual preset density fields, clear sky columns, coverage monotonicity, erosion, density scaling and height bounds\n";
 }
+
+} // namespace togr::tests

@@ -2,6 +2,8 @@
 #include <algorithm>
 #include <limits>
 
+namespace togr {
+
 Mesh::~Mesh() {
     if (glInitialized) {
         glDeleteVertexArrays(1, &VAO);
@@ -99,3 +101,5 @@ void Mesh::buildAABB(glm::vec3& min, glm::vec3& max) {
         max.z = std::max(max.z, vertex.position.z);
     }
 }
+
+} // namespace togr

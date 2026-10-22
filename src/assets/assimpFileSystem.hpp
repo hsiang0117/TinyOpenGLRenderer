@@ -1,12 +1,14 @@
-#ifndef ASSIMPFILESYSTEM_HPP
-#define ASSIMPFILESYSTEM_HPP
+#ifndef TOGR_ASSIMPFILESYSTEM_HPP
+#define TOGR_ASSIMPFILESYSTEM_HPP
 #pragma once
 
 #include <assimp/IOSystem.hpp>
 
+namespace togr {
+
 // Assimp exchanges UTF-8 filenames; file access uses native filesystem paths.
 // Ownership is transferred to Assimp::Importer::SetIOHandler().
-class AssimpFileSystem final : public Assimp::IOSystem {
+class AssimpFileSystem final : public ::Assimp::IOSystem {
 public:
 	bool Exists(const char* file) const override;
 	char getOsSeparator() const override;
@@ -15,4 +17,6 @@ public:
 	bool ComparePaths(const char* first, const char* second) const override;
 };
 
-#endif // !ASSIMPFILESYSTEM_HPP
+} // namespace togr
+
+#endif // !TOGR_ASSIMPFILESYSTEM_HPP

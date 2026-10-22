@@ -1,5 +1,5 @@
-#ifndef MESH_HPP
-#define MESH_HPP
+#ifndef TOGR_MESH_HPP
+#define TOGR_MESH_HPP
 #pragma once
 
 #include <glad/glad.h>
@@ -7,8 +7,10 @@
 #include <vector>
 #include <memory>
 
-#define MAX_BONES 500
-#define MAX_BONE_INFLUENCE 4
+#define TOGR_MAX_BONES 500
+#define TOGR_MAX_BONE_INFLUENCE 4
+
+namespace togr {
 
 struct Vertex
 {
@@ -17,8 +19,8 @@ struct Vertex
     glm::vec2 texCoords;
 	glm::vec3 tangent;
 	glm::vec3 bitangent;
-	int boneIDs[MAX_BONE_INFLUENCE];
-    float weights[MAX_BONE_INFLUENCE];
+	int boneIDs[TOGR_MAX_BONE_INFLUENCE];
+    float weights[TOGR_MAX_BONE_INFLUENCE];
 };
 
 class Mesh
@@ -45,4 +47,7 @@ private:
 };
 
 using MeshPtr = std::shared_ptr<Mesh>;
+
+} // namespace togr
+
 #endif

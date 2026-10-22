@@ -1,16 +1,18 @@
-#ifndef CAMERA_HPP
-#define CAMERA_HPP
+#ifndef TOGR_CAMERA_HPP
+#define TOGR_CAMERA_HPP
 #pragma once
 
 #include <glm/glm.hpp>
 
-#define DEFAULT_CAMERA_POS glm::vec3(0.0f,0.0f,5.0f)
-#define DEFAULT_CAMERA_FRONT glm::vec3(0.0f,0.0f,-1.0f)
-#define DEFAULT_CAMERA_UP glm::vec3(0.0f,1.0f,0.0f)
-#define DEFAULT_PITCH 0.0f
-#define DEFAULT_YAW -90.0f
-#define DEFAULT_FOV 55.0f
-#define DEFAULT_SENSITIVITY 0.05f
+#define TOGR_DEFAULT_CAMERA_POS glm::vec3(0.0f,0.0f,5.0f)
+#define TOGR_DEFAULT_CAMERA_FRONT glm::vec3(0.0f,0.0f,-1.0f)
+#define TOGR_DEFAULT_CAMERA_UP glm::vec3(0.0f,1.0f,0.0f)
+#define TOGR_DEFAULT_PITCH 0.0f
+#define TOGR_DEFAULT_YAW -90.0f
+#define TOGR_DEFAULT_FOV 55.0f
+#define TOGR_DEFAULT_SENSITIVITY 0.05f
+
+namespace togr {
 
 enum Direction {
 	FRONT,
@@ -54,4 +56,6 @@ private:
 	float sensitivity;
 };
 
-#endif // !CAMERA_HPP
+} // namespace togr
+
+#endif // !TOGR_CAMERA_HPP

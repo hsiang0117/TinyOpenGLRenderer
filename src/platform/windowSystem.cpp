@@ -10,6 +10,8 @@
 #endif
 #include <windows.h>
 
+namespace togr {
+
 void WindowSystem::showError(const std::string& message) {
 	MessageBoxA(nullptr, message.c_str(), "TinyOpenGLRenderer - startup/render failure", MB_OK | MB_ICONERROR);
 }
@@ -17,7 +19,7 @@ void WindowSystem::showError(const std::string& message) {
 void WindowSystem::init(int width, int height, Input* input) {
 	input_ = input;
 	if (!glfwInit()) {
-		LOG_ERROR("Failed to initialize GLFW");
+		TOGR_LOG_ERROR("Failed to initialize GLFW");
 		throw std::runtime_error("Failed to initialize GLFW");
 	}
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
@@ -100,3 +102,4 @@ void WindowSystem::connectInputToWindow(GLFWwindow* window)
 	};
 	glfwSetKeyCallback(window, keyboardCallback);
 }
+} // namespace togr

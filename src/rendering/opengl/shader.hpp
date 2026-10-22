@@ -1,5 +1,5 @@
-#ifndef SHADER_HPP
-#define SHADER_HPP
+#ifndef TOGR_SHADER_HPP
+#define TOGR_SHADER_HPP
 #pragma once
 
 #include <glad/glad.h>
@@ -9,6 +9,8 @@
 #include <map>
 #include <functional>
 #include <filesystem>
+
+namespace togr {
 
 class Shader
 {
@@ -50,4 +52,7 @@ private:
 };
 
 using ShaderPtr = std::shared_ptr<Shader>;
+
+} // namespace togr
+
 #endif

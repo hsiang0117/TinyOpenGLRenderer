@@ -6,6 +6,8 @@
 #include <memory>
 #include <string>
 
+namespace togr {
+
 namespace {
 namespace fs = std::filesystem;
 using File = std::unique_ptr<std::FILE, decltype(&std::fclose)>;
@@ -26,7 +28,7 @@ std::int64_t tellFile(std::FILE* file) {
 #endif
 }
 
-class AssimpFileStream final : public Assimp::IOStream {
+class AssimpFileStream final : public ::Assimp::IOStream {
 public:
 	explicit AssimpFileStream(File file) : file(std::move(file)) {}
 	size_t Read(void* buffer, size_t size, size_t count) override {
@@ -102,3 +104,5 @@ bool AssimpFileSystem::ComparePaths(const char* first, const char* second) const
 	const auto absoluteRight = fs::absolute(right, error);
 	return !error && absoluteLeft.lexically_normal() == absoluteRight.lexically_normal();
 }
+
+} // namespace togr

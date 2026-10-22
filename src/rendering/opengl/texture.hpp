@@ -1,10 +1,12 @@
-﻿#ifndef TEXTURE_HPP
-#define TEXTURE_HPP
+﻿#ifndef TOGR_TEXTURE_HPP
+#define TOGR_TEXTURE_HPP
 #pragma once
 
 #include <glad/glad.h>
 #include <filesystem>
 #include <string>
+
+namespace togr {
 
 class Texture {
 public:
@@ -87,4 +89,6 @@ void destroyDummyTexture2D();
 void bindDummyCubeMap(GLenum textureUnit);
 void destroyDummyCubeMap();
 
-#endif // !TEXTURE_HPP
+} // namespace togr
+
+#endif // !TOGR_TEXTURE_HPP

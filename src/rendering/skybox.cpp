@@ -2,6 +2,8 @@
 #include "core/logger.hpp"
 #include <utility>
 
+namespace togr {
+
 Skybox::Skybox(std::string folderPath) : folderPath(std::filesystem::u8path(folderPath)) {}
 
 Skybox::~Skybox() {
@@ -52,7 +54,7 @@ bool Skybox::initGLResources() {
 		if (VBO) glDeleteBuffers(1, &VBO);
 		VAO = VBO = 0;
 		lastError_ = "Cannot allocate skybox geometry: " + folderPath.u8string();
-		LOG_ERROR(lastError_);
+		TOGR_LOG_ERROR(lastError_);
 		return false;
 	}
 	glBindVertexArray(VAO);
@@ -67,7 +69,7 @@ bool Skybox::initGLResources() {
 		glDeleteBuffers(1, &VBO);
 		VAO = VBO = 0;
 		lastError_ = "Cannot upload skybox geometry: " + folderPath.u8string();
-		LOG_ERROR(lastError_);
+		TOGR_LOG_ERROR(lastError_);
 		return false;
 	}
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * (sizeof(float)), (void*)0);
@@ -93,3 +95,5 @@ void Skybox::useCubeMap()
 	if (!isReady()) return;
 	cubemap.use(GL_TEXTURE5);
 }
+
+} // namespace togr

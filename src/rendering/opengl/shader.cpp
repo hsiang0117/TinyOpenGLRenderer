@@ -22,6 +22,8 @@
 #include <windows.h>
 #endif
 
+namespace togr {
+
 namespace {
 namespace fs = std::filesystem;
 using ShaderCatalog::settingsPath;
@@ -255,7 +257,7 @@ void Shader::compile(const std::string* settingsOverride) {
         }
     } catch (const std::exception& error) { lastError_ = error.what(); valid_ = false; }
     for (auto handle : handles) if (handle) glDeleteShader(handle);
-    if (!valid_) LOG_ERROR(lastError_);
+    if (!valid_) TOGR_LOG_ERROR(lastError_);
 }
 
 bool Shader::reload() {
@@ -278,9 +280,9 @@ bool Shader::applySetting(const char* name, bool value) {
         replacement.vertexShaderPath = vertexShaderPath; replacement.geometryShaderPath = geometryShaderPath;
         replacement.fragmentShaderPath = fragmentShaderPath; replacement.compile(&source);
         if (!replacement.isValid()) { lastError_ = replacement.lastError(); return false; }
-        if (!saveSettings(source, lastError_)) { LOG_ERROR(lastError_); return false; }
+        if (!saveSettings(source, lastError_)) { TOGR_LOG_ERROR(lastError_); return false; }
         *this = std::move(replacement); return true;
-    } catch (const std::exception& error) { lastError_ = error.what(); LOG_ERROR(lastError_); return false; }
+    } catch (const std::exception& error) { lastError_ = error.what(); TOGR_LOG_ERROR(lastError_); return false; }
 }
 
 void Shader::use() { glUseProgram(ID); }
@@ -305,3 +307,5 @@ GLint Shader::uniformLocation(const char* name) {
     GLint location = glGetUniformLocation(ID, name); uniformLocations.emplace(name, location); return location;
 }
 bool Shader::hasUniform(const char* name) { return uniformLocation(name) >= 0; }
+
+} // namespace togr

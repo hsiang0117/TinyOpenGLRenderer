@@ -1,85 +1,80 @@
-#ifndef GAMEOBJECT_HPP
-#define GAMEOBJECT_HPP
+#ifndef TOGR_GAMEOBJECT_HPP
+#define TOGR_GAMEOBJECT_HPP
 #pragma once
 
-#include <typeinfo>
-#include <typeindex>
-#include <unordered_map>
 #include <memory>
 #include <string>
+#include <typeindex>
+#include <typeinfo>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
+namespace togr {
+
 class Component;
 
+// Owns one component per concrete type; shared queries keep that component alive.
+// Assemble the component set before adding the object to a Scene. Scene views do
+// not observe later addComponent() calls; editing existing component values is OK.
 class GameObject {
 public:
-	GameObject(std::string name);
-	~GameObject() = default;
-	std::string getName() { return name; }
+    GameObject(std::string name);
+    ~GameObject() = default;
 
-	template<typename T, typename... Args>
-	std::shared_ptr<T> addComponent(Args&&... args);
+    // Assembly: replaces any existing component of the same concrete type.
+    template<typename T, typename... Args>
+    std::shared_ptr<T> addComponent(Args&&... args);
 
-	template <typename T>
-	std::shared_ptr<T> getComponent();
+    // Queries do not change membership. Returned components remain editable;
+    // const GameObject does not imply deep constness of shared components.
+    std::string getName() const { return name; }
 
-	template <typename T>
-	bool has();
+    template<typename T>
+    std::shared_ptr<T> getComponent() const;
 
-	std::vector<std::shared_ptr<Component>> getAllComponents();
+    template<typename T>
+    bool has() const;
+
+    std::vector<std::shared_ptr<Component>> getAllComponents() const;
+
 private:
-	std::string name;
-	std::unordered_map<std::type_index, std::shared_ptr<Component>> components;
+    std::string name;
+    std::unordered_map<std::type_index, std::shared_ptr<Component>> components;
 };
 
 inline GameObject::GameObject(std::string name) : name(std::move(name)) {}
 
-inline std::vector<std::shared_ptr<Component>> GameObject::getAllComponents()
-{
-	std::vector<std::shared_ptr<Component>> result;
-	result.reserve(components.size());
-	for (auto& kv : components) {
-		result.push_back(kv.second);
-	}
-	return result;
+inline std::vector<std::shared_ptr<Component>> GameObject::getAllComponents() const {
+    std::vector<std::shared_ptr<Component>> result;
+    result.reserve(components.size());
+    for (const auto& entry : components) {
+        result.push_back(entry.second);
+    }
+    return result;
 }
 
 template<typename T, typename ...Args>
-std::shared_ptr<T> GameObject::addComponent(Args && ...args) {
-	auto component = std::make_shared<T>(std::forward<Args>(args)...);
-	components[std::type_index(typeid(T))] = component;
-	return component;
+std::shared_ptr<T> GameObject::addComponent(Args&&... args) {
+    auto component = std::make_shared<T>(std::forward<Args>(args)...);
+    components[std::type_index(typeid(T))] = component;
+    return component;
 }
 
 template<typename T>
-std::shared_ptr<T> GameObject::getComponent()
-{
-	auto it = components.find(std::type_index(typeid(T)));
-	if (it == components.end()) return nullptr;
-	return std::static_pointer_cast<T>(it->second);
+std::shared_ptr<T> GameObject::getComponent() const {
+    auto it = components.find(std::type_index(typeid(T)));
+    if (it == components.end()) return nullptr;
+    return std::static_pointer_cast<T>(it->second);
 }
 
 template<typename T>
-bool GameObject::has()
-{
-	return components.find(std::type_index(typeid(T))) != components.end();
+bool GameObject::has() const {
+    return components.find(std::type_index(typeid(T))) != components.end();
 }
 
 using GameObjectPtr = std::shared_ptr<GameObject>;
 
-// Single source of truth for the currently-selected object, shared between the GUI
-// (scene tree writes + inspector reads) and the renderer (selection gizmo). Holds a
-// weak_ptr so it auto-expires if the object is destroyed elsewhere. Owned by Engine
-// (composition root) and injected into both systems by non-owning pointer, keeping
-// GuiSystem and RenderSystem free of a mutual dependency.
-class SelectionModel {
-public:
-	void set(const GameObjectPtr& obj) { selected_ = obj; }
-	void clear() { selected_.reset(); }
-	GameObjectPtr get() const { return selected_.lock(); }
-private:
-	std::weak_ptr<GameObject> selected_;
-};
+} // namespace togr
 
-#endif // !GAMEOBJECT_HPP
+#endif // !TOGR_GAMEOBJECT_HPP

@@ -1,34 +1,70 @@
-#ifndef MODELLOADER_HPP
-#define MODELLOADER_HPP
+#ifndef TOGR_MODELLOADER_HPP
+#define TOGR_MODELLOADER_HPP
 #pragma once
 
 #include <future>
 #include <memory>
+#include <optional>
 #include <queue>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
+namespace togr {
+
 class Model;
 
-// Imports models on a worker thread and publishes them through update().
-// Call update(), addToCache(), and shutdown() while the GL context is current.
+// Single-owner-thread coordinator; its worker only imports CPU data.
+// update() publishes GL resources, so it and shutdown() need the current GL context.
 class ModelLoader {
 public:
-	ModelLoader() = default;
+    ModelLoader() = default;
+    // Keep the coordinator and its active-task invariant at a stable identity.
+    ModelLoader(const ModelLoader&) = delete;
+    ModelLoader& operator=(const ModelLoader&) = delete;
+    ModelLoader(ModelLoader&&) = delete;
+    ModelLoader& operator=(ModelLoader&&) = delete;
 
-	std::future<std::shared_ptr<Model>> loadAsync(const std::string& path);
-	void loadFromPath(const std::string& path);
-	bool isLoaded(const std::string& key) const;
-	std::vector<std::shared_ptr<Model>> getAllLoadedModels() const;
-	void addToCache(const std::string& key, std::shared_ptr<Model> model);
-	void shutdown();
-	void update();
+    // Queue an owned UTF-8 path. Cache keys compare the original bytes without
+    // normalization. Cached paths are ignored; pending/active duplicates remain.
+    // This call does not start an import or perform GL work.
+    void requestLoad(const std::string& path);
+
+    // Collect at most one completed import, then handle one pending head: start it
+    // or discard a cached duplicate. CPU import precedes this thread's GL upload.
+    // Ordinary import/upload failures are not cached, so later requests can retry.
+    // Unexpected collection/publication exceptions consume the active request and
+    // propagate; launch failures leave the pending request available for retry.
+    void update();
+
+    // Snapshot of shared owners, not borrowed pointers. External owners must release
+    // initialized models while the GL context is current, even after shutdown().
+    std::vector<std::shared_ptr<Model>> getAllLoadedModels() const;
+
+    // Wait without publishing or rethrowing worker errors, then discard the CPU
+    // result and clear requests/cache. Repeated calls are harmless;
+    // externally shared models keep their resources until their last owner releases.
+    void shutdown();
 
 private:
-	std::unordered_map<std::string, std::shared_ptr<Model>> cache;
-	std::future<std::shared_ptr<Model>> asyncFuture;
-	std::queue<std::string> asyncQueue;
+    struct ActiveImport {
+        std::string cacheKey;
+        std::future<std::shared_ptr<Model>> future;
+    };
+
+    void collectCompletedImport();
+    void startNextImport();
+    void discardActiveImport();
+    bool hasCachedModel(const std::string& key) const;
+    void publishImportedModel(const std::string& key, std::shared_ptr<Model> model);
+
+    std::unordered_map<std::string, std::shared_ptr<Model>> modelCache_;
+    // Active state always pairs its original key with a valid future. Pending
+    // paths have not started, and neither container holds published models.
+    std::optional<ActiveImport> activeImport_;
+    std::queue<std::string> pendingPaths_;
 };
 
-#endif // !MODELLOADER_HPP
+} // namespace togr
+
+#endif // !TOGR_MODELLOADER_HPP

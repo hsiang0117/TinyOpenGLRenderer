@@ -5,6 +5,8 @@
 #include <system_error>
 #include <utility>
 
+namespace togr {
+
 Material::Material(std::string albedoPath, std::string ambientPath, std::string specularPath, std::string normalPath, std::string shininessPath)
 {
 	this->albedoPath = albedoPath;
@@ -32,7 +34,7 @@ bool Material::initGLResources()
 			const auto message = "Invalid texture path: " + name + ": " + error.what();
 			if (!lastError_.empty()) lastError_ += '\n';
 			lastError_ += message;
-			LOG_ERROR(message);
+			TOGR_LOG_ERROR(message);
 		}
 	};
 	loadTexture(albedoPath, Texture2D::Type::ALBEDO);
@@ -42,7 +44,7 @@ bool Material::initGLResources()
 	// Imported shininess still participates in the existing default-material
 	// decision via the loaded-map set, although the shader does not sample it.
 	loadTexture(shininessPath, Texture2D::Type::SHININESS);
-	if (!lastError_.empty()) LOG_WARN("Using material defaults for failed textures");
+	if (!lastError_.empty()) TOGR_LOG_WARN("Using material defaults for failed textures");
 	return lastError_.empty();
 }
 
@@ -81,3 +83,5 @@ void Material::bind(ShaderPtr shader)
 		}
 	}
 }
+
+} // namespace togr

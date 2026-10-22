@@ -3,6 +3,8 @@
 #include <cstddef>
 #include <cstdint>
 
+namespace togr {
+
 // Matches CloudVolume in cloudRaymarch.frag (std430, binding 4).
 struct alignas(16) CloudVolumeGpu {
     glm::vec3 aabbMin; float cloudType;
@@ -26,3 +28,5 @@ static_assert(offsetof(CloudVolumeGpu, phaseForwardG) == 120);
 static_assert(offsetof(CloudVolumeGpu, sunStrength) == 124);
 static_assert(offsetof(CloudVolumeGpu, viewMaxSteps) == 128);
 static_assert(offsetof(CloudVolumeGpu, regionScale) == 144);
+
+} // namespace togr

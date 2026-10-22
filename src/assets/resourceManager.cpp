@@ -2,86 +2,73 @@
 #include "shaderCatalog.hpp"
 #include "scene/component.hpp"
 
-ResourceManager::ResourceManager()
-{
-	currentScene = std::make_shared<Scene>();
+namespace togr {
+
+ResourceManager::ResourceManager() : currentScene_(std::make_shared<Scene>()) {}
+
+void ResourceManager::init() {
+    for (const auto& program : ShaderCatalog::programs) {
+        if (program.geometryPath) {
+            shaderLoader_.registerShader(program.key, program.vertexPath, program.geometryPath, program.fragmentPath);
+        } else {
+            shaderLoader_.registerShader(program.key, program.vertexPath, program.fragmentPath);
+        }
+    }
 }
 
-void ResourceManager::init()
-{
-	for (const auto& program : ShaderCatalog::programs) {
-		if (program.geometryPath) {
-			shaderLoader.registerShader(program.key, program.vertexPath, program.geometryPath, program.fragmentPath);
-		} else {
-			shaderLoader.registerShader(program.key, program.vertexPath, program.fragmentPath);
-		}
-	}
+void ResourceManager::update() {
+    modelLoader_.update();
+    currentScene_->processRemovals();
 }
 
-void ResourceManager::update()
-{
-	modelLoader.update();
-	currentScene->processRemovals();
+void ResourceManager::shutdown() {
+    currentScene_->shutdown();
+    modelLoader_.shutdown();
+    shaderLoader_.shutdown();
 }
 
-void ResourceManager::queueModelLoad(const std::string& path)
-{
-	modelLoader.loadFromPath(path);
+void ResourceManager::queueModelLoad(const std::string& path) {
+    modelLoader_.requestLoad(path);
 }
 
-std::vector<std::shared_ptr<Model>> ResourceManager::getAllModels() const
-{
-	return modelLoader.getAllLoadedModels();
+std::vector<std::shared_ptr<Model>> ResourceManager::getAllModels() const {
+    return modelLoader_.getAllLoadedModels();
 }
 
-std::shared_ptr<Shader> ResourceManager::getShader(const std::string& key) const
-{
-	return shaderLoader.get(key);
+std::shared_ptr<Shader> ResourceManager::getShader(const std::string& key) const {
+    return shaderLoader_.get(key);
 }
 
-bool ResourceManager::addGameObject(GameObjectPtr obj)
-{
-	return currentScene->addObject(obj);
+ScenePtr ResourceManager::getCurrentScene() const {
+    return currentScene_;
 }
 
-void ResourceManager::removeGameObject(std::size_t idx)
-{
-	currentScene->queueRemoval(idx);
+void ResourceManager::setCurrentScene(ScenePtr scene) {
+    currentScene_ = scene ? scene : std::make_shared<Scene>();
 }
 
-std::vector<GameObjectPtr> ResourceManager::getGameObjects() const
-{
-	return currentScene->getObjects();
+bool ResourceManager::addGameObject(GameObjectPtr object) {
+    return currentScene_->addObject(object);
 }
 
-int ResourceManager::getPointLightCount() const
-{
-	return (int)currentScene->getView<PointLightComponent>().size();
+void ResourceManager::removeGameObject(std::size_t index) {
+    currentScene_->queueRemoval(index);
 }
 
-int ResourceManager::getDirectionalLightCount() const
-{
-	return (int)currentScene->getView<DirectionalLightComponent>().size();
+std::vector<GameObjectPtr> ResourceManager::getGameObjects() const {
+    return currentScene_->getObjects();
 }
 
-int ResourceManager::getSpotLightCount() const
-{
-	return (int)currentScene->getView<SpotLightComponent>().size();
+int ResourceManager::getPointLightCount() const {
+    return static_cast<int>(currentScene_->getView<PointLightComponent>().size());
 }
 
-ScenePtr ResourceManager::getCurrentScene() const
-{
-	return currentScene;
+int ResourceManager::getDirectionalLightCount() const {
+    return static_cast<int>(currentScene_->getView<DirectionalLightComponent>().size());
 }
 
-void ResourceManager::setCurrentScene(ScenePtr s)
-{
-	currentScene = s ? s : std::make_shared<Scene>();
+int ResourceManager::getSpotLightCount() const {
+    return static_cast<int>(currentScene_->getView<SpotLightComponent>().size());
 }
 
-void ResourceManager::shutdown()
-{
-	currentScene->shutdown();
-	modelLoader.shutdown();
-	shaderLoader.shutdown();
-}
+} // namespace togr

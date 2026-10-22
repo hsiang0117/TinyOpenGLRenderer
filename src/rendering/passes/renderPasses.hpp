@@ -1,81 +1,105 @@
-#ifndef RENDERPASSES_HPP
-#define RENDERPASSES_HPP
+#ifndef TOGR_RENDERPASSES_HPP
+#define TOGR_RENDERPASSES_HPP
 #pragma once
 
 #include "renderPass.hpp"
 
-// Concrete render passes. Each maps to one segment of the former monolithic
-// RenderSystem::render(). They share state only through RenderContext; the
-// ordering in the pass list encodes the producer->consumer dependencies.
+namespace togr {
 
-// Frame setup: unbind program, clear the backbuffer, bind the unit-8 bone
-// fallback texture. (UBO upload + frustum are built before the pass loop.)
+// The renderer executes these nine timed stages in this order. Resources travel
+// through RenderContext, while framebuffer, program, texture and buffer bindings
+// also persist in GL. FrameSetup establishes the listed pipeline baseline; later
+// passes rely on it rather than saving/restoring arbitrary incoming GL state.
+
+// Establish the default FBO/full viewport, depth test LEQUAL with writes, full
+// color writes and program point size; disable blend/cull/scissor/framebuffer sRGB.
+// Unbind program before clearing, then bind complete bone/environment fallbacks
+// on texture units 8/5. Camera UBO upload and frustum preparation precede this pass.
 class FrameSetupPass : public RenderPass {
 public:
-	void execute(RenderContext& ctx) override;
-	const char* name() const override { return "FrameSetup"; }
+    void execute(RenderContext& ctx) override;
+    const char* name() const override { return "FrameSetup"; }
 };
 
-// Directional-light shadow map -> directionalShadowTexture.
+// Scene geometry -> directionalShadowTexture; no main-camera culling of casters.
+// Uses a 1024-square viewport and temporarily enables front-face culling to draw.
+// Processed lights leave FBO 0 and culling disabled; an empty list only sets the
+// viewport. Depth/blend follow the frame baseline.
 class DirectionalShadowPass : public RenderPass {
 public:
-	void execute(RenderContext& ctx) override;
-	const char* name() const override { return "DirectionalShadow"; }
+    void execute(RenderContext& ctx) override;
+    const char* name() const override { return "DirectionalShadow"; }
 };
 
-// Point-light cube shadow maps -> pointShadowTexture (cubemap array).
+// Scene geometry -> pointShadowTexture cube array; clears six faces per light
+// before layered drawing, without main-camera caster culling. Same viewport and
+// temporary cull state as DirectionalShadow. Processed lights leave FBO 0 and
+// culling disabled; an empty list only sets the viewport.
 class PointShadowPass : public RenderPass {
 public:
-	void execute(RenderContext& ctx) override;
-	const char* name() const override { return "PointShadow"; }
+    void execute(RenderContext& ctx) override;
+    const char* name() const override { return "PointShadow"; }
 };
 
-// Upload light data into the 3 SSBOs, set light counts + lightSpaceMatrix,
-// bind shadow maps to TEX6/7. Non-draw. MUST run immediately before
-// ForwardHdrPass: the SSBO bindings / TEX6-7 / uniforms it sets on forwardShader
-// persist into the forward pass because nothing rebinds between them.
+// Light components -> three SSBO contents and forward-program light/shadow
+// uniforms. Does not draw or bind shadow textures. Must precede ForwardHdr, whose
+// resource bindings are explicit; uniforms remain stored on the program object.
 class LightUploadPass : public RenderPass {
 public:
-	void execute(RenderContext& ctx) override;
-	const char* name() const override { return "LightUpload"; }
+    void execute(RenderContext& ctx) override;
+    const char* name() const override { return "LightUpload"; }
 };
 
-// Forward HDR render -> hdrFbo (MRT: hdr + bright + depth). Renderables, light
-// cubes, skybox. Depends on LightUploadPass running immediately before it.
+// Geometry, lights, shadows and camera -> hdrFbo (HDR/bright color plus depth).
+// Explicitly binds light SSBOs 1/2/3 and shadow textures 6/7 before drawing models,
+// material meshes, light markers and skyboxes. Camera UBO 0 comes from prepare;
+// materials/bone palettes/environment use their existing per-draw/fallback slots.
+// Leaves FBO 0, full viewport and skybox program; depth/blend/cull stay at baseline.
 class ForwardHdrPass : public RenderPass {
 public:
-	void execute(RenderContext& ctx) override;
-	const char* name() const override { return "ForwardHdr"; }
+    void execute(RenderContext& ctx) override;
+    const char* name() const override { return "ForwardHdr"; }
 };
 
-// Volume clouds + skeleton overlay -> overlayFbo (shared target). Volume
-// drawing is gated on noise readiness; lazy noise generation is triggered here.
+// Opaque depth + cloud inputs/history -> half-resolution marching/optional
+// temporal resolve -> full-resolution overlay; then append visible skeletons.
+// Cloud noise is requested/polled here; no ready clouds invalidate history.
+// Always clears overlay to transparent, even when there is no cloud draw. March
+// and resolve disable depth/blend, then enable depth again. Leaves FBO 0, full
+// viewport and skeleton program; overlay is retained for Gizmo and Composite.
 class CloudSkeletonOverlayPass : public RenderPass {
 public:
-	void execute(RenderContext& ctx) override;
-	const char* name() const override { return "CloudSkeletonOverlay"; }
+    void execute(RenderContext& ctx) override;
+    const char* name() const override { return "CloudSkeletonOverlay"; }
 };
 
-// Selection gizmo: XYZ arrows at the selected object's origin, drawn into
-// overlayFbo (no depth) so it is always on top, at constant screen size.
+// Selection -> constant-screen-size arrows appended to overlayFbo without clear.
+// A skipped gizmo changes no state. Drawing disables depth/blend/cull, then leaves
+// depth enabled, FBO 0 and full viewport; it does not restore arbitrary prior state.
 class GizmoPass : public RenderPass {
 public:
-	void execute(RenderContext& ctx) override;
-	const char* name() const override { return "Gizmo"; }
+    void execute(RenderContext& ctx) override;
+    const char* name() const override { return "Gizmo"; }
 };
 
-// Gaussian bloom blur, ping-pong x10 -> bloomBlurTextures.
+// Bright color -> ten Gaussian ping-pong draws, final result in blur texture 1.
+// When disabled, changes no GL state. When enabled, sets the full viewport and
+// leaves FBO 0, blur program and texture unit 0; depth/blend/cull follow baseline.
 class BloomPass : public RenderPass {
 public:
-	void execute(RenderContext& ctx) override;
-	const char* name() const override { return "Bloom"; }
+    void execute(RenderContext& ctx) override;
+    const char* name() const override { return "Bloom"; }
 };
 
-// Final composite (HDR scene + bloom + overlay) -> sceneColorTexture (Viewport panel).
+// HDR + optional bloom + premultiplied overlay -> sceneColorTexture for Viewport.
+// Uses full viewport and disables depth while drawing; leaves FBO 0, depth enabled,
+// composite program and texture unit 2. Display encoding happens in the shader.
 class CompositePass : public RenderPass {
 public:
-	void execute(RenderContext& ctx) override;
-	const char* name() const override { return "Composite"; }
+    void execute(RenderContext& ctx) override;
+    const char* name() const override { return "Composite"; }
 };
 
-#endif // !RENDERPASSES_HPP
+} // namespace togr
+
+#endif // !TOGR_RENDERPASSES_HPP

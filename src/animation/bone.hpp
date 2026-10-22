@@ -1,5 +1,5 @@
-#ifndef BONE_HPP
-#define BONE_HPP
+#ifndef TOGR_BONE_HPP
+#define TOGR_BONE_HPP
 #pragma once
 
 #include <vector>
@@ -7,43 +7,49 @@
 #include <glm/gtc/quaternion.hpp>
 struct aiNodeAnim;
 
+namespace togr {
+
 struct KeyPosition {
-	glm::vec3 position;
-	float timeStamp;
+    glm::vec3 position;
+    float timeStamp; // Clip ticks; rotation and scale keys use the same unit.
 };
 
 struct KeyRotation {
-	glm::quat orientation;
-	float timeStamp;
+    glm::quat orientation;
+    float timeStamp;
 };
 
 struct KeyScale {
-	glm::vec3 scale;
-	float timeStamp;
+    glm::vec3 scale;
+    float timeStamp;
 };
 
+// One node's immutable copied key tracks; sampling has no per-clip cached state.
 class Bone {
 public:
-	Bone() = default;
-	explicit Bone(const aiNodeAnim* channel);
-	void update(float animationTime);
-	glm::mat4 getLocalTransform() const { return localTransform; };
-	int getPositionIndex(float animationTime);
-	int getRotationIndex(float animationTime);
-	int getScaleIndex(float animationTime);
+    Bone() = default;
+    // Copies a non-null Assimp channel; the caller may then release the channel.
+    explicit Bone(const aiNodeAnim* channel);
+    // ticks is clip time; returns the sampled local TRS relative to the parent.
+    glm::mat4 sample(float ticks) const;
 private:
-	std::vector<KeyPosition> positions;
-	std::vector<KeyRotation> rotations;
-	std::vector<KeyScale> scales;
-	int numPositions;
-	int numRotations;
-	int numScalings;
-	glm::mat4 localTransform;
+    int getPositionIndex(float ticks) const;
+    int getRotationIndex(float ticks) const;
+    int getScaleIndex(float ticks) const;
 
-	float getScaleFactor(float lastTimeStamp, float nextTimeStamp, float animationTime);
-	glm::mat4 interpolatePosition(float animationTime);
-	glm::mat4 interpolateRotation(float animationTime);
-	glm::mat4 interpolateScaling(float animationTime);
+    std::vector<KeyPosition> positions;
+    std::vector<KeyRotation> rotations;
+    std::vector<KeyScale> scales;
+    int numPositions = 0;
+    int numRotations = 0;
+    int numScalings = 0;
+
+    float getScaleFactor(float lastTimeStamp, float nextTimeStamp, float ticks) const;
+    glm::mat4 interpolatePosition(float ticks) const;
+    glm::mat4 interpolateRotation(float ticks) const;
+    glm::mat4 interpolateScaling(float ticks) const;
 };
+
+} // namespace togr
 
 #endif

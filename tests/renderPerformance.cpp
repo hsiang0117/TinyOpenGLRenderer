@@ -16,6 +16,8 @@
 #include <stdexcept>
 #include <set>
 
+namespace togr::tests {
+
 namespace {
 void check(bool condition, const char* message) { if (!condition) throw std::runtime_error(message); }
 int glErrors = 0;
@@ -143,14 +145,21 @@ void checkBloom(ResourceManager& resources) {
     fbo1.bind(); fbo1.attachTexture2D(ping1, GL_COLOR_ATTACHMENT0); fbo1.unbind();
     RenderContext ctx; ctx.compositeShader = composite; ctx.gaussianBlurShader = resources.getShader(ShaderCatalog::gaussianBlur.key);
     ctx.bloomBlurFbos[0] = &fbo0; ctx.bloomBlurFbos[1] = &fbo1; ctx.bloomBlurTextures[0] = &ping0; ctx.bloomBlurTextures[1] = &ping1;
-    ctx.bloomBrightTexture = &bright; glViewport(0, 0, 16, 16);
+    ctx.bloomBrightTexture = &bright; ctx.width = ctx.height = 16;
+    glViewport(2, 3, 1, 1);
     BloomPass bloom;
     Calls calls;
     bloom.execute(ctx); bloom.execute(ctx);
     check(quadDraws == 0 && queries == 1, "Disabled Bloom must skip blur draws and reuse its feature lookup");
+    GLint viewport[4] = {}; glGetIntegerv(GL_VIEWPORT, viewport);
+    check(viewport[0] == 2 && viewport[1] == 3 && viewport[2] == 1 && viewport[3] == 1,
+        "Disabled Bloom changed the viewport instead of remaining a no-op");
     writeComposite(true); composite->reload(); linked(*composite); composite->setFloat("exposure", 1.7f);
     bloom.execute(ctx);
     check(quadDraws == 10, "Enabling Bloom after reload did not execute its 10 blur passes");
+    glGetIntegerv(GL_VIEWPORT, viewport);
+    check(viewport[0] == 0 && viewport[1] == 0 && viewport[2] == 16 && viewport[3] == 16,
+        "Enabled Bloom inherited an unrelated pass viewport");
     fbo1.bind(); glm::vec4 pixel; glReadPixels(8, 8, 1, 1, GL_RGBA, GL_FLOAT, &pixel); fbo1.unbind();
     check(std::abs(pixel.r - 2) < 0.01f && std::abs(pixel.g - 1) < 0.01f, "Bloom blur output changed");
     int lookups = queries;
@@ -233,8 +242,15 @@ void checkRenderProfiling(ResourceManager& resources) {
         return result;
     };
     const auto baseline = pixels();
+    GLint cameraBuffer = 0; glGetIntegeri_v(GL_UNIFORM_BUFFER_BINDING, 0, &cameraBuffer);
+    check(cameraBuffer != 0, "Renderer did not bind its camera matrix buffer");
     renderer.setProfilingEnabled(true); forceTimerUnavailable = true;
-    for (int frame = 0; frame < 4; ++frame) renderer.render(camera);
+    for (int frame = 0; frame < 4; ++frame) {
+        glBindBufferBase(GL_UNIFORM_BUFFER, 0, 0);
+        renderer.render(camera);
+        GLint rebound = 0; glGetIntegeri_v(GL_UNIFORM_BUFFER_BINDING, 0, &rebound);
+        check(rebound == cameraBuffer, "Frame preparation did not restore its camera UBO binding");
+    }
     const auto allocated = timerObjects.size(); const auto submitted = timerWrites;
     check(allocated == 44 && submitted == 44 && timerReads == 0 && !renderer.getRenderProfile().valid,
         "Profiler did not defer four complete samples while GPU results were unavailable");
@@ -304,3 +320,5 @@ void runRenderPerformanceChecks() {
     check(glGetError() == GL_NO_ERROR && glErrors == 0, "GL errors during performance regression checks");
     glfwDestroyWindow(window); glfwTerminate();
 }
+
+} // namespace togr::tests

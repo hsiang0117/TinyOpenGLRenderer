@@ -4,13 +4,15 @@
 #include "core/logger.hpp"
 #include <algorithm>
 
+namespace togr {
+
 bool Scene::addObject(GameObjectPtr obj)
 {
 	if (!obj) return false;
 	if ((obj->has<PointLightComponent>() && getView<PointLightComponent>().size() >= RenderLimits::PointLights) ||
 		(obj->has<DirectionalLightComponent>() && getView<DirectionalLightComponent>().size() >= RenderLimits::DirectionalLights) ||
 		(obj->has<SpotLightComponent>() && getView<SpotLightComponent>().size() >= RenderLimits::SpotLights)) {
-		LOG_WARN("Cannot add " << obj->getName() << ": light capacity reached");
+		TOGR_LOG_WARN("Cannot add " << obj->getName() << ": light capacity reached");
 		return false;
 	}
 	objects.push_back(obj);
@@ -58,3 +60,5 @@ void Scene::shutdown()
 	while (!removalQueue.empty()) removalQueue.pop();
 	viewCache_.clear();
 }
+
+} // namespace togr

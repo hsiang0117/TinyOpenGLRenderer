@@ -120,6 +120,9 @@
     <ClCompile Include="src\editor\guiSystem.cpp">
       <Filter>Editor</Filter>
     </ClCompile>
+    <ClCompile Include="src\editor\componentEditors.cpp">
+      <Filter>Editor</Filter>
+    </ClCompile>
     <ClCompile Include="src\core\logger.cpp">
       <Filter>Core</Filter>
     </ClCompile>
@@ -230,6 +233,9 @@
     <ClInclude Include="src\animation\bone.hpp">
       <Filter>Animation</Filter>
     </ClInclude>
+    <ClInclude Include="src\animation\skeletonPose.hpp">
+      <Filter>Animation</Filter>
+    </ClInclude>
     <ClInclude Include="src\rendering\camera.hpp">
       <Filter>Rendering</Filter>
     </ClInclude>
@@ -237,6 +243,9 @@
       <Filter>Scene</Filter>
     </ClInclude>
     <ClInclude Include="src\editor\guiSystem.hpp">
+      <Filter>Editor</Filter>
+    </ClInclude>
+    <ClInclude Include="src\editor\componentEditors.hpp">
       <Filter>Editor</Filter>
     </ClInclude>
     <ClInclude Include="src\core\logger.hpp">
@@ -291,6 +300,9 @@
       <Filter>Platform</Filter>
     </ClInclude>
     <ClInclude Include="src\scene\gameObject.hpp">
+      <Filter>Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="src\scene\selectionModel.hpp">
       <Filter>Scene</Filter>
     </ClInclude>
     <ClInclude Include="src\scene\gameObjectFactory.hpp">
@@ -424,6 +436,12 @@
     <None Include="data\shader\gizmo.frag">
       <Filter>Shaders\Overlay</Filter>
     </None>
+    <None Include="docs\code-reading.md">
+      <Filter>Docs</Filter>
+    </None>
+    <None Include="docs\readability.md">
+      <Filter>Docs</Filter>
+    </None>
     <None Include="docs\header-dependencies.md">
       <Filter>Docs</Filter>
     </None>
@@ -458,6 +476,12 @@
       <Filter>Tests</Filter>
     </None>
     <None Include="tests\renderStartup.cpp">
+      <Filter>Tests</Filter>
+    </None>
+    <None Include="tests\guiChecks.cpp">
+      <Filter>Tests</Filter>
+    </None>
+    <None Include="tests\resourceLoadingChecks.cpp">
       <Filter>Tests</Filter>
     </None>
     <None Include="tests\run-render-benchmark.ps1">

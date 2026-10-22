@@ -1,5 +1,5 @@
-#ifndef LOGGER_HPP
-#define LOGGER_HPP
+#ifndef TOGR_LOGGER_HPP
+#define TOGR_LOGGER_HPP
 #pragma once
 
 #include <string>
@@ -7,6 +7,8 @@
 #include <mutex>
 #include <sstream>
 #include <cstddef>
+
+namespace togr {
 
 enum class LogLevel { Info, Warning, Error };
 
@@ -45,17 +47,19 @@ private:
 	unsigned long long revision_ = 0;
 };
 
+} // namespace togr
+
 // Stream-style macros: ergonomic drop-in for the existing
 // `std::cout << "literal" << runtimeValue << std::endl;` sites.
-//   LOG_ERROR("ERROR::SHADER::VERTEX::COMPILATION_FAILED\n" << infoLog);
-#define LOG_AT(level, expr)                               \
+//   TOGR_LOG_ERROR("ERROR::SHADER::VERTEX::COMPILATION_FAILED\n" << infoLog);
+#define TOGR_LOG_AT(level, expr)                               \
 	do {                                                  \
-		std::ostringstream _log_oss;                      \
+		::std::ostringstream _log_oss;                      \
 		_log_oss << expr;                                 \
-		Logger::getInstance().log(level, _log_oss.str()); \
+		::togr::Logger::getInstance().log(level, _log_oss.str()); \
 	} while (0)
 
-#define LOG_WARN(expr)  LOG_AT(LogLevel::Warning, expr)
-#define LOG_ERROR(expr) LOG_AT(LogLevel::Error, expr)
+#define TOGR_LOG_WARN(expr)  TOGR_LOG_AT(::togr::LogLevel::Warning, expr)
+#define TOGR_LOG_ERROR(expr) TOGR_LOG_AT(::togr::LogLevel::Error, expr)
 
-#endif // !LOGGER_HPP
+#endif // !TOGR_LOGGER_HPP

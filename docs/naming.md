@@ -2,6 +2,35 @@
 
 类使用 `PascalCase`，函数、变量和 Shader 注册名称使用 `lowerCamelCase`。名称优先说明用途；集合使用复数，数量使用 `Count`。渲染资源的缩写按单词书写，例如 `hdrFbo`、`cameraMatricesUbo`、`CloudVolumeGpu`。
 
+阶段、状态、坐标空间与单位的命名，以及函数组织和接口契约，见 [代码阅读规则](readability.md)。当前功能的实现与测试入口见 [主流程与功能导航](code-reading.md)。
+
+## C++ 命名空间
+
+项目自有 C++ 声明统一放在根命名空间 `togr`（TinyOpenGLRenderer 的缩写）中，例如 `togr::Engine`、`togr::Model`、`togr::Camera`。
+现有用途命名空间保留在根下：`togr::ShaderCatalog`、`togr::RenderHelpers`、`togr::RenderLimits`、`togr::ComponentEditors`。
+目录分类不要求再建立同名子命名空间；当前规模优先让同一根内的类型直接协作。
+
+- 头文件先在全局作用域包含依赖，再打开 `namespace togr { ... }`；自有类型的前向声明也放在其中。
+- 第三方声明保持原作用域，如全局的 `GLFWwindow`、`aiNode`、`aiAnimation`，以及 `std`、`glm`、`Assimp` 中的类型。不能把第三方头文件包含进项目命名空间。
+- 实现文件在依赖之后打开相同的根命名空间；仅供本文件使用的匿名命名空间嵌在其中。命名空间结束处注明 `// namespace togr`。
+- 公共头文件不使用 `using namespace`，也不在全局提供旧类型的兼容别名。调用方在根外使用完整名称，例如 `togr::Engine`；根内可直接使用 `Model` 等名称。
+- 自有测试使用 `togr::tests`；应用、安全检查和基准的 `main()` 保持全局作用域，通过显式限定调用项目入口。
+- 宏不受命名空间约束。自有日志、相机默认值、骨骼容量和头文件保护宏统一使用 `TOGR_` 前缀；日志宏内部使用 `::togr::Logger` 等完整名称。第三方及平台配置宏沿用其要求的名称。
+
+例如，应用入口显式使用项目中的类型：
+
+```cpp
+#include "app/engine.hpp"
+
+int main() {
+    togr::Engine engine;
+    engine.init();
+    engine.run();
+}
+```
+
+阅读文档中的类型及接口名通常省略 `togr::` 前缀；源码中的真实声明仍遵循上述边界。
+
 ## Shader
 
 Shader 注册名称、`RenderContext` 成员和文件名使用相同的用途名称。共享的全屏顶点阶段保留独立名称 `fullscreen.vert`。
@@ -27,7 +56,9 @@ Shader 注册名称、`RenderContext` 成员和文件名使用相同的用途名
 - `CloudVolumeComponent` 保存云体参数，原名 `VolumeMarkerComponent`；工厂入口为 `createCloudVolume()`，默认创建 `Mode::SkyLayer`。天空云层的高度与追踪范围由组件控制，`Mode::LocalVolume` 沿用 Transform 包围盒。
 - 方向光统一使用 `DirectionalLight`，天空盒统一使用 `Skybox`。
 - 当前云与骨骼共用的 Pass 名为 `CloudSkeletonOverlayPass`；计时标签为 `CloudSkeletonOverlay`。
-- 释放接口统一为 `shutdown()`，Shader 热重载为 `reload()`，组件面板注册为 `registerComponentWidgets()`。
+- 释放接口统一为 `shutdown()`，Shader 热重载为 `reload()`。组件编辑统一从 `ComponentEditors::draw(Component&)` 进入，具体控件使用具名编辑函数。
+- 模型后台 CPU 导入为 `Model::importAsync()`，加载器排队入口为 `ModelLoader::requestLoad()`；GPU 初始化仍使用 `initGLResources()`。
+- 组件中的待应用输入使用 `draft`：天空盒为 `draftFolderPath`，材质为 `draft`。材质提交使用 `applyMaterial()`；生效资源通过查询接口读取。
 - 统计字段使用 `opaqueObjectCount`、`pointLightCount`、`directionalLightCount`、`spotLightCount`、`cloudVolumeCount`。
 
 ## 渲染目标
